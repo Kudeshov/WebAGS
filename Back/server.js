@@ -1,0 +1,123 @@
+const express = require('express');
+const sqlite3 = require('sqlite3').verbose();
+const cors = require('cors');
+
+const app = express();
+const port = 3001;
+
+const NSPCHANNELS = 238;
+const SPECDEFTIME = 1;
+const winLow = 20;
+const winHigh = 70;
+
+app.use(cors());
+
+const db = new sqlite3.Database('./graveyard.sqlite', (err) => {
+  if (err) {
+    console.error(err.message);
+  }
+  console.log('Connected to the database.');
+});
+
+class Spectrum {
+  constructor(channels, liveTime) {
+    this.channels = channels;
+    this.liveTime = liveTime;
+  }
+
+  valueInChannels(start, end, normalized = false) {
+    let result = 0;
+
+    if (start < 0) start = 0;
+    if (end >= this.channels.length) end = this.channels.length - 1;
+
+    for (let i = start; i <= end; i++) {
+      result += this.channels[i];
+    }
+
+    if (normalized) {
+      result /= this.liveTime;
+    }
+
+    return result;
+  }
+
+  channelsNormalized() {
+    return this.channels.map(value => value / this.liveTime);
+  }
+}
+
+
+function toLLA(x, y, z) {
+  if (Math.abs(x) < 100 || Math.abs(y) < 100) {
+    return { lat: -1, lon: -1 };
+  }
+
+  const WGS84A = 6378137.0000;
+  const WGS84B = 6356752.31424517929;
+
+  const lx = x / 100.0;
+  const ly = y / 100.0;
+  const lz = z / 100.0;
+
+  const a = WGS84A;
+  const b = WGS84B;
+
+  const e = Math.sqrt(((a * a) - (b * b)) / (a * a));
+  const e1 = Math.sqrt(((a * a) - (b * b)) / (b * b));
+
+  const p = Math.sqrt((lx * lx) + (ly * ly));
+  const q = Math.atan2((lz * a), (p * b));
+
+  const lon = Math.atan2(ly, lx);
+  const lat = Math.atan2(
+    (lz + (e1 * e1) * b * Math.pow(Math.sin(q), 3)),
+    (p - (e * e) * a * Math.pow(Math.cos(q), 3))
+  );
+
+  const N = a / Math.sqrt(1 - ((e * e) * Math.pow(Math.sin(lat), 2)));
+  const alt = (p / Math.cos(lat)) - N;
+
+  return {
+    lat: (lat * 180.0 / Math.PI),
+    lon: (lon * 180.0 / Math.PI),
+    alt: alt
+  };
+}
+
+app.get('/api/data', (req, res) => {
+  const sql = 'SELECT * FROM measurement limit 2500';
+  db.all(sql, [], (err, rows) => {
+    if (err) {
+      throw err;
+    }
+
+    const results = rows.map(row => {
+      const coords = toLLA(row.gpsX, row.gpsY, row.gpsZ);
+    
+      if(row.spectrum === undefined) {
+        console.error("spectrum is undefined for row: ", row);
+        return null;
+      }
+    
+      const buffer = Buffer.from(row.spectrum, 'binary');
+      const spectrumData = [];
+      for (let i = 0; i < NSPCHANNELS; i++) {
+        spectrumData.push(buffer.readUInt16LE(i * 2));
+      }
+      const spectrum = new Spectrum(spectrumData, SPECDEFTIME);
+      return {
+        id: row._id,
+        lat: coords.lat,
+        lon: coords.lon,
+        alt: coords.alt,
+        spectrumValue: spectrum.valueInChannels(winLow, winHigh, true)
+      };
+    }).filter(item => item !== null);
+    res.json(results);
+  });
+});
+
+app.listen(port, () => {
+  console.log(`Server listening at http://localhost:${port}`);
+});
