@@ -1,0 +1,12 @@
+.leaflet-control-attribution {
+    display: none;
+}
+
+.leaflet-control-layers-list {
+  padding-left: 0;
+  text-align: left;
+}
+
+.leaflet-control-layers-item {
+  padding-left: 16px;
+}
