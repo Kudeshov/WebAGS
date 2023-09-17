@@ -126,7 +126,7 @@ function MyMapComponent() {
 
 
   return (
-     <MapContainer center={initialCenter} zoom={18} style={{ width: '100%', height: '600px' }}>
+     <MapContainer center={initialCenter} zoom={18} style={{ float:'right', width: '75%', height: '600px' }}>
       <ChangeMapView coords={mapCenter} />
       <LayersControl position="topright">
         <LayersControl.BaseLayer checked name="Карта">
