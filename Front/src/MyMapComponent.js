@@ -69,41 +69,37 @@ function MyMapComponent() {
 
   const [measurements, setMeasurements] = useState([]);
   const [mapCenter, setMapCenter] = useState(initialCenter);
+  const [isHeatmapVisible, setIsHeatmapVisible] = useState(true);
 
   const [minSpectrumValue, setMinSpectrumValue] = useState(null);
   const [maxSpectrumValue, setMaxSpectrumValue] = useState(null);
 
   function MyHeatmapLayer({ measurements, isVisible }) {
-    const map = useMap();
-    const [heatLayer, setHeatLayer] = useState(null);
-  
-    useEffect(() => {
-      if (!map || !measurements) return;
-  
-      const heatData = measurements.map(measurement => {
-        const intensity = (measurement.spectrumValue - minSpectrumValue) / (maxSpectrumValue - minSpectrumValue);
-        return [measurement.lat, measurement.lon, intensity];
-      });
-  
-      const heat = L.heatLayer(heatData, { radius: 25 });
-      setHeatLayer(heat);
-  
-      return () => {
-        map.removeLayer(heat);
-      };
-    }, [map, measurements]);
-  
-    useEffect(() => {
-      if (heatLayer) {
-        if (isVisible) {
-          heatLayer.addTo(map);
-        } else {
-          map.removeLayer(heatLayer);
-        }
-      }
-    }, [map, heatLayer, isVisible]);
-  
-    return <FeatureGroup />;
+  const map = useMap();
+  const [heatLayer, setHeatLayer] = useState(null);
+
+  useEffect(() => {
+    if (!map || !measurements) return;
+
+    const heatData = measurements.map(measurement => {
+      const intensity = (measurement.spectrumValue - minSpectrumValue) / (maxSpectrumValue - minSpectrumValue);
+      return [measurement.lat, measurement.lon, intensity];
+    });
+
+    const heat = L.heatLayer(heatData, { radius: 15 });
+
+    if (isVisible) {
+      heat.addTo(map);
+    }
+
+    setHeatLayer(heat);
+
+    return () => {
+      map.removeLayer(heat);
+    };
+  }, [map, measurements, isVisible]);
+
+  return <FeatureGroup />;
   }
 
 
@@ -144,25 +140,33 @@ function MyMapComponent() {
           />
         </LayersControl.BaseLayer>
 
-    <LayersControl.Overlay checked name="Тепловая карта">
-      <MyHeatmapLayer measurements={measurements} isVisible={true} />
-    </LayersControl.Overlay>  
-    <LayersControl.Overlay name="Точки">
-      <FeatureGroup>
-        {measurements.map((measurement, index) => {
-          const color = getColor(measurement.spectrumValue, minSpectrumValue, maxSpectrumValue);
-          return (
-            <CircleMarker
-              key={index}
-              center={[measurement.lat, measurement.lon]}
-              color={color}
-              radius={5}
-            >
-            </CircleMarker>
-          );
-        })}
-      </FeatureGroup>
-    </LayersControl.Overlay>
+        <LayersControl.Overlay
+          checked
+          name="Тепловая карта"
+          eventHandlers={{
+            add: () => setIsHeatmapVisible(true),
+            remove: () => setIsHeatmapVisible(false)
+          }}
+        >
+          <MyHeatmapLayer measurements={measurements} isVisible={isHeatmapVisible} />
+        </LayersControl.Overlay> 
+
+        <LayersControl.Overlay name="Точки">
+          <FeatureGroup>
+            {measurements.map((measurement, index) => {
+              const color = getColor(measurement.spectrumValue, minSpectrumValue, maxSpectrumValue);
+              return (
+                <CircleMarker
+                  key={index}
+                  center={[measurement.lat, measurement.lon]}
+                  color={color}
+                  radius={5}
+                >
+                </CircleMarker>
+              );
+            })}
+          </FeatureGroup>
+        </LayersControl.Overlay>
 
     </LayersControl>
 
