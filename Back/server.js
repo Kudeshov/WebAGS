@@ -108,6 +108,8 @@ app.get('/api/data', (req, res) => {
       const spectrum = new Spectrum(spectrumData, SPECDEFTIME);
       return {
         id: row._id,
+        datetime: row.dateTime,
+        lat: coords.lat,
         lat: coords.lat,
         lon: coords.lon,
         alt: coords.alt,
