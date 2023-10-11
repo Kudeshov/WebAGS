@@ -10,3 +10,16 @@
 .leaflet-control-layers-item {
   padding-left: 16px;
 }
+
+@import "~leaflet-draw/dist/leaflet.draw.css";
+
+.mapWrapper {
+  position: relative;
+}
+
+.mapWrapper button {
+  position: absolute;
+  z-index: 1000;
+  top: 10px;  
+  left: 10px;
+}

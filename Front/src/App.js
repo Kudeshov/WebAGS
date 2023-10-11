@@ -8,7 +8,7 @@ function App() {
   return (
     <div className="App">
       <h1>Веб Аэрогаммасъемка</h1>
-      <MyChartComponent />
+      {/* <MyChartComponent /> */}
       <MyMapComponent />
     </div>
   );
