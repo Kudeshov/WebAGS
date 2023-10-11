@@ -6,8 +6,6 @@ import './MyMapComponent.css';
 import { rgb } from 'd3-color';
 import 'leaflet.heat';
 import { FeatureGroup } from 'react-leaflet';
-import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
-import { EditControl } from 'react-leaflet-draw';
 
 delete L.Icon.Default.prototype._getIconUrl;
 
@@ -63,17 +61,7 @@ function getColor(value, doseLow, doseHigh) {
   return color.toString();
 }
 
-function SpectrumChart({ data }) {
-  return (
-    <LineChart width={300} height={200} data={data} isAnimationActive={false}>
-      <Line type="monotone" dataKey="value" stroke="#8884d8" isAnimationActive={false} />
-      <CartesianGrid stroke="#ccc" />
-      <XAxis dataKey="channel" />
-      <YAxis />
-      <Tooltip />
-    </LineChart>
-  );
-}
+
 
 function MyMapComponent() {
   const googleMapsUrl = 'http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}&hl=ru';
@@ -85,8 +73,6 @@ function MyMapComponent() {
 
   const [minSpectrumValue, setMinSpectrumValue] = useState(null);
   const [maxSpectrumValue, setMaxSpectrumValue] = useState(null);
-
-  const [selectedPoints, setSelectedPoints] = useState([]);
 
   function MyHeatmapLayer({ measurements, isVisible }) {
   const map = useMap();
@@ -116,12 +102,12 @@ function MyMapComponent() {
   return <FeatureGroup />;
   }
 
+
   useEffect(() => {
     fetch("http://localhost:3001/api/data")
       .then(response => response.json())
       .then(data => {
         setMeasurements(data);
-        console.log("Data from API:", data);
         if (data.length > 0) {
           const spectrumValues = data.map(measurement => measurement.spectrumValue);
           setMinSpectrumValue(Math.min(...spectrumValues));
@@ -134,70 +120,9 @@ function MyMapComponent() {
       });
   }, []);
 
-  const [spectrumData, setSpectrumData] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const fetchSpectrumData = (id) => {
-    setIsLoading(true); // устанавливаем перед запросом
-    fetch(`http://localhost:3001/api/spectrum/${id}`)
-      .then(response => response.json())
-      .then(data => {
-        const preparedData = data.spectrum.map((value, index) => ({
-          channel: index,
-          value,
-        }));
-        setSpectrumData(preparedData);
-        setIsLoading(false); // устанавливаем после успешного выполнения
-      });
-  };  
-
-  const measurementsRef = useRef([]);
-   useEffect(() => {
-      measurementsRef.current = measurements;
-  }, [measurements]);
-
-  function handleRectangleCreate(event) {
-    console.log("Rectangle created!");
-    console.log("Measurements at filter time:", measurementsRef.current);
-    const layer = event.layer;
-    const bounds = layer.getBounds();
-    const ne = bounds.getNorthEast();
-    const sw = bounds.getSouthWest();
-
-    const selected = measurementsRef.current.filter(point => 
-        point.lat >= sw.lat && point.lat <= ne.lat && 
-        point.lon >= sw.lng && point.lon <= ne.lng
-    );
-
-    setSelectedPoints(selected);
-    console.log(selected);
-    // Сохраняем прямоугольник в состояние
-    setRectangles(prev => [...prev, event.layer]);
-  }
-
-//  console.log("Measurements length:", measurements.length);
-
-
-const [rectangles, setRectangles] = useState([]);
-  // Функция для удаления последнего прямоугольника
-function removeLastRectangle() {
-  if (rectangles.length === 0) return;
-
-  const lastRectangle = rectangles[rectangles.length - 1];
-  lastRectangle.remove();  // Удаляем слой с карты
-  setRectangles(prev => prev.slice(0, -1));  // Убираем последний слой из массива
-}
-
-// Функция для удаления всех прямоугольников
-function removeAllRectangles() {
-  for (let rectangle of rectangles) {
-      rectangle.remove();
-  }
-  setRectangles([]);
-}
 
   return (
-     <MapContainer center={initialCenter} zoom={18} style={{ width: '100%', height: '600px' }}>
-
+     <MapContainer center={initialCenter} zoom={18} style={{ float:'right', width: '75%', height: '600px' }}>
       <ChangeMapView coords={mapCenter} />
       <LayersControl position="topright">
         <LayersControl.BaseLayer checked name="Карта">
@@ -228,55 +153,24 @@ function removeAllRectangles() {
 
         <LayersControl.Overlay name="Точки">
           <FeatureGroup>
-
-          <EditControl
-            position="topright"
-            onCreated={handleRectangleCreate}
-            draw={{
-                rectangle: true,
-                polyline: false,
-                circle: false,
-                circlemarker: false,
-                marker: false,
-                polygon: false
-            }}
-            edit={{
-                edit: false, // Отключение редактирования
-                remove: false // Отключение удаления
-            }}
-          />
-
             {measurements.map((measurement, index) => {
-                const isSelected = selectedPoints.some(p => p.id === measurement.id);
-                const color = getColor(measurement.spectrumValue, minSpectrumValue, maxSpectrumValue);
-                return (
-                    <CircleMarker
-                        key={index}
-                        center={[measurement.lat, measurement.lon]}
-                        color={isSelected ? 'red' : color} // Если точка выделена, делаем ее красной
-                        radius={isSelected ? 7 : 5} // Если точка выделена, увеличиваем ее радиус
-                        eventHandlers={{
-                            click: () => fetchSpectrumData(measurement.id),
-                        }}
-                    >
-                    <Popup>
-                        <div style={{ width: '400px', height: '200px' }}>
-                            {isLoading ? 'Загрузка...' : <SpectrumChart data={spectrumData} />}
-                        </div>
-                    </Popup>               
-                    </CircleMarker>
-                );
+              const color = getColor(measurement.spectrumValue, minSpectrumValue, maxSpectrumValue);
+              return (
+                <CircleMarker
+                  key={index}
+                  center={[measurement.lat, measurement.lon]}
+                  color={color}
+                  radius={5}
+                >
+                </CircleMarker>
+              );
             })}
-          </FeatureGroup>          
+          </FeatureGroup>
         </LayersControl.Overlay>
+
     </LayersControl>
 
-    <button style={{ position: 'absolute', top: '10px', left: '50px', zIndex: 1000 }} onClick={removeLastRectangle}>
-    Удалить последний прямоугольник
-</button>
-<button style={{ position: 'absolute', top: '40px', left: '50px', zIndex: 1000 }} onClick={removeAllRectangles}>
-    Удалить все прямоугольники
-</button>
+
     </MapContainer> 
   );
 }
