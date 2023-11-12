@@ -120,6 +120,49 @@ app.get('/api/data', (req, res) => {
   });
 });
 
+app.get('/api/spectrum/:id', (req, res) => {
+  const id = req.params.id;
+
+  const sql = 'SELECT * FROM measurement WHERE _id = ?';
+  db.get(sql, [id], (err, row) => {
+    if (err) {
+      res.status(500).json({ error: err.message });
+      return;
+    }
+    
+    if (!row) {
+      res.status(404).json({ error: 'Not found' });
+      return;
+    }
+
+    const coords = toLLA(row.gpsX, row.gpsY, row.gpsZ);
+    
+    if(row.spectrum === undefined) {
+      console.error("spectrum is undefined for row: ", row);
+      res.status(500).json({ error: 'Spectrum is undefined' });
+      return;
+    }
+    
+    const buffer = Buffer.from(row.spectrum, 'binary');
+    const spectrumData = [];
+    for (let i = 0; i < NSPCHANNELS; i++) {
+      spectrumData.push(buffer.readUInt16LE(i * 2));
+    }
+    
+    const spectrum = new Spectrum(spectrumData, SPECDEFTIME);
+    const response = {
+      id: row._id,
+      datetime: row.dateTime,
+      lat: coords.lat,
+      lon: coords.lon,
+      alt: coords.alt,
+      spectrum: spectrum.channelsNormalized()
+    };
+    
+    res.json(response);
+  });
+});
+
 app.listen(port, () => {
   console.log(`Server listening at http://localhost:${port}`);
 });
