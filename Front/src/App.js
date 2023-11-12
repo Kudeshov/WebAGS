@@ -3,10 +3,12 @@ import { Grid } from '@mui/material';
 import MyDataGrid from './MyDataGrid';
 import MyMapComponent from './MyMapComponent';
 import MyChartComponent from './MyChartComponent';
+import CustomToolbar from './CustomToolbar';
 
 function App() {
   return (
     <div className="App">
+       <CustomToolbar/>
       <h1>Веб Аэрогаммасъемка</h1>
       <Grid container spacing={2}>
         <Grid item xs={12} sm={6}>
