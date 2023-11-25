@@ -5,10 +5,15 @@ const cors = require('cors');
 const app = express();
 const port = 3001;
 
+const fs = require('fs');
+const path = require('path');
+
 const NSPCHANNELS = 238;
 const SPECDEFTIME = 1;
 const winLow = 20;
 const winHigh = 70;
+
+const flightsDirectory = './flights'; // Укажите путь к папке с файлами
 
 app.use(cors());
 
@@ -160,6 +165,18 @@ app.get('/api/spectrum/:id', (req, res) => {
     };
     
     res.json(response);
+  });
+});
+
+app.get('/api/flights', (req, res) => {
+  fs.readdir(flightsDirectory, (err, files) => {
+    if (err) {
+      res.status(500).json({ error: err.message });
+      return;
+    }
+
+    const sqliteFiles = files.filter(file => path.extname(file) === '.sqlite');
+    res.json(sqliteFiles);
   });
 });
 
