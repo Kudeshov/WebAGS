@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect} from 'react';
 import { AppBar, Toolbar, IconButton, Menu, MenuItem, ListItemIcon, ListSubheader } from '@mui/material';
-import { MoreVert, Person, Settings } from '@mui/icons-material';
+import { Flight, MoreVert, Person, Settings } from '@mui/icons-material';
 import { ReactComponent as PlaneIcon } from './icons/plane.svg';
 import { ReactComponent as AnalyticsIcon } from './icons/analytics.svg';
 import { ReactComponent as ChartIcon } from './icons/chart-bar.svg';
@@ -12,6 +12,7 @@ import { ReactComponent as RectangleIcon } from './icons/rectangle-landscape.svg
 import { ReactComponent as RulerIcon } from './icons/ruler.svg';
 import { ReactComponent as TableIcon } from './icons/table.svg';
 import Tooltip from '@mui/material/Tooltip';
+import FlightsList from './Flightlist';
 
 import MapIcon from '@mui/icons-material/Map';
 import { Rect } from 'victory';
@@ -22,6 +23,38 @@ function CustomToolbar() {
   const [filterMenuAnchorEl, setFilterMenuAnchorEl] = useState(null);
   const [unitMenuAnchorEl, setUnitMenuAnchorEl] = useState(null);
   const [settingsMenuAnchorEl, setSettingsMenuAnchorEl] = useState(null);
+
+  const [filterMenuAnchorE2, setDatabaseMenuAnchorE2] = useState(null);
+  const [flightOptions, setFlightOptions] = useState([]);
+  const [buttonClickCount, setButtonClickCount] = useState(0);
+
+  useEffect(() => {
+    // Загрузка списка полетов из API
+    fetch('http://localhost:3001/api/flights')
+      .then((response) => response.json())
+      .then((data) => {
+        setFlightOptions(data); // Сохраняем полученный массив полетов в состоянии
+      })
+      .catch((error) => {
+        console.error('Ошибка при загрузке списка полетов:', error);
+      });
+  }, []);
+  
+  const fetchData = async () => {
+    try {
+      const response = await fetch('http://localhost:3001/api/flights');
+      const data = await response.json();
+      setFlightOptions(data);
+    } catch (error) {
+      console.error('Ошибка при загрузке списка полетов:', error);
+    }
+  };
+
+  const handleButtonClick = () => {
+    // Увеличиваем счетчик при каждом нажатии на кнопку
+    setButtonClickCount((prevCount) => prevCount + 1);
+  };
+
 
   const handleMenuClick = (event) => {
     setAnchorEl(event.currentTarget);
@@ -43,6 +76,16 @@ function CustomToolbar() {
     setFilterMenuAnchorEl(event.currentTarget);
   };
 
+  const handleDatabaseMenuClick = (event) => {
+    // Обновляем список при каждом открытии меню
+    fetchData();
+    setDatabaseMenuAnchorE2(event.currentTarget);
+  };
+
+  const handleDatabaseMenuClose = () => {
+    setDatabaseMenuAnchorE2(null);
+  };
+
   const handleFilterMenuClose = () => {
     setFilterMenuAnchorEl(null);
   };
@@ -62,22 +105,48 @@ function CustomToolbar() {
   const handleSettingsMenuClose = () => {
     setSettingsMenuAnchorEl(null);
   };
+  
+  const [showFlightsList, setShowFlightsList] = useState(false);
+
+  const toggleFlightsList = () => {
+      setShowFlightsList(!showFlightsList);
+  };
+
+
+  
+
+
 
   return (
-    
     <AppBar position="static">
+        <Toolbar>
 
-      <Toolbar>
-      <IconButton
+        <IconButton
           color="inherit"
-          onClick={handleMapMenuClick}
+          onClick={handleDatabaseMenuClick}
         >
           <Tooltip title="База данных">
-          <DatabaseIcon style={{ fill: "white", width: 24, height: 24 }} />
+            {/* Маппинг массива полетов в элементы меню */}
+            <DatabaseIcon style={{ fill: "white", width: 24, height: 24 }} />
           </Tooltip>
         </IconButton>
+        <Menu
+          anchorEl={filterMenuAnchorE2}
+          open={Boolean(filterMenuAnchorE2)}
+          onClose={handleDatabaseMenuClose}
+          MenuListProps={{
+            subheader: <ListSubheader>База данных</ListSubheader>,
+          }}
+        >
+          {/* Маппинг массива полетов в элементы меню */}
+          {flightOptions.map((flight, index) => (
+            <MenuItem key={index} onClick={handleFilterMenuClose}>
+              {flight}
+            </MenuItem>
+          ))}
+        </Menu>
 
-        
+          
         <IconButton
           color="inherit"
           onClick={() => {
@@ -227,6 +296,8 @@ function CustomToolbar() {
           {/* Add more settings options as needed */}
         </Menu>
       </Toolbar>
+      {showFlightsList && <FlightsList />}
+
     </AppBar>
   );
 }
