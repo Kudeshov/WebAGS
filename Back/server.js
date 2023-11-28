@@ -90,6 +90,52 @@ function toLLA(x, y, z) {
   };
 }
 
+app.get('/api/data/:dbname', (req, res) => {
+  const dbname = req.params.dbname;
+
+  console.log(dbname);
+  const db_current = new sqlite3.Database(flightsDirectory+'/'+dbname, (err) => {
+    if (err) {
+      console.error(err.message);
+    }
+    console.log('Connected to the database '+dbname);
+  });
+
+  const sql = 'SELECT * FROM measurement limit 250000';
+  db_current.all(sql, [], (err, rows) => {
+    if (err) {
+      throw err;
+    }
+
+    const results = rows.map(row => {
+      const coords = toLLA(row.gpsX, row.gpsY, row.gpsZ);
+    
+      if(row.spectrum === undefined) {
+        console.error("spectrum is undefined for row: ", row);
+        return null;
+      }
+    
+      const buffer = Buffer.from(row.spectrum, 'binary');
+      const spectrumData = [];
+      for (let i = 0; i < NSPCHANNELS; i++) {
+        spectrumData.push(buffer.readUInt16LE(i * 2));
+      }
+      const spectrum = new Spectrum(spectrumData, SPECDEFTIME);
+      return {
+        id: row._id,
+        datetime: row.dateTime,
+        lat: coords.lat,
+        lat: coords.lat,
+        lon: coords.lon,
+        alt: coords.alt,
+        spectrumValue: spectrum.valueInChannels(winLow, winHigh, true)
+      };
+    }).filter(item => item !== null);
+    res.json(results);
+  });
+});
+
+
 app.get('/api/data', (req, res) => {
   const sql = 'SELECT * FROM measurement limit 2500';
   db.all(sql, [], (err, rows) => {

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useContext } from 'react';
 import { MapContainer, TileLayer, CircleMarker, Marker, Popup, LayersControl, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -6,6 +6,7 @@ import './MyMapComponent.css';
 import { rgb } from 'd3-color';
 import 'leaflet.heat';
 import { FeatureGroup } from 'react-leaflet';
+import { FlightContext } from './App';
 
 delete L.Icon.Default.prototype._getIconUrl;
 
@@ -64,6 +65,7 @@ function getColor(value, doseLow, doseHigh) {
 
 
 function MyMapComponent() {
+  const { selectedFlight } = useContext(FlightContext);
   const googleMapsUrl = 'http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}&hl=ru';
   const googleSatelliteUrl = 'http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}&hl=ru';
 
@@ -104,7 +106,11 @@ function MyMapComponent() {
 
 
   useEffect(() => {
-    fetch("http://localhost:3001/api/data")
+    if (!selectedFlight) return;
+
+    const apiUrl = `http://localhost:3001/api/data/${selectedFlight}`;
+
+    fetch(apiUrl)
       .then(response => response.json())
       .then(data => {
         setMeasurements(data);
@@ -118,7 +124,7 @@ function MyMapComponent() {
           });
         }
       });
-  }, []);
+  }, [selectedFlight]);
 
 
   return (

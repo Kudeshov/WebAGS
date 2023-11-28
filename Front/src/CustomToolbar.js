@@ -1,4 +1,4 @@
-import React, { useState, useEffect} from 'react';
+import React, { useState, useEffect, useContext} from 'react';
 import { AppBar, Toolbar, IconButton, Menu, MenuItem, ListItemIcon, ListSubheader } from '@mui/material';
 import { Flight, MoreVert, Person, Settings } from '@mui/icons-material';
 import { ReactComponent as PlaneIcon } from './icons/plane.svg';
@@ -12,10 +12,10 @@ import { ReactComponent as RectangleIcon } from './icons/rectangle-landscape.svg
 import { ReactComponent as RulerIcon } from './icons/ruler.svg';
 import { ReactComponent as TableIcon } from './icons/table.svg';
 import Tooltip from '@mui/material/Tooltip';
-import FlightsList from './Flightlist';
 
 import MapIcon from '@mui/icons-material/Map';
 import { Rect } from 'victory';
+import { FlightContext } from './App';
 
 function CustomToolbar() {
   const [anchorEl, setAnchorEl] = useState(null);
@@ -90,6 +90,12 @@ function CustomToolbar() {
     setFilterMenuAnchorEl(null);
   };
 
+  const handleFlightSelect = (flightName) => {
+    setSelectedFlight(flightName);
+    // Закрыть меню после выбора
+    setDatabaseMenuAnchorE2(null);
+  };
+
   const handleUnitMenuClick = (event) => {
     setUnitMenuAnchorEl(event.currentTarget);
   };
@@ -105,17 +111,8 @@ function CustomToolbar() {
   const handleSettingsMenuClose = () => {
     setSettingsMenuAnchorEl(null);
   };
-  
-  const [showFlightsList, setShowFlightsList] = useState(false);
 
-  const toggleFlightsList = () => {
-      setShowFlightsList(!showFlightsList);
-  };
-
-
-  
-
-
+  const { setSelectedFlight } = useContext(FlightContext);
 
   return (
     <AppBar position="static">
@@ -140,10 +137,10 @@ function CustomToolbar() {
         >
           {/* Маппинг массива полетов в элементы меню */}
           {flightOptions.map((flight, index) => (
-            <MenuItem key={index} onClick={handleFilterMenuClose}>
-              {flight}
-            </MenuItem>
-          ))}
+          <MenuItem key={index} onClick={() => handleFlightSelect(flight)}>
+            {flight}
+          </MenuItem>
+        ))}
         </Menu>
 
           
@@ -296,7 +293,7 @@ function CustomToolbar() {
           {/* Add more settings options as needed */}
         </Menu>
       </Toolbar>
-      {showFlightsList && <FlightsList />}
+
 
     </AppBar>
   );
