@@ -96,7 +96,7 @@ app.get('/api/data/:dbname', (req, res) => {
 
   
   console.log(dbname);
-  const db_current = new sqlite3.Database(flightsDirectory+'/'+dbname, (err) => {
+  const db_current = new sqlite3.Database(flightsDirectory+'/'+dbname+'.sqlite', (err) => {
     if (err) {
       console.error(err.message);
     }
