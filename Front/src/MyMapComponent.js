@@ -90,30 +90,53 @@ function MyMapComponent() {
 
   useEffect(() => {
     if (!selectedFlight) return;
-
+  
     const apiUrl = `http://localhost:3001/api/data/${selectedFlight}`;
-
+  
     fetch(apiUrl)
       .then(response => response.json())
       .then(data => {
         setMeasurements(data);
+        setIsHeatmapLayerSelected(false);
         console.log("Data from API:", data);
+  
         if (data.length > 0) {
           const spectrumValues = data.map(measurement => measurement.spectrumValue);
           setMinSpectrumValue(Math.min(...spectrumValues));
           setMaxSpectrumValue(Math.max(...spectrumValues));
-          setMapCenter({
-            lat: data[0].lat,
-            lng: data[0].lon
-          });
+  
+          // Фильтрация данных для исключения нулевых значений широты и долготы
+          const filteredData = data.filter(measurement => measurement.lat !== 0 && measurement.lon !== 0);
+  
+          if (filteredData.length > 0) {
+            // Найти минимальную и максимальную широту и долготу
+            const latitudes = filteredData.map(measurement => measurement.lat);
+            const longitudes = filteredData.map(measurement => measurement.lon);
+            const minLat = Math.min(...latitudes);
+            const maxLat = Math.max(...latitudes);
+            const minLng = Math.min(...longitudes);
+            const maxLng = Math.max(...longitudes);
+  
+            // Вычислить средние значения для широты и долготы
+            const centerLat = (minLat + maxLat) / 2;
+            const centerLng = (minLng + maxLng) / 2;
+            console.log( centerLat, centerLng );
+            // Установить центр карты
+            setMapCenter({
+              lat: centerLat,
+              lng: centerLng
+            });
+          }
         }
       });
   }, [selectedFlight]);
-
+  
   const [selectedPoints, setSelectedPoints] = useState([]);
 
   const [spectrumData, setSpectrumData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isHeatmapLayerSelected, setIsHeatmapLayerSelected] = useState(false);
+
   const fetchSpectrumData = (id) => {
     setIsLoading(true); // устанавливаем перед запросом
     fetch(`http://localhost:3001/api/spectrum/${id}`)
@@ -151,6 +174,8 @@ function MyMapComponent() {
   
       const onOverlayAdd = (event) => {
         // Проверка, что событие относится к тепловой карте
+
+        console.log('Event', event);
         if (event.name === "Тепловая карта") {
           heatLayerRef.current.addTo(map);
           console.log('Тепловая карта добавлена');
@@ -211,7 +236,7 @@ function MyMapComponent() {
       </LayersControl.Overlay>
 
 
-      <LayersControl.Overlay name="Тепловая карта">
+      <LayersControl.Overlay name="Тепловая карта" checked={isHeatmapLayerSelected}>
         <FeatureGroup>
           <MyHeatmapLayer measurements={measurements} />
         </FeatureGroup>

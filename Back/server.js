@@ -93,8 +93,6 @@ function toLLA(x, y, z) {
 app.get('/api/data/:dbname', (req, res) => {
   const dbname = req.params.dbname;
 
-
-  
   console.log(dbname);
   const db_current = new sqlite3.Database(flightsDirectory+'/'+dbname+'.sqlite', (err) => {
     if (err) {
@@ -110,7 +108,9 @@ app.get('/api/data/:dbname', (req, res) => {
     }
 
     const results = rows.map(row => {
-      const coords = toLLA(row.gpsX, row.gpsY, row.gpsZ);
+      let coords = { lat: 0, lon: 0, alt: 0 }; // Если вам нужен объект
+      if ((row.gpsX !==0) && (row.gpsY !==0))
+        coords = toLLA(row.gpsX, row.gpsY, row.gpsZ);
     
       if(row.spectrum === undefined) {
         console.error("spectrum is undefined for row: ", row);
@@ -139,14 +139,16 @@ app.get('/api/data/:dbname', (req, res) => {
 
 
 app.get('/api/data', (req, res) => {
-  const sql = 'SELECT * FROM measurement limit 2500';
+  const sql = 'SELECT * FROM measurement limit 250000';
   db.all(sql, [], (err, rows) => {
     if (err) {
       throw err;
     }
 
     const results = rows.map(row => {
-      const coords = toLLA(row.gpsX, row.gpsY, row.gpsZ);
+      let coords = { lat: 0, lon: 0, alt: 0 }; // Если вам нужен объект
+      if ((row.gpsX !==0) && (row.gpsY !==0))
+        coords = toLLA(row.gpsX, row.gpsY, row.gpsZ);
     
       if(row.spectrum === undefined) {
         console.error("spectrum is undefined for row: ", row);
