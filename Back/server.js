@@ -93,8 +93,10 @@ function toLLA(x, y, z) {
 app.get('/api/data/:dbname', (req, res) => {
   const dbname = req.params.dbname;
 
+
+  
   console.log(dbname);
-  const db_current = new sqlite3.Database(flightsDirectory+'/'+dbname, (err) => {
+  const db_current = new sqlite3.Database(flightsDirectory+'/'+dbname+'.sqlite', (err) => {
     if (err) {
       console.error(err.message);
     }
@@ -221,7 +223,10 @@ app.get('/api/flights', (req, res) => {
       return;
     }
 
-    const sqliteFiles = files.filter(file => path.extname(file) === '.sqlite');
+    const sqliteFiles = files
+      .filter(file => path.extname(file) === '.sqlite')
+      .map(file => path.basename(file, '.sqlite'));
+
     res.json(sqliteFiles);
   });
 });
