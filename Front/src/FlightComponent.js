@@ -35,8 +35,6 @@ const FlightComponent = () => {
     if (!dateTimeString)
       return;
     const date = new Date(dateTimeString);
-
-
   
     const day = date.getDate().toString().padStart(2, '0');
     const month = (date.getMonth() + 1).toString().padStart(2, '0'); // Месяцы начинаются с 0
@@ -50,14 +48,16 @@ const FlightComponent = () => {
  
   return (
     <div>
+      <br/>
       <Autocomplete
         options={data}
         getOptionLabel={(option) => option.description || ''}
         onChange={handleSelectionChange}
         renderInput={(params) => (
           <TextField 
-            {...params} 
-            label="Выберите элемент" 
+            {...params}
+            size="small" 
+            label="Выберите полет" 
             variant="outlined" 
             loading={loading}
           />
@@ -67,6 +67,7 @@ const FlightComponent = () => {
       <TextField
         label="P0"
         value={selectedItem ? selectedItem.P0 : ''}
+        size="small"
         variant="outlined"
         margin="normal"
         fullWidth
@@ -75,6 +76,7 @@ const FlightComponent = () => {
 
       <TextField
         label="P1"
+        size="small"
         value={selectedItem ? selectedItem.P1 : ''}
         variant="outlined"
         margin="normal"

@@ -181,7 +181,8 @@ app.get('/api/spectrum/:dbname/:id', (req, res) => {
 
   if (!dbname) 
     return;
-
+  if (dbname=='null') 
+    return;
   const id = req.params.id;
 
   const db = new sqlite3.Database(flightsDirectory+'/'+dbname+'.sqlite', (err) => {

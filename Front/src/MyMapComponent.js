@@ -9,6 +9,8 @@ import { FeatureGroup } from 'react-leaflet';
 import { FlightContext } from './App';
 import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, Label } from 'recharts';
 import { HeatmapLayer } from 'react-leaflet-heatmap-layer-v3';
+import { AppBar, Toolbar, Typography, Container, Grid } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 
 delete L.Icon.Default.prototype._getIconUrl;
 
@@ -254,9 +256,12 @@ function MyMapComponent() {
   }
    */
 
+  const theme = useTheme();
+  const appBarHeight = theme.mixins.toolbar.minHeight;
+
   return (
 
-    <MapContainer center={initialCenter} height={300} zoom={18} style={{ float:'right', width: '75%', height: '500px' }}>
+    <MapContainer center={initialCenter}  zoom={18} style={{  width: '100%', height:  window.innerHeight - appBarHeight - 8  }}>
     <ChangeMapView coords={mapCenter} />
 
     <LayersControl position="topright">
