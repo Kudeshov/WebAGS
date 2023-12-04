@@ -3,6 +3,7 @@ import './App.css';
 import MyMapComponent from './MyMapComponent';
 import CustomToolbar from './CustomToolbar';
 import FlightComponent from './FlightComponent';
+import MyDataGrid from './MyDataGrid';
 import Grid from '@mui/material/Grid'
 
 // Создание контекста
@@ -21,8 +22,11 @@ function App() {
           <Grid item xs={12} md={4}>
             <FlightComponent />
           </Grid>
-          <Grid item xs={12} md={8}>
+          <Grid item xs={12} md={4}>
             <MyMapComponent />
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <MyDataGrid />
           </Grid>
         </Grid>
         <h1>Веб Аэрогаммасъемка</h1>
