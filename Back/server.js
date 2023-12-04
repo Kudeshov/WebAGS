@@ -17,12 +17,12 @@ const flightsDirectory = './flights'; // Укажите путь к папке �
 
 app.use(cors());
 
-const db = new sqlite3.Database('./graveyard.sqlite', (err) => {
+/* const db = new sqlite3.Database('./graveyard.sqlite', (err) => {
   if (err) {
     console.error(err.message);
   }
   console.log('Connected to the database.');
-});
+}); */
 
 class Spectrum {
   constructor(channels, liveTime) {
@@ -93,7 +93,14 @@ function toLLA(x, y, z) {
 app.get('/api/data/:dbname', (req, res) => {
   const dbname = req.params.dbname;
 
-  console.log(dbname);
+  console.log('БД ', dbname);
+
+  if (!dbname) 
+    return;
+
+  if (dbname=='null') 
+    return;
+
   const db_current = new sqlite3.Database(flightsDirectory+'/'+dbname+'.sqlite', (err) => {
     if (err) {
       console.error(err.message);
@@ -137,52 +144,44 @@ app.get('/api/data/:dbname', (req, res) => {
   });
 });
 
-/* app.get('/api/spectrum/:id', (req, res) => {
-  const id = req.params.id;
 
-  const sql = 'SELECT * FROM measurement WHERE _id = ?';
-  db.get(sql, [id], (err, row) => {
+app.get('/api/collection/:dbname', (req, res) => {
+  const dbname = req.params.dbname;
+
+  console.log('БД ', dbname);
+
+  if (!dbname) 
+    return;
+
+  if (dbname=='null') 
+    return;
+
+  const db_current = new sqlite3.Database(flightsDirectory+'/'+dbname+'.sqlite', (err) => {
     if (err) {
-      res.status(500).json({ error: err.message });
-      return;
+      console.error(err.message);
     }
-    
-    if (!row) {
-      res.status(404).json({ error: 'Not found' });
-      return;
+    console.log('Connected to the database '+dbname);
+  });
+
+  const sql = 'SELECT * FROM collection';
+  db_current.all(sql, [], (err, rows) => {
+    if (err) {
+      throw err;
     }
 
-    const coords = toLLA(row.gpsX, row.gpsY, row.gpsZ);
-    
-    if(row.spectrum === undefined) {
-      console.error("spectrum is undefined for row: ", row);
-      res.status(500).json({ error: 'Spectrum is undefined' });
-      return;
-    }
-    
-    const buffer = Buffer.from(row.spectrum, 'binary');
-    const spectrumData = [];
-    for (let i = 0; i < NSPCHANNELS; i++) {
-      spectrumData.push(buffer.readUInt16LE(i * 2));
-    }
-    
-    const spectrum = new Spectrum(spectrumData, SPECDEFTIME);
-    const response = {
-      id: row._id,
-      datetime: row.dateTime,
-      lat: coords.lat,
-      lon: coords.lon,
-      alt: coords.alt,
-      spectrum: spectrum.channelsNormalized()
-    };
-    
-    res.json(response);
+    const results = rows;
+    res.json(results);
   });
 });
- */
 
 app.get('/api/spectrum/:dbname/:id', (req, res) => {
   const dbname = req.params.dbname;
+ 
+  console.log('БД /api/spectrum/:dbname/:id', dbname);
+
+  if (!dbname) 
+    return;
+
   const id = req.params.id;
 
   const db = new sqlite3.Database(flightsDirectory+'/'+dbname+'.sqlite', (err) => {
@@ -233,7 +232,7 @@ app.get('/api/spectrum/:dbname/:id', (req, res) => {
   });
 });
 
-app.get('/api/data', (req, res) => {
+/* app.get('/api/data', (req, res) => {
   const sql = 'SELECT * FROM measurement limit 250000';
   db.all(sql, [], (err, rows) => {
     if (err) {
@@ -269,7 +268,7 @@ app.get('/api/data', (req, res) => {
     res.json(results);
   });
 });
-
+ */
 
 
 app.get('/api/flights', (req, res) => {

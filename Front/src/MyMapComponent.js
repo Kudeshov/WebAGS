@@ -9,7 +9,6 @@ import { FeatureGroup } from 'react-leaflet';
 import { FlightContext } from './App';
 import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, Label } from 'recharts';
 import { HeatmapLayer } from 'react-leaflet-heatmap-layer-v3';
-import { AxisLabel } from './AxisLabel';
 
 delete L.Icon.Default.prototype._getIconUrl;
 
