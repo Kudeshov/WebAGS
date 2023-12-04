@@ -138,6 +138,27 @@ app.get('/api/data/:dbname', (req, res) => {
 });
 
 
+app.get('/api/collection/:dbname', (req, res) => {
+  const dbname = req.params.dbname;
+  
+  console.log(dbname);
+  const db_current = new sqlite3.Database(flightsDirectory+'/'+dbname+'.sqlite', (err) => {
+    if (err) {
+      console.error(err.message);
+    }
+    console.log('Connected to the database '+dbname);
+  });
+
+  const sql = 'SELECT * FROM collection limit 250000';
+  db_current.all(sql, [], (err, rows) => {
+    if (err) {
+      throw err;
+    }
+    const results = rows;
+    res.json(results);
+  });
+});
+
 app.get('/api/data', (req, res) => {
   const sql = 'SELECT * FROM measurement limit 2500';
   db.all(sql, [], (err, rows) => {
@@ -230,6 +251,9 @@ app.get('/api/flights', (req, res) => {
     res.json(sqliteFiles);
   });
 });
+
+
+
 
 app.listen(port, () => {
   console.log(`Server listening at http://localhost:${port}`);
