@@ -13,8 +13,9 @@ function App() {
     <div className="App">
       <FlightContext.Provider value={{ selectedFlight, setSelectedFlight }}>
         <CustomToolbar />
-        <h1>Веб Аэрогаммасъемка</h1>
-        <MyMapComponent />
+        {/* <h1>Веб Аэрогаммасъемка</h1>
+       */}  
+         <MyMapComponent />
       </FlightContext.Provider>
     </div>
   );

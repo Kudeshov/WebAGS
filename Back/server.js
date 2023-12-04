@@ -137,45 +137,7 @@ app.get('/api/data/:dbname', (req, res) => {
   });
 });
 
-
-app.get('/api/data', (req, res) => {
-  const sql = 'SELECT * FROM measurement limit 250000';
-  db.all(sql, [], (err, rows) => {
-    if (err) {
-      throw err;
-    }
-
-    const results = rows.map(row => {
-      let coords = { lat: 0, lon: 0, alt: 0 }; // Если вам нужен объект
-      if ((row.gpsX !==0) && (row.gpsY !==0))
-        coords = toLLA(row.gpsX, row.gpsY, row.gpsZ);
-    
-      if(row.spectrum === undefined) {
-        console.error("spectrum is undefined for row: ", row);
-        return null;
-      }
-    
-      const buffer = Buffer.from(row.spectrum, 'binary');
-      const spectrumData = [];
-      for (let i = 0; i < NSPCHANNELS; i++) {
-        spectrumData.push(buffer.readUInt16LE(i * 2));
-      }
-      const spectrum = new Spectrum(spectrumData, SPECDEFTIME);
-      return {
-        id: row._id,
-        datetime: row.dateTime,
-        lat: coords.lat,
-        lat: coords.lat,
-        lon: coords.lon,
-        alt: coords.alt,
-        spectrumValue: spectrum.valueInChannels(winLow, winHigh, true)
-      };
-    }).filter(item => item !== null);
-    res.json(results);
-  });
-});
-
-app.get('/api/spectrum/:id', (req, res) => {
+/* app.get('/api/spectrum/:id', (req, res) => {
   const id = req.params.id;
 
   const sql = 'SELECT * FROM measurement WHERE _id = ?';
@@ -217,6 +179,98 @@ app.get('/api/spectrum/:id', (req, res) => {
     res.json(response);
   });
 });
+ */
+
+app.get('/api/spectrum/:dbname/:id', (req, res) => {
+  const dbname = req.params.dbname;
+  const id = req.params.id;
+
+  const db = new sqlite3.Database(flightsDirectory+'/'+dbname+'.sqlite', (err) => {
+    if (err) {
+      console.error(err.message);
+      res.status(500).json({ error: err.message });
+      return;
+    }
+    console.log('Connected to the database '+dbname);
+  });
+
+  const sql = 'SELECT * FROM measurement WHERE _id = ?';
+  db.get(sql, [id], (err, row) => {
+    if (err) {
+      res.status(500).json({ error: err.message });
+      return;
+    }
+    
+    if (!row) {
+      res.status(404).json({ error: 'Not found' });
+      return;
+    }
+    const coords = toLLA(row.gpsX, row.gpsY, row.gpsZ);
+    
+    if(row.spectrum === undefined) {
+      console.error("spectrum is undefined for row: ", row);
+      res.status(500).json({ error: 'Spectrum is undefined' });
+      return;
+    }
+    
+    const buffer = Buffer.from(row.spectrum, 'binary');
+    const spectrumData = [];
+    for (let i = 0; i < NSPCHANNELS; i++) {
+      spectrumData.push(buffer.readUInt16LE(i * 2));
+    }
+    
+    const spectrum = new Spectrum(spectrumData, SPECDEFTIME);
+    const response = {
+      id: row._id,
+      datetime: row.dateTime,
+      lat: coords.lat,
+      lon: coords.lon,
+      alt: coords.alt,
+      spectrum: spectrum.channelsNormalized()
+    };
+    
+    res.json(response);
+  });
+});
+
+app.get('/api/data', (req, res) => {
+  const sql = 'SELECT * FROM measurement limit 250000';
+  db.all(sql, [], (err, rows) => {
+    if (err) {
+      throw err;
+    }
+
+    const results = rows.map(row => {
+      let coords = { lat: 0, lon: 0, alt: 0 }; // Если вам нужен объект
+      if ((row.gpsX !==0) && (row.gpsY !==0))
+        coords = toLLA(row.gpsX, row.gpsY, row.gpsZ);
+    
+      if(row.spectrum === undefined) {
+        console.error("spectrum is undefined for row: ", row);
+        return null;
+      }
+    
+      const buffer = Buffer.from(row.spectrum, 'binary');
+      const spectrumData = [];
+      for (let i = 0; i < NSPCHANNELS; i++) {
+        spectrumData.push(buffer.readUInt16LE(i * 2));
+      }
+      const spectrum = new Spectrum(spectrumData, SPECDEFTIME);
+      return {
+        id: row._id,
+        datetime: row.dateTime,
+        lat: coords.lat,
+        lat: coords.lat,
+        lon: coords.lon,
+        alt: coords.alt,
+        spectrumValue: spectrum.valueInChannels(winLow, winHigh, true)
+      };
+    }).filter(item => item !== null);
+    res.json(results);
+  });
+});
+
+
 
 app.get('/api/flights', (req, res) => {
   fs.readdir(flightsDirectory, (err, files) => {
