@@ -4,6 +4,7 @@ import MyMapComponent from './MyMapComponent';
 import CustomToolbar from './CustomToolbar';
 import FlightComponent from './FlightComponent';
 import MyDataGrid from './MyDataGrid';
+import MyTabsComponent from './MyTabsComponent';
 
 import Box from '@mui/material/Box';
 import { AppBar, Toolbar, Typography, Container, Grid } from '@mui/material';
@@ -41,6 +42,9 @@ function App() {
           </Grid>
           <Grid item xs={8}>
             <MyMapComponent />
+            <div style={{ height: '100px' }}>
+            <MyTabsComponent />
+            </div>
           </Grid>
           <Grid item xs={2}>
             <MyDataGrid />

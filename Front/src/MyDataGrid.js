@@ -8,12 +8,13 @@ const MyDataGrid = () => {
   console.log('AAAA ', selectedFlight);
   const [data, setData] = useState([]);
   const columns = [
-    { field: 'id', headerName: 'ID', width: 150 },
+    { field: 'id', headerName: 'ID', width: 150, hide: true },
     { field: 'lat', headerName: 'Широта', width: 150 },
     { field: 'lon', headerName: 'Долгота', width: 150 },
     { field: 'alt', headerName: 'Высота', width: 150 },
-    { field: 'spectrumValue', headerName: 'Значение спектра', width: 200 },
+    { field: 'spectrumValue', headerName: 'Значение спектра', width: 200, hide: true },
   ];
+  
 
   useEffect(() => {
     // Используем fetch для выполнения HTTP-запроса
@@ -37,10 +38,20 @@ const MyDataGrid = () => {
     <div style={{ height: 500, width: '100%' }}>
       <DataGrid
         rows={data}
+
         columns={columns}
         pageSize={10}
-        checkboxSelection
+        initialState={{
+          columns: {
+            columnVisibilityModel: {
+              // Hide columns status and traderName, the other columns will remain visible
+              id: false,
+              spectrumValue: false,
+            },
+          },
+        }}       
       />
+      
     </div>
   );
 };
