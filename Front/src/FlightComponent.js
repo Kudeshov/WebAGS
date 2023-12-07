@@ -4,13 +4,15 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography'; // Import Typography
 
 import { FlightContext } from './App';
+import { CollectionContext } from './App';
 
 const FlightComponent = () => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const { selectedFlight } = useContext(FlightContext);
-
+  const { setSelectedCollection } = useContext(CollectionContext);
+  
   useEffect(() => {
     if (!selectedFlight) return;
     setLoading(true);
@@ -27,6 +29,8 @@ const FlightComponent = () => {
   }, [selectedFlight]);
 
   const handleSelectionChange = (event, value) => {
+    console.log('handleSelectionChange value', value)
+    setSelectedCollection(value);
     setSelectedItem(value);
   };
 

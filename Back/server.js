@@ -270,7 +270,61 @@ app.get('/api/spectrum/:dbname/:id', (req, res) => {
   });
 });
  */
+app.get('/api/data/:dbname/:collectionId', (req, res) => {
+  const dbname = req.params.dbname;
+  const collectionId = req.params.collectionId;
 
+  console.log(dbname, ' ', collectionId);
+  if (!dbname || dbname === 'null') return;
+
+  const db_current = new sqlite3.Database(`${flightsDirectory}/${dbname}.sqlite`, (err) => {
+    if (err) {
+      console.error(err.message);
+      return;
+    }
+    console.log(`Connected to the database ${dbname}`);
+  });
+
+  // Верхняя граница id для фильтрации
+  const B = parseInt(collectionId, 10) + 0xFFFF;
+
+  const sql = `SELECT * FROM measurement WHERE (_id >= ${collectionId}) AND (_id <= ${B})`;
+
+  console.log( 'sql=', sql);
+  db_current.all(sql, [], (err, rows) => {
+    if (err) {
+      throw err;
+    }
+
+    const results = rows.map(row => {
+      let coords = { lat: 0, lon: 0, alt: 0 }; // Если вам нужен объект
+      if ((row.gpsX !==0) && (row.gpsY !==0))
+        coords = toLLA(row.gpsX, row.gpsY, row.gpsZ);
+    
+      if(row.spectrum === undefined) {
+        console.error("spectrum is undefined for row: ", row);
+        return null;
+      }
+    
+      const buffer = Buffer.from(row.spectrum, 'binary');
+      const spectrumData = [];
+      for (let i = 0; i < NSPCHANNELS; i++) {
+        spectrumData.push(buffer.readUInt16LE(i * 2));
+      }
+      const spectrum = new Spectrum(spectrumData, SPECDEFTIME);
+      return {
+        id: row._id,
+        datetime: row.dateTime,
+        lat: coords.lat,
+        lat: coords.lat,
+        lon: coords.lon,
+        alt: coords.alt,
+        spectrumValue: spectrum.valueInChannels(winLow, winHigh, true)
+      };
+    }).filter(item => item !== null);
+    res.json(results);
+  });
+});
 
 app.get('/api/flights', (req, res) => {
   fs.readdir(flightsDirectory, (err, files) => {
@@ -289,4 +343,4 @@ app.get('/api/flights', (req, res) => {
 
 app.listen(port, () => {
   console.log(`Server listening at http://localhost:${port}`);
-});
+}); 

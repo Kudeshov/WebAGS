@@ -13,6 +13,8 @@ import { useTheme } from '@mui/material/styles';
 
 // Создание контекста
 export const FlightContext = React.createContext();
+export const CollectionContext = React.createContext();
+
 
 const tallGrid = {
   height: '100%'
@@ -31,8 +33,10 @@ function App() {
   const appBarHeight = theme.mixins.toolbar.minHeight;
   console.log('appBarHeight', appBarHeight);
   const [selectedFlight, setSelectedFlight] = useState(null);
+  const [selectedCollection, setSelectedCollection] = useState(null);
 
   return (
+    <CollectionContext.Provider value={{ selectedCollection, setSelectedCollection }}>
     <FlightContext.Provider value={{ selectedFlight, setSelectedFlight }}>
       <Grid container spacing={0} sx={{...gridStyles, ...tallGrid}} >
         <CustomToolbar />
@@ -52,6 +56,7 @@ function App() {
         </Grid>
       </Grid>
     </FlightContext.Provider>
+    </CollectionContext.Provider>
   );
 }
 

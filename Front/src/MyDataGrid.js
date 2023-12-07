@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useContext } from 'react';
 import { DataGrid } from '@mui/x-data-grid';
-import { FlightContext } from './App';
+import { FlightContext, CollectionContext } from './App';
 
 const MyDataGrid = () => {
   const { selectedFlight } = useContext(FlightContext);
+  const { selectedCollection } = useContext(CollectionContext);
 
   console.log('AAAA ', selectedFlight);
   const [data, setData] = useState([]);
@@ -18,7 +19,7 @@ const MyDataGrid = () => {
 
   useEffect(() => {
     // Используем fetch для выполнения HTTP-запроса
-    fetch( `http://localhost:3001/api/data/${selectedFlight}`)
+    fetch( `http://localhost:3001/api/data/${selectedFlight}/${selectedCollection._id}`)
       .then((response) => {
         if (!response.ok) {
           throw new Error('Ошибка при загрузке данных');
