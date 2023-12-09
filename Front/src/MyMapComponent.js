@@ -3,17 +3,17 @@ import { MapContainer, TileLayer, CircleMarker, Popup, LayersControl, useMap } f
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import './MyMapComponent.css';
-import { rgb } from 'd3-color';
-//import 'leaflet.heat';
 import { FeatureGroup } from 'react-leaflet';
 import { FlightContext } from './App';
-import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, Label } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { HeatmapLayer } from 'react-leaflet-heatmap-layer-v3';
-import { AppBar, Toolbar, Typography, Container, Grid } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
+//import '@bopen/leaflet-area-selection/dist/index.css';
+import { getColor } from './colorUtils';
+import RectangularSelection from './RectangularSelection';
+import { ReactComponent as RectangleIcon } from './icons/rectangle-landscape.svg';
 
 delete L.Icon.Default.prototype._getIconUrl;
-
 
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: require('leaflet/dist/images/marker-icon-2x.png'),
@@ -30,41 +30,6 @@ function ChangeMapView({ coords }) {
   const map = useMap();
   map.setView(coords, map.getZoom());
   return null;
-}
-
-function getColor(value, doseLow, doseHigh) {
-  const diff = 1 - (doseHigh - value) / (doseHigh - doseLow);
-  let r = 0;
-  let g = 0;
-  let b = 255;
-
-  //blue to green
-  if (diff >= 0 && diff <= 0.25) {
-    g = 255 * diff / 0.25;
-    r = 0;
-    b = 255 * (0.25 - diff) / 0.25;
-  }
-  //green to yellow
-  else if (diff > 0.25 && diff <= 0.5) {
-    b = 0;
-    g = 255;
-    r = 255 * (diff - 0.25) / 0.25;
-  }
-  //yellow
-  else if (diff > 0.5 && diff <= 0.75) {
-    r = 255;
-    g = 255;
-    b = 0;
-  }
-  //yellow to red
-  else if (diff > 0.75 && diff <= 1) {
-    g = 255 * (1 - diff) / 0.25;
-    r = 255;
-    b = 0;
-  }
-
-  const color = rgb(r, g, b);
-  return color.toString();
 }
 
 function SpectrumChartWithLabel({ data, isLoading }) {
@@ -111,6 +76,12 @@ function SpectrumChart({ data }) {
 }
 
 function MyMapComponent() {
+  const [selectMode, setSelectMode] = useState(false);
+
+  // Функция для переключения режима выделения
+  const toggleSelectMode = () => {
+    setSelectMode(!selectMode);
+  };
   const { selectedFlight } = useContext(FlightContext);
   const googleMapsUrl = 'http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}&hl=ru';
   const googleSatelliteUrl = 'http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}&hl=ru';
@@ -168,7 +139,6 @@ function MyMapComponent() {
 
   const [spectrumData, setSpectrumData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  //const [isHeatmapLayerSelected, setIsHeatmapLayerSelected] = useState(false);
 
   const fetchSpectrumData = (id) => {
     if (!selectedFlight) return;
@@ -187,10 +157,19 @@ function MyMapComponent() {
       });
   };  
 
-  const measurementsRef = useRef([]);
-   useEffect(() => {
+/*   const measurementsRef = useRef([]);
+
+  useEffect(() => {
       measurementsRef.current = measurements;
-  }, [measurements]);
+  }, [measurements]); */
+
+  useEffect(() => {
+    if (selectMode) {
+      document.body.classList.add('selection-mode-active');
+    } else {
+      document.body.classList.remove('selection-mode-active');
+    }
+  }, [selectMode]);
 
 
   const heatPoints = measurements.map(measurement => {
@@ -199,69 +178,53 @@ function MyMapComponent() {
   });
 
 
-/*   function MyHeatmapLayer({ measurements }) {
-    const map = useMap();
-    const heatLayerRef = useRef(null);
-  
-    console.log('Тепловая карта 1');
-    useEffect(() => {
-      if (!map || !measurements) return;
-      console.log('Тепловая карта 2');
-      if (!heatLayerRef.current) {
-        const heatData = measurements.map(measurement => {
-          const intensity = (measurement.spectrumValue - minSpectrumValue) / (maxSpectrumValue - minSpectrumValue);
-          return [measurement.lat, measurement.lon, intensity];
-        });
-  
-        heatLayerRef.current = L.heatLayer(heatData, { radius: 15 });
-        const event = {
-          name: "Тепловая карта",
-          // Другие свойства события, если нужно
-        };
-        heatLayerRef.current.addTo(map);
-        // Вызов обработчика события
-        //onOverlayAdd(event); 
-      }
-  
-      const onOverlayAdd = (event) => {
-        // Проверка, что событие относится к тепловой карте
-        console.log('Event', event);
-        if (event.name === "Тепловая карта") {
-          heatLayerRef.current.addTo(map);
-          console.log('Тепловая карта добавлена');
-        }
-      };
-    
-      const onOverlayRemove = (event) => {
-        // Проверка, что событие относится к тепловой карте
-        if (event.name === "Тепловая карта") {
-          heatLayerRef.current.remove();
-          console.log('Тепловая карта удалена');
-        }
-      };
-  
-      map.on('overlayadd', onOverlayAdd);
-      map.on('overlayremove', onOverlayRemove);
-  
-      return () => {
-        map.off('overlayadd', onOverlayAdd);
-        map.off('overlayremove', onOverlayRemove);
-        if (heatLayerRef.current) {
-          heatLayerRef.current.remove();
-        }
-      };
-    }, [map, measurements]);
-  
-    return null;
-  }
-   */
-
   const theme = useTheme();
   const appBarHeight = theme.mixins.toolbar.minHeight;
 
-  return (
+  const handleSelectionComplete = (bounds) => {
+    console.log('Selected Bounds:', bounds);
+  
+    // Разбиваем bounds на отдельные переменные для удобства
+    const { _southWest, _northEast } = bounds;
+  
+    // Фильтруем измерения, чтобы найти те, которые находятся внутри прямоугольника
+    const selected = measurements.filter((measurement) => {
+      return (
+        measurement.lat >= _southWest.lat &&
+        measurement.lat <= _northEast.lat &&
+        measurement.lon >= _southWest.lng &&
+        measurement.lon <= _northEast.lng
+      );
+    });
+  
+    // Обновляем состояние selectedPoints
+    setSelectedPoints(selected);
+  };
 
-    <MapContainer center={initialCenter}  zoom={18} style={{  width: '100%', height:  window.innerHeight - appBarHeight - 8  }}>
+  const mapRef = useRef(null);
+
+/*   useEffect(() => {
+    if (mapRef.current) {
+      const mapContainer = mapRef.current.getContainer();
+      if (selectMode) {
+        mapContainer.style.cursor = 'crosshair';
+      } else {
+        mapContainer.style.cursor = 'grab'; // or 'default', depending on your preference
+      }
+    }
+  }, [selectMode]); */
+
+  useEffect(() => {
+    const mapElement = document.getElementById('map');
+    if (selectMode) {
+      mapElement.style.cursor = 'crosshair';
+    } else {
+      mapElement.style.cursor = ''; // Resets to default cursor
+    }
+  }, [selectMode]);
+
+  return (
+    <MapContainer ref={mapRef} id="map" center={initialCenter} zoom={18} style={{ /* cursor: selectMode ? 'crosshair' : 'default',  */width: '100%', height:  window.innerHeight - appBarHeight - 8  }}>
     <ChangeMapView coords={mapCenter} />
 
     <LayersControl position="topright">
@@ -296,27 +259,22 @@ function MyMapComponent() {
         </LayersControl.BaseLayer>        
       </LayersControl.Overlay>
 
-{/* 
-      <LayersControl.Overlay name="Тепловая карта" checked={isHeatmapLayerSelected}>
-        <FeatureGroup>
-          <MyHeatmapLayer measurements={measurements} />
-        </FeatureGroup>
-      </LayersControl.Overlay> */}
-
-
-      <LayersControl.Overlay checked name="Точки">
+      <LayersControl.Overlay checked name="Измерения">
         <FeatureGroup>
           {measurements.map((measurement, index) => {
               const isSelected = selectedPoints.some(p => p.id === measurement.id);
+              
+              //const isSelected = selectedPointsRef.current.some(p => p.id === measurement.id);
+
               const color = getColor(measurement.spectrumValue, minSpectrumValue, maxSpectrumValue);
               return (
                   <CircleMarker
                       key={index}
                       center={[measurement.lat, measurement.lon]}
-                      color={isSelected ? 'red' : color} // Если точка выделена, делаем ее красной
+                      //color={isSelected ? 'red' : color} // Если точка выделена, делаем ее красной
                       radius={isSelected ? 7 : 5} // Если точка выделена, увеличиваем ее радиус
-                      //radius={3}
-                      //color={color}
+                      color={ color} // Если точка выделена, делаем ее красной
+                      //radius={ 5} // Если точка выделена, увеличиваем ее радиус
                       eventHandlers={{
                           click: () => fetchSpectrumData(measurement.id),
                       }}
@@ -345,6 +303,23 @@ function MyMapComponent() {
       </LayersControl.Overlay>
 
     </LayersControl>
+
+    <RectangularSelection 
+        active={selectMode} 
+        onSelectionComplete={handleSelectionComplete}
+      />
+
+    <div style={{ position: 'absolute', top: '66px', right: '10px', zIndex: 600 }}>
+      <button 
+        className={`selection-toggle-button ${selectMode ? 'active' : ''}`} 
+        onClick={toggleSelectMode}
+        title="Выделить" // Добавляем всплывающую подсказку здесь
+      >
+        <RectangleIcon style={{ fill: selectMode ? 'blue' : 'gray', width: 27, height: 27 }} />
+      </button>
+    </div>
+
+
   </MapContainer>
   );
 }
