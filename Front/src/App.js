@@ -9,6 +9,7 @@ import MyTabsComponent from './MyTabsComponent';
 import Box from '@mui/material/Box';
 import { AppBar, Toolbar, Typography, Container, Grid } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
+import Drawer from '@mui/material/Drawer';
 
 
 // Создание контекста
@@ -26,31 +27,60 @@ const gridStyles = {
   paddingBottom: 0
 };
 
+
 function App() {
+
   const theme = useTheme();
   const appBarHeight = theme.mixins.toolbar.minHeight;
   console.log('appBarHeight', appBarHeight);
   const [selectedFlight, setSelectedFlight] = useState(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  const toggleDrawer = () => {
+    setDrawerOpen(!drawerOpen);
+  };
+  
+/*   const [drawerOpen, setDrawerOpen] = React.useState(false);
+  */ 
+  
 
   return (
     <FlightContext.Provider value={{ selectedFlight, setSelectedFlight }}>
       <Grid container spacing={0} sx={{...gridStyles, ...tallGrid}} >
-        <CustomToolbar />
+      <CustomToolbar onToggleDrawer={toggleDrawer}  drawerOpen={drawerOpen} />
         <Grid container spacing={0} >
           <Grid item xs={2}>
             <FlightComponent />
           </Grid>
-          <Grid item xs={8}>
-            <MyMapComponent />
+          <Grid item xs={drawerOpen ? 7 : 10}>
+            <MyMapComponent drawerOpen={drawerOpen} />
             <div style={{ height: '100px' }}>
             <MyTabsComponent />
             </div>
           </Grid>
-          <Grid item xs={2}>
-            <MyDataGrid />
-          </Grid>          
+{/*           <Grid item xs={10}>
+            <MyMapComponent />
+            <div style={{ height: '100px' }}>
+            <MyTabsComponent />
+            </div>
+          </Grid>   */}   
         </Grid>
       </Grid>
+
+      <Drawer
+        sx={{
+          width: 300,
+          flexShrink: 0,
+          '& .MuiDrawer-paper': {
+            width: 300,
+          },
+        }}
+        variant="persistent"
+        anchor="right"
+        open={drawerOpen}
+      >
+        <MyDataGrid />
+      </Drawer>
     </FlightContext.Provider>
   );
 }

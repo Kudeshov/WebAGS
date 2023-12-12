@@ -224,7 +224,7 @@ function MyMapComponent() {
   }, [selectMode]);
 
   return (
-    <MapContainer ref={mapRef} id="map" center={initialCenter} zoom={18} style={{ /* cursor: selectMode ? 'crosshair' : 'default',  */width: '100%', height:  window.innerHeight - appBarHeight - 8  }}>
+    <MapContainer ref={mapRef} id="map" center={initialCenter} zoom={18} style={{ /* cursor: selectMode ? 'crosshair' : 'default',  */width: '100%', height:  window.innerHeight - appBarHeight - 8-100  }}>
     <ChangeMapView coords={mapCenter} />
 
     <LayersControl position="topright">

@@ -14,7 +14,6 @@ const MyDataGrid = () => {
     { field: 'alt', headerName: 'Высота', width: 150 },
     { field: 'spectrumValue', headerName: 'Значение спектра', width: 200, hide: true },
   ];
-  
 
   useEffect(() => {
     // Используем fetch для выполнения HTTP-запроса
