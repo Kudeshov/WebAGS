@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import Autocomplete from '@mui/material/Autocomplete';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography'; // Import Typography
+import Grid from '@mui/material/Grid'; // Импортируем Grid
 
 import { FlightContext } from './App';
 import { CollectionContext } from './App';

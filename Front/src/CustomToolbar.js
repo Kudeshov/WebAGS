@@ -12,12 +12,15 @@ import { ReactComponent as RectangleIcon } from './icons/rectangle-landscape.svg
 import { ReactComponent as RulerIcon } from './icons/ruler.svg';
 import { ReactComponent as TableIcon } from './icons/table.svg';
 import Tooltip from '@mui/material/Tooltip';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
+import { useTheme } from '@mui/material/styles';
 
 import MapIcon from '@mui/icons-material/Map';
 import { Rect } from 'victory';
 import { FlightContext } from './App';
 
-function CustomToolbar() {
+const CustomToolbar = ({ onToggleDrawer, drawerOpen }) => {
   const [anchorEl, setAnchorEl] = useState(null);
   const [mapMenuAnchorEl, setMapMenuAnchorEl] = useState(null);
   const [filterMenuAnchorEl, setFilterMenuAnchorEl] = useState(null);
@@ -27,6 +30,28 @@ function CustomToolbar() {
   const [filterMenuAnchorE2, setDatabaseMenuAnchorE2] = useState(null);
   const [flightOptions, setFlightOptions] = useState([]);
   const [buttonClickCount, setButtonClickCount] = useState(0);
+  const theme = useTheme();
+  const tableButtonStyle = {
+    fill: drawerOpen ? "white" : "white",
+    width: 24,
+    height: 24,
+    border: '1px dashed grey',
+    backgroundColor: drawerOpen ? "grey" : "transparent",
+    /* borderRadius: "50%", */ // Сделайте borderRadius всегда круглым
+    //borderRadius: drawerOpen ? "50%" : "0",
+  };
+
+/*   const tableButtonStyle = {
+    fill: "white",
+    width: 24, // Оставляем исходный размер иконки
+    height: 24, // Оставляем исходный размер иконки
+ 
+  }; */
+
+  // Измените обработчик для кнопки
+  const handleDataGridToggle = () => {
+    onToggleDrawer();
+  };
 
   useEffect(() => {
     // Загрузка списка полетов из API
@@ -114,6 +139,7 @@ function CustomToolbar() {
 
   const { setSelectedFlight } = useContext(FlightContext);
 
+
   return (
     <AppBar position="static">
         <Toolbar>
@@ -195,16 +221,52 @@ function CustomToolbar() {
           {/* Add more menu items as needed */}
         </Menu>
 
-        <IconButton
+        <div style={{
+          backgroundColor: drawerOpen ? "white" : "transparent",
+/*           color: drawerOpen ? "blue" : "white", */
+          borderRadius: '50%',
+          padding: '0px',  
+        }}>
+          <IconButton color="inherit" onClick={handleDataGridToggle}>
+            <Tooltip title="Таблица измерений">
+              <AnalyticsIcon style={{ fill: drawerOpen ? theme.palette.primary.main : "white", width: 24, height: 24 }} />
+            </Tooltip>
+          </IconButton>
+        </div>
+{/* 
+        <IconButton color="inherit" onClick={handleDataGridToggle} style={{ borderRadius: '50%' }}>
+          <div style={{
+            backgroundColor: drawerOpen ? "grey" : "transparent",
+            borderRadius: '50%',
+            padding: '10px', // Увеличиваем отступ для создания крупного круглого фона
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}>
+            <Tooltip title="Таблица измерений">
+              <AnalyticsIcon style={{ fill: "white", width: 24, height: 24 }} />
+            </Tooltip>
+          </div>
+        </IconButton> */}
+
+{/*         <IconButton color="inherit" onClick={handleDataGridToggle}>
+          <Tooltip title="Таблица измерений">
+            <AnalyticsIcon style={tableButtonStyle} />
+          </Tooltip>
+        </IconButton> */}
+
+{/*         <IconButton
   color="inherit"
   onClick={() => {
     // Добавьте здесь логику для "Таблица измерений"
   }}
 >
-<Tooltip title="Таблица измерений">
-          <AnalyticsIcon style={{ fill: "white", width: 24, height: 24 }} />
+
+  
+          <Tooltip title="Таблица измерений"  onClick={handleDataGridToggle}>
+            <AnalyticsIcon style={{ fill: "white", width: 24, height: 24 }} />
           </Tooltip>
-</IconButton>
+</IconButton> */}
 <IconButton
   color="inherit"
   onClick={() => {
@@ -221,6 +283,7 @@ function CustomToolbar() {
     // Добавьте здесь логику для "Указатель"
   }}
 >
+
   
 <Tooltip title="Выбрать">
           <RectangleIcon style={{ fill: "white", width: 24, height: 24 }} />

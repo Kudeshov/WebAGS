@@ -276,6 +276,7 @@ app.get('/api/data/:dbname/:collectionId', (req, res) => {
 
   console.log(dbname, ' ', collectionId);
   if (!dbname || dbname === 'null') return;
+  if (!collectionId || collectionId === 'null') return;
 
   const db_current = new sqlite3.Database(`${flightsDirectory}/${dbname}.sqlite`, (err) => {
     if (err) {

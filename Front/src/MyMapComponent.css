@@ -23,3 +23,28 @@
   top: 10px;  
   left: 10px;
 }
+
+.selection-toggle-button {
+  width: 47px; /* Adjust width as needed */
+  height: 47px; /* Adjust height as needed */
+  background-color: white;
+  border: 2px solid #bbbbbb; /* Gray border */
+  border-radius: 4px; /* Rounded corners */
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.selection-toggle-button:hover {
+  background-color: #f4f4f4; /* Slightly darker on hover */
+}
+
+.selection-toggle-button:active {
+  background-color: #e0e0e0; /* Even darker when pressed */
+}
+ 
+
+.selection-mode-active {
+  cursor: crosshair;
+}

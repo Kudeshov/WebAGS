@@ -15,9 +15,8 @@ const MyDataGrid = () => {
     { field: 'alt', headerName: 'Высота', width: 150 },
     { field: 'spectrumValue', headerName: 'Значение спектра', width: 200, hide: true },
   ];
-  
 
-  useEffect(() => {
+ /*  useEffect(() => {
     // Используем fetch для выполнения HTTP-запроса
     fetch( `http://localhost:3001/api/data/${selectedFlight}/${selectedCollection._id}`)
       .then((response) => {
@@ -34,7 +33,7 @@ const MyDataGrid = () => {
         console.error('Ошибка при загрузке данных:', error);
       });
   }, [selectedFlight]);
-
+ */
   return (
     <div style={{ height: 500, width: '100%' }}>
       <DataGrid
