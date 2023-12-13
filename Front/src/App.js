@@ -54,33 +54,39 @@ function App() {
           </Grid>
           <Grid item xs={drawerOpen ? 7 : 10}>
             <MyMapComponent drawerOpen={drawerOpen} />
-            <div style={{ height: '100px' }}>
-            <MyTabsComponent />
+            <div style={{ height: '200px' }}>
+              <MyTabsComponent />
             </div>
           </Grid>
+
+          {drawerOpen &&
+            <Grid item xs={3}>
+              <Drawer
+                sx={{
+                  width: 380,
+                  flexShrink: 0,
+                  '& .MuiDrawer-paper': {
+                    width: 380,
+                  },
+                }}
+                variant="persistent"
+                anchor="right"
+                open={drawerOpen}
+              >
+                <MyDataGrid />
+              </Drawer>
+            </Grid>}   
+
+          
 {/*           <Grid item xs={10}>
             <MyMapComponent />
             <div style={{ height: '100px' }}>
             <MyTabsComponent />
             </div>
-          </Grid>   */}   
-        </Grid>
-      </Grid>
+         */}
+         </Grid>
+      </Grid>  
 
-      <Drawer
-        sx={{
-          width: 300,
-          flexShrink: 0,
-          '& .MuiDrawer-paper': {
-            width: 300,
-          },
-        }}
-        variant="persistent"
-        anchor="right"
-        open={drawerOpen}
-      >
-        <MyDataGrid />
-      </Drawer>
     </FlightContext.Provider>
   );
 }

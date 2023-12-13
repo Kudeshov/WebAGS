@@ -236,7 +236,7 @@ function MyMapComponent() {
             maxZoom={19}
           />
         </LayersControl.BaseLayer>
-        <LayersControl.BaseLayer checked name="Google Карта">
+        <LayersControl.BaseLayer name="Google Карта">
           <TileLayer
             url={googleMapsUrl}
             subdomains={['mt0', 'mt1', 'mt2', 'mt3']}
