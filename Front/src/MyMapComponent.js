@@ -4,7 +4,7 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import './MyMapComponent.css';
 import { FeatureGroup } from 'react-leaflet';
-import { FlightContext } from './App';
+import { FlightContext, CollectionContext } from './App';
 import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { HeatmapLayer } from 'react-leaflet-heatmap-layer-v3';
 import { useTheme } from '@mui/material/styles';
@@ -83,6 +83,7 @@ function MyMapComponent() {
     setSelectMode(!selectMode);
   };
   const { selectedFlight } = useContext(FlightContext);
+  const { selectedCollection } = useContext(CollectionContext);
   const googleMapsUrl = 'http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}&hl=ru';
   const googleSatelliteUrl = 'http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}&hl=ru';
 
@@ -95,8 +96,8 @@ function MyMapComponent() {
   useEffect(() => {
     if (!selectedFlight) return;
   
-    const apiUrl = `http://localhost:3001/api/data/${selectedFlight}`;
-  
+    const apiUrl = `http://localhost:3001/api/data/${selectedFlight}/${selectedCollection._id}`;
+    //const apiUrl = `http://localhost:3001/api/data/${selectedFlight}/${1234}`;
     fetch(apiUrl)
       .then(response => response.json())
       .then(data => {
@@ -133,7 +134,7 @@ function MyMapComponent() {
           }
         }
       });
-  }, [selectedFlight]);
+  }, [selectedFlight, selectedCollection]);
   
   const [selectedPoints, setSelectedPoints] = useState([]);
 
@@ -143,7 +144,8 @@ function MyMapComponent() {
   const fetchSpectrumData = (id) => {
     if (!selectedFlight) return;
     setIsLoading(true); // устанавливаем перед запросом
-    fetch(`http://localhost:3001/api/spectrum/${selectedFlight}/${id}`)
+    
+    fetch(`http://localhost:3001/api/spectrum/${selectedFlight}/${selectedCollection._id}`)
 
   //  fetch(`http://localhost:3001/api/spectrum/${id}`)
       .then(response => response.json())

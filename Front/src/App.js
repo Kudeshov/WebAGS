@@ -14,6 +14,8 @@ import Drawer from '@mui/material/Drawer';
 
 // Создание контекста
 export const FlightContext = React.createContext();
+export const CollectionContext = React.createContext();
+
 
 const tallGrid = {
   height: '100%'
@@ -35,6 +37,7 @@ function App() {
   console.log('appBarHeight', appBarHeight);
   const [selectedFlight, setSelectedFlight] = useState(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+ const [selectedCollection, setSelectedCollection] = useState(null);
 
   const toggleDrawer = () => {
     setDrawerOpen(!drawerOpen);
@@ -45,6 +48,7 @@ function App() {
   
 
   return (
+    <CollectionContext.Provider value={{ selectedCollection, setSelectedCollection }}>
     <FlightContext.Provider value={{ selectedFlight, setSelectedFlight }}>
       <Grid container spacing={0} sx={{...gridStyles, ...tallGrid}} >
       <CustomToolbar onToggleDrawer={toggleDrawer}  drawerOpen={drawerOpen} />
@@ -88,6 +92,7 @@ function App() {
       </Grid>  
 
     </FlightContext.Provider>
+    </CollectionContext.Provider>
   );
 }
 
