@@ -8,10 +8,10 @@ import { FlightContext, CollectionContext } from './App';
 import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { HeatmapLayer } from 'react-leaflet-heatmap-layer-v3';
 import { useTheme } from '@mui/material/styles';
-//import '@bopen/leaflet-area-selection/dist/index.css';
 import { getColor } from './colorUtils';
 import RectangularSelection from './RectangularSelection';
 import { ReactComponent as RectangleIcon } from './icons/rectangle-landscape.svg';
+import ReactDOM from 'react-dom';
 
 delete L.Icon.Default.prototype._getIconUrl;
 
@@ -26,12 +26,12 @@ const initialCenter = {
   lng: 37.62119540524117
 };
 
-function ChangeMapView({ coords }) {
+/* function ChangeMapView({ coords }) {
   const map = useMap();
   map.setView(coords, map.getZoom());
   return null;
 }
-
+ */
 function SpectrumChartWithLabel({ data, isLoading }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', width: '350px', height: '200px' }}>
@@ -56,7 +56,6 @@ function SpectrumChartWithLabel({ data, isLoading }) {
   );
 }
 
-
 function SpectrumChart({ data }) {
   return (
     <LineChart width={330} height={200} data={data} isAnimationActive={false}>
@@ -67,15 +66,24 @@ function SpectrumChart({ data }) {
          label={{ value: "Энергия (keV)", position: "bottom", offset: -6, style: { fontSize: 12 } }}  
       />
       <YAxis >
-
       </YAxis>
-
       <Tooltip />
     </LineChart>
   );
 }
 
+function MapEffect({ setMapInstance }) {
+  const map = useMap();
+  React.useEffect(() => {
+    if (map) {
+      setMapInstance(map);
+    }
+  }, [map, setMapInstance]);
+  return null;
+}
+
 function MyMapComponent() {
+  const [mapInstance, setMapInstance] = React.useState(null);
   const [selectMode, setSelectMode] = useState(false);
 
   // Функция для переключения режима выделения
@@ -93,20 +101,46 @@ function MyMapComponent() {
   const [minSpectrumValue, setMinSpectrumValue] = useState(null);
   const [maxSpectrumValue, setMaxSpectrumValue] = useState(null);
 
+  const [spectrumData, setSpectrumData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedMeasurement, setSelectedMeasurement] = useState(null);
+// const [selectedMeasurementId, setSelectedMeasurementId] = useState(null);
+  const panelRef = useRef(null); // Ссылка на DOM-элемент панели
+
+  function SpectrumControlComponent({ data, isLoading }) {
+    // Компонент для рендеринга внутри элемента управления Leaflet
+    return (
+      <div>
+        {/* Ваш React-компонент для отображения графика */}
+        <SpectrumChartWithLabel data={data} isLoading={isLoading} />
+      </div>
+    );
+  }
+  
+/*   function createSpectrumControl(map) {
+    var control = L.control({ position: 'bottomright' });
+  
+    control.onAdd = function(map) {
+      var div = L.DomUtil.create('div', 'info spectrum-control');
+      ReactDOM.render(<SpectrumControlComponent  data={spectrumData} isLoading={isLoading} />, div);
+      return div;
+    };
+  
+    control.addTo(map);
+  }  
+ */
   useEffect(() => {
     if (!selectedFlight) return;
   
-    const apiUrl = `http://localhost:3001/api/data/${selectedFlight}/${selectedCollection._id}`;
-    //const apiUrl = `http://localhost:3001/api/data/${selectedFlight}/${1234}`;
+    const apiUrl = `http://localhost:3001/api/data/${selectedFlight}/${selectedCollection?._id || null}`;
     fetch(apiUrl)
       .then(response => response.json())
       .then(data => {
         setMeasurements(data);
-       //setIsHeatmapLayerSelected(false);
         console.log("Data from API:", data);
   
         if (data.length > 0) {
-          const spectrumValues = data.map(measurement => measurement.spectrumValue);
+          const spectrumValues = data.map(measurement => measurement.dose);
           setMinSpectrumValue(Math.min(...spectrumValues));
           setMaxSpectrumValue(Math.max(...spectrumValues));
   
@@ -131,6 +165,10 @@ function MyMapComponent() {
               lat: centerLat,
               lng: centerLng
             });
+
+            if (mapInstance) {
+              mapInstance.setView([centerLat, centerLng], mapInstance.getZoom());
+            }
           }
         }
       });
@@ -138,16 +176,17 @@ function MyMapComponent() {
   
   const [selectedPoints, setSelectedPoints] = useState([]);
 
-  const [spectrumData, setSpectrumData] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  const fetchSpectrumData = (id) => {
+  const fetchSpectrumData = (measurement) => {
     if (!selectedFlight) return;
-    setIsLoading(true); // устанавливаем перед запросом
+
+    setSelectedMeasurement(measurement); // Сохраняем весь объект измерения
+
+//    setSelectedMeasurementId(id); // Обновляем выбранный ID
+
+/*     setIsLoading(true); // устанавливаем перед запросом
     
     fetch(`http://localhost:3001/api/spectrum/${selectedFlight}/${selectedCollection._id}`)
 
-  //  fetch(`http://localhost:3001/api/spectrum/${id}`)
       .then(response => response.json())
       .then(data => {
         const preparedData = data.spectrum.map((value, index) => ({
@@ -156,14 +195,8 @@ function MyMapComponent() {
         }));
         setSpectrumData(preparedData);
         setIsLoading(false); // устанавливаем после успешного выполнения
-      });
+      }); */
   };  
-
-/*   const measurementsRef = useRef([]);
-
-  useEffect(() => {
-      measurementsRef.current = measurements;
-  }, [measurements]); */
 
   useEffect(() => {
     if (selectMode) {
@@ -173,9 +206,8 @@ function MyMapComponent() {
     }
   }, [selectMode]);
 
-
   const heatPoints = measurements.map(measurement => {
-    const intensity = (measurement.spectrumValue - minSpectrumValue) / (maxSpectrumValue - minSpectrumValue);
+    const intensity = (measurement.dose - minSpectrumValue) / (maxSpectrumValue - minSpectrumValue);
     return [measurement.lat, measurement.lon, intensity];
   });
 
@@ -205,17 +237,6 @@ function MyMapComponent() {
 
   const mapRef = useRef(null);
 
-/*   useEffect(() => {
-    if (mapRef.current) {
-      const mapContainer = mapRef.current.getContainer();
-      if (selectMode) {
-        mapContainer.style.cursor = 'crosshair';
-      } else {
-        mapContainer.style.cursor = 'grab'; // or 'default', depending on your preference
-      }
-    }
-  }, [selectMode]); */
-
   useEffect(() => {
     const mapElement = document.getElementById('map');
     if (selectMode) {
@@ -225,9 +246,88 @@ function MyMapComponent() {
     }
   }, [selectMode]);
 
+  const [map, setMap] = useState(null);
+  const [mapLoaded, setMapLoaded] = useState(false);  
+
+/*   function createSimpleControl(map) {
+    var control = L.control({ position: 'bottomright' });
+  
+    control.onAdd = function() {
+      var div = L.DomUtil.create('div', 'simple-panel');
+      div.innerHTML = '<strong>Простая панель</strong>';
+      return div;
+    };
+  
+    control.addTo(map);
+  } 
+  function createSimpleControl(map, measurementId) {
+    var control = L.control({ position: 'bottomright' });
+    control.onAdd = function() {
+      var div = L.DomUtil.create('div', 'simple-panel');
+      div.innerHTML = '<strong>' + (measurementId ? `ID: ${measurementId}` : 'Простая панель') + '</strong>';
+      return div;
+    };
+    control.addTo(map);
+  }*/
+
+
+  function createSimpleControl(map, panelRef) {
+    var control = L.control({ position: 'bottomright' });
+  
+    control.onAdd = function() {
+      if (!panelRef.current) {
+        panelRef.current = L.DomUtil.create('div', 'simple-panel');
+        panelRef.current.innerHTML = '<strong>Простая панель</strong>';
+      }
+      return panelRef.current;
+    };
+  
+    control.addTo(map);
+  }
+
+  useEffect(() => {
+    if (mapInstance) {
+      createSimpleControl(mapInstance, panelRef);
+    }
+  }, [mapInstance]);
+
+/*   useEffect(() => {
+    // Обновляем содержимое панели при изменении selectedMeasurementId
+    if (panelRef.current) {
+      panelRef.current.innerHTML = '<strong>' + (selectedMeasurementId ? `ID: ${selectedMeasurementId}` : 'Простая панель') + '</strong>';
+    }
+  }, [selectedMeasurementId]);
+ */
+
+  useEffect(() => {
+    // Обновляем содержимое панели при изменении selectedMeasurement
+    if (panelRef.current && selectedMeasurement) {
+      panelRef.current.innerHTML = `
+        Время измерения: 1 сек<br>
+        Счёт в окне: 92 имп/с<br>
+        Высота: 7.6 м<br>
+        Мощность дозы на высоте 1м: <strong>${parseFloat(selectedMeasurement.dose).toFixed(3)}</strong> мкЗв/час<br>
+        Счётчик ГМ: 0 имп/с<br>
+        Мощность дозы ГМ: 0 мкЗв/час
+      `;
+    }
+  }, [selectedMeasurement]);
+
   return (
-    <MapContainer ref={mapRef} id="map" center={initialCenter} zoom={18} style={{ /* cursor: selectMode ? 'crosshair' : 'default',  */width: '100%', height:  window.innerHeight - appBarHeight - 8-100  }}>
-    <ChangeMapView coords={mapCenter} />
+    <div>
+    <MapContainer 
+      whenCreated={(mapInstance) => {
+        console.log('Map created. Instance:', mapInstance);
+        mapRef.current = mapInstance;
+      }}
+      id="map" 
+      center={initialCenter} 
+      zoom={18} 
+      style={{ width: '100%', height:  window.innerHeight - appBarHeight - 8-100  }}>
+   
+   
+    <MapEffect setMapInstance={setMapInstance} />
+{/*     <ChangeMapView coords={mapCenter} /> */}
 
     <LayersControl position="topright">
       <LayersControl.Overlay name="Marker with popup">
@@ -235,28 +335,27 @@ function MyMapComponent() {
           <TileLayer
             //attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            maxZoom={19}
+            maxZoom={21}
           />
         </LayersControl.BaseLayer>
         <LayersControl.BaseLayer name="Google Карта">
           <TileLayer
             url={googleMapsUrl}
             subdomains={['mt0', 'mt1', 'mt2', 'mt3']}
-            maxZoom={19}
+            maxZoom={21}
           />
         </LayersControl.BaseLayer>
         <LayersControl.BaseLayer name="Google Спутник">
           <TileLayer
             url={googleSatelliteUrl}
             subdomains={['mt0', 'mt1', 'mt2', 'mt3']}
-            maxZoom={19}
+            maxZoom={21}
           />
         </LayersControl.BaseLayer>
-
         <LayersControl.BaseLayer name='Esri World Imagery'>
                     <TileLayer
                         url='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
-                        maxZoom={19}
+                        maxZoom={21}
                     />
         </LayersControl.BaseLayer>        
       </LayersControl.Overlay>
@@ -264,28 +363,31 @@ function MyMapComponent() {
       <LayersControl.Overlay checked name="Измерения">
         <FeatureGroup>
           {measurements.map((measurement, index) => {
+              const color = getColor(measurement.dose, minSpectrumValue, maxSpectrumValue);
               const isSelected = selectedPoints.some(p => p.id === measurement.id);
-              
-              //const isSelected = selectedPointsRef.current.some(p => p.id === measurement.id);
+              const markerStyle = {
+                color: isSelected ? 'purple' : color, // Фиолетовая обводка для выбранного маркера
+                fillColor: color,
+                fillOpacity: 1,
+                radius: isSelected ? 7 : 5, // Больший радиус для выбранного маркера
+            };
 
-              const color = getColor(measurement.spectrumValue, minSpectrumValue, maxSpectrumValue);
+              //const color = getColor(measurement.dose, minSpectrumValue, maxSpectrumValue);
+              const markerKey = `${measurement.id}-${isSelected}`;
               return (
                   <CircleMarker
-                      key={index}
+                      key={markerKey}
                       center={[measurement.lat, measurement.lon]}
-                      //color={isSelected ? 'red' : color} // Если точка выделена, делаем ее красной
-                      radius={isSelected ? 7 : 5} // Если точка выделена, увеличиваем ее радиус
-                      color={ color} // Если точка выделена, делаем ее красной
-                      //radius={ 5} // Если точка выделена, увеличиваем ее радиус
+                      {...markerStyle}
                       eventHandlers={{
-                          click: () => fetchSpectrumData(measurement.id),
+                          click: () => fetchSpectrumData(measurement),
                       }}
                   >
-                    <Popup>
+                  {/* <Popup>
                       <div style={{ width: '400px', height: '200px' }}>
-                        {isLoading ? 'Загрузка...' : <SpectrumChartWithLabel data={spectrumData} />}
-                      </div>
-                    </Popup>          
+                         {isLoading ? 'Загрузка...' : <SpectrumChartWithLabel data={spectrumData} />} 
+                      </div> 
+                    </Popup>  */}  
                   </CircleMarker>
               );
           })}
@@ -309,20 +411,20 @@ function MyMapComponent() {
     <RectangularSelection 
         active={selectMode} 
         onSelectionComplete={handleSelectionComplete}
-      />
+    />
 
     <div style={{ position: 'absolute', top: '66px', right: '10px', zIndex: 600 }}>
       <button 
         className={`selection-toggle-button ${selectMode ? 'active' : ''}`} 
         onClick={toggleSelectMode}
-        title="Выделить" // Добавляем всплывающую подсказку здесь
+        title="Выделить"
       >
         <RectangleIcon style={{ fill: selectMode ? 'blue' : 'gray', width: 27, height: 27 }} />
       </button>
     </div>
-
-
   </MapContainer>
+
+  </div>    
   );
 }
 
