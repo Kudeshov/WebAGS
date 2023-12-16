@@ -19,16 +19,29 @@ import { useTheme } from '@mui/material/styles';
 import MapIcon from '@mui/icons-material/Map';
 import { Rect } from 'victory';
 import { FlightContext } from './App';
+import { CollectionContext } from './App';
 
 const CustomToolbar = ({ onToggleDrawer, drawerOpen }) => {
   const [anchorEl, setAnchorEl] = useState(null);
+  const [anchorCollection, setAnchorCollection] = useState(null);
+
   const [mapMenuAnchorEl, setMapMenuAnchorEl] = useState(null);
   const [filterMenuAnchorEl, setFilterMenuAnchorEl] = useState(null);
   const [unitMenuAnchorEl, setUnitMenuAnchorEl] = useState(null);
   const [settingsMenuAnchorEl, setSettingsMenuAnchorEl] = useState(null);
-
+  const { selectedFlight } = useContext(FlightContext);
+  const { setSelectedCollection } = useContext(CollectionContext);
+  
   const [filterMenuAnchorE2, setDatabaseMenuAnchorE2] = useState(null);
+  const [filterMenuAnchorCollection, setDatabaseMenuAnchorCollection] = useState(null);
+
+
   const [flightOptions, setFlightOptions] = useState([]);
+  const [collectionOptions, setCollectionOptions] = useState([]);
+
+  const [dataCollection, setDataCollection] = useState([]);
+  const [loadingCollection, setLoadingCollection] = useState(false);
+
   const [buttonClickCount, setButtonClickCount] = useState(0);
   const theme = useTheme();
   const tableButtonStyle = {
@@ -41,12 +54,6 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen }) => {
     //borderRadius: drawerOpen ? "50%" : "0",
   };
 
-/*   const tableButtonStyle = {
-    fill: "white",
-    width: 24, // Оставляем исходный размер иконки
-    height: 24, // Оставляем исходный размер иконки
- 
-  }; */
 
   // Измените обработчик для кнопки
   const handleDataGridToggle = () => {
@@ -64,7 +71,23 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen }) => {
         console.error('Ошибка при загрузке списка полетов:', error);
       });
   }, []);
+
+  useEffect(() => {
+    if (!selectedFlight) return;
+    setLoadingCollection(true);
+    fetch(`http://localhost:3001/api/collection/${selectedFlight}`)
+      .then(response => response.json())
+      .then(data => {
+        setDataCollection(data);
+        setLoadingCollection(false);
+      })
+      .catch(error => {
+        console.error('Ошибка при загрузке данных:', error);
+        setLoadingCollection(false);
+      });
+  }, [selectedFlight]);
   
+
   const fetchData = async () => {
     try {
       const response = await fetch('http://localhost:3001/api/flights');
@@ -72,6 +95,16 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen }) => {
       setFlightOptions(data);
     } catch (error) {
       console.error('Ошибка при загрузке списка полетов:', error);
+    }
+  };
+
+  const fetchDataCollection = async () => {
+    try {
+      const response = await fetch(`http://localhost:3001/api/collection/${selectedFlight}`)
+      const data = await response.json();
+      setCollectionOptions(data);
+    } catch (error) {
+      console.error('Ошибка при загрузке списка коллекций:', error);
     }
   };
 
@@ -111,6 +144,16 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen }) => {
     setDatabaseMenuAnchorE2(null);
   };
 
+  const handleCollectionMenuClick = (event) => {
+    // Обновляем список при каждом открытии меню
+    fetchDataCollection();
+    setDatabaseMenuAnchorCollection(event.currentTarget);
+  };
+
+  const handleCollectionMenuClose = () => {
+    setDatabaseMenuAnchorCollection(null);
+  };
+
   const handleFilterMenuClose = () => {
     setFilterMenuAnchorEl(null);
   };
@@ -119,6 +162,13 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen }) => {
     setSelectedFlight(flightName);
     // Закрыть меню после выбора
     setDatabaseMenuAnchorE2(null);
+  };
+
+  const handleCollectionSelect = (value) => {
+    console.log('value = ', value);
+    setSelectedCollection(value);
+    // Закрыть меню после выбора
+    setDatabaseMenuAnchorCollection(null);
   };
 
   const handleUnitMenuClick = (event) => {
@@ -153,6 +203,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen }) => {
             <DatabaseIcon style={{ fill: "white", width: 24, height: 24 }} />
           </Tooltip>
         </IconButton>
+
         <Menu
           anchorEl={filterMenuAnchorE2}
           open={Boolean(filterMenuAnchorE2)}
@@ -169,18 +220,56 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen }) => {
         ))}
         </Menu>
 
-          
         <IconButton
           color="inherit"
-          onClick={() => {
-            // Добавьте здесь логику для открытия полёта
+          onClick={handleCollectionMenuClick}
+        >
+          <Tooltip title="Открыть полёт">
+            <PlaneIcon style={{ fill: "white", width: 24, height: 24 }} />
+          </Tooltip>
+        </IconButton>
+
+        <Menu
+          anchorEl={filterMenuAnchorCollection} // Используйте anchorEl вместо anchorCollection
+          open={Boolean(filterMenuAnchorCollection)}
+          onClose={handleCollectionMenuClose}
+          MenuListProps={{
+            subheader: <ListSubheader>Полет</ListSubheader>,
           }}
+        >
+          {/* Маппинг массива коллекций в элементы меню */}
+          {collectionOptions.map((collection, index) => (
+            <MenuItem key={collection._id} onClick={() => handleCollectionSelect(collection)}>
+              {collection.description} {/* Используйте collection.description для отображения */}
+            </MenuItem>
+          ))}
+        </Menu>
+                  
+{/*         <IconButton
+          color="inherit"
+          onClick={handleCollectionMenuClick}
         >
           <Tooltip title="Открыть полёт">
           <PlaneIcon style={{ fill: "white", width: 24, height: 24 }} />
           </Tooltip>
         </IconButton>
 
+        <Menu
+          anchorCollection={filterMenuAnchorCollection}
+          open={Boolean(filterMenuAnchorCollection)}
+          onClose={handleCollectionMenuClose}
+          MenuListProps={{
+            subheader: <ListSubheader>Полет</ListSubheader>,
+          }}
+        >
+          
+          {collectionOptions.map((collection, _id) => (
+          <MenuItem key={_id} onClick={() => handleCollectionSelect(collection)}>
+            {collection}
+          </MenuItem>
+        ))}
+        </Menu>
+ */}
         <IconButton
           color="inherit"
           onClick={handleMapMenuClick}
