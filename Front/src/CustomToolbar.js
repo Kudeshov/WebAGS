@@ -15,22 +15,35 @@ import Tooltip from '@mui/material/Tooltip';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import { useTheme } from '@mui/material/styles';
+import TextField from '@mui/material/TextField';
+
 
 import MapIcon from '@mui/icons-material/Map';
 import { Rect } from 'victory';
 import { FlightContext } from './App';
 import { CollectionContext } from './App';
 
+function convertDateTime(dateTimeString) {
+  if (!dateTimeString) return '';
+  const date = new Date(dateTimeString);
+  const day = date.getDate().toString().padStart(2, '0');
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const year = date.getFullYear();
+  const hours = date.getHours().toString().padStart(2, '0');
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+  return `${day}.${month}.${year} ${hours}:${minutes}`;
+}
+
 const CustomToolbar = ({ onToggleDrawer, drawerOpen }) => {
   const [anchorEl, setAnchorEl] = useState(null);
   const [anchorCollection, setAnchorCollection] = useState(null);
+  const { selectedCollection, setSelectedCollection } = useContext(CollectionContext);
 
   const [mapMenuAnchorEl, setMapMenuAnchorEl] = useState(null);
   const [filterMenuAnchorEl, setFilterMenuAnchorEl] = useState(null);
   const [unitMenuAnchorEl, setUnitMenuAnchorEl] = useState(null);
   const [settingsMenuAnchorEl, setSettingsMenuAnchorEl] = useState(null);
   const { selectedFlight } = useContext(FlightContext);
-  const { setSelectedCollection } = useContext(CollectionContext);
   
   const [filterMenuAnchorE2, setDatabaseMenuAnchorE2] = useState(null);
   const [filterMenuAnchorCollection, setDatabaseMenuAnchorCollection] = useState(null);
@@ -41,6 +54,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen }) => {
 
   const [dataCollection, setDataCollection] = useState([]);
   const [loadingCollection, setLoadingCollection] = useState(false);
+  const [selectedItem, setSelectedItem] = useState(null);
 
   const [buttonClickCount, setButtonClickCount] = useState(0);
   const theme = useTheme();
@@ -186,6 +200,12 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen }) => {
   const handleSettingsMenuClose = () => {
     setSettingsMenuAnchorEl(null);
   };
+  
+  const handleSelectionChange = (event, value) => {
+    console.log('handleSelectionChange value', value)
+    setSelectedCollection(value);
+    setSelectedItem(value);
+  };
 
   const { setSelectedFlight } = useContext(FlightContext);
 
@@ -244,32 +264,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen }) => {
             </MenuItem>
           ))}
         </Menu>
-                  
-{/*         <IconButton
-          color="inherit"
-          onClick={handleCollectionMenuClick}
-        >
-          <Tooltip title="Открыть полёт">
-          <PlaneIcon style={{ fill: "white", width: 24, height: 24 }} />
-          </Tooltip>
-        </IconButton>
-
-        <Menu
-          anchorCollection={filterMenuAnchorCollection}
-          open={Boolean(filterMenuAnchorCollection)}
-          onClose={handleCollectionMenuClose}
-          MenuListProps={{
-            subheader: <ListSubheader>Полет</ListSubheader>,
-          }}
-        >
-          
-          {collectionOptions.map((collection, _id) => (
-          <MenuItem key={_id} onClick={() => handleCollectionSelect(collection)}>
-            {collection}
-          </MenuItem>
-        ))}
-        </Menu>
- */}
+  
         <IconButton
           color="inherit"
           onClick={handleMapMenuClick}
@@ -312,7 +307,6 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen }) => {
 
         <div style={{
           backgroundColor: drawerOpen ? "white" : "transparent",
-/*           color: drawerOpen ? "blue" : "white", */
           borderRadius: '50%',
           padding: '0px',  
         }}>
@@ -322,40 +316,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen }) => {
             </Tooltip>
           </IconButton>
         </div>
-{/* 
-        <IconButton color="inherit" onClick={handleDataGridToggle} style={{ borderRadius: '50%' }}>
-          <div style={{
-            backgroundColor: drawerOpen ? "grey" : "transparent",
-            borderRadius: '50%',
-            padding: '10px', // Увеличиваем отступ для создания крупного круглого фона
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-          }}>
-            <Tooltip title="Таблица измерений">
-              <AnalyticsIcon style={{ fill: "white", width: 24, height: 24 }} />
-            </Tooltip>
-          </div>
-        </IconButton> */}
 
-{/*         <IconButton color="inherit" onClick={handleDataGridToggle}>
-          <Tooltip title="Таблица измерений">
-            <AnalyticsIcon style={tableButtonStyle} />
-          </Tooltip>
-        </IconButton> */}
-
-{/*         <IconButton
-  color="inherit"
-  onClick={() => {
-    // Добавьте здесь логику для "Таблица измерений"
-  }}
->
-
-  
-          <Tooltip title="Таблица измерений"  onClick={handleDataGridToggle}>
-            <AnalyticsIcon style={{ fill: "white", width: 24, height: 24 }} />
-          </Tooltip>
-</IconButton> */}
 <IconButton
   color="inherit"
   onClick={() => {
@@ -444,10 +405,39 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen }) => {
           <MenuItem onClick={handleSettingsMenuClose}>Option 2</MenuItem>
           {/* Add more settings options as needed */}
         </Menu>
-      </Toolbar>
+        <div style={{ color: 'white', fontSize: 'small' }}>
+          <span>P0: {selectedCollection ? selectedCollection.P0 : ''} | </span>
+          <span>P1: {selectedCollection ? selectedCollection.P1 : ''} | </span>
+          <span>Описание: {selectedCollection ? selectedCollection.description : ''} | </span>
+          <span>Дата: {selectedCollection ? convertDateTime(selectedCollection.dateTime) : ''}</span>
+        </div>
 
+       
+ {/*        <TextField
+        onChange={handleSelectionChange}
 
-    </AppBar>
+        label="P0"
+        value={selectedCollection ? selectedCollection.P0 : ''}
+        size="small"
+        variant="outlined"
+        margin="normal"
+        fullWidth
+        disabled={!selectedItem}
+      />
+      
+         <TextField
+        label="P1"
+        size="small"
+        value={selectedCollection ? selectedCollection.P1 : ''}
+        variant="outlined"
+        margin="normal"
+        fullWidth
+        disabled={!selectedItem}
+      /> */}
+
+     </Toolbar>
+          
+         </AppBar>
   );
 }
 

@@ -37,7 +37,7 @@ function App() {
   console.log('appBarHeight', appBarHeight);
   const [selectedFlight, setSelectedFlight] = useState(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
- const [selectedCollection, setSelectedCollection] = useState(null);
+  const [selectedCollection, setSelectedCollection] = useState(null);
 
   const toggleDrawer = () => {
     setDrawerOpen(!drawerOpen);
@@ -53,10 +53,10 @@ function App() {
       <Grid container spacing={0} sx={{...gridStyles, ...tallGrid}} >
       <CustomToolbar onToggleDrawer={toggleDrawer}  drawerOpen={drawerOpen} />
         <Grid container spacing={0} >
-          <Grid item xs={2}>
+{/*           <Grid item xs={2}>
             <FlightComponent />
-          </Grid>
-          <Grid item xs={drawerOpen ? 7 : 10}>
+          </Grid> */}
+          <Grid item xs={drawerOpen ? 9 : 12}>
             <MyMapComponent drawerOpen={drawerOpen} />
             <div style={{ height: '200px' }}>
               <MyTabsComponent />
