@@ -323,9 +323,7 @@ function MyMapComponent() {
       id="map" 
       center={initialCenter} 
       zoom={18} 
-      style={{ width: '100%', height:  window.innerHeight - appBarHeight - 8-100  }}>
-   
-   
+      style={{ width: '100%', height:  window.innerHeight - 64   }}>
     <MapEffect setMapInstance={setMapInstance} />
 {/*     <ChangeMapView coords={mapCenter} /> */}
 

@@ -2,15 +2,10 @@ import React, { useState } from 'react';
 import './App.css';
 import MyMapComponent from './MyMapComponent';
 import CustomToolbar from './CustomToolbar';
-import FlightComponent from './FlightComponent';
 import MyDataGrid from './MyDataGrid';
-import MyTabsComponent from './MyTabsComponent';
-
-import Box from '@mui/material/Box';
-import { AppBar, Toolbar, Typography, Container, Grid } from '@mui/material';
+import { Grid } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import Drawer from '@mui/material/Drawer';
-
 
 // Создание контекста
 export const FlightContext = React.createContext();
@@ -29,7 +24,6 @@ const gridStyles = {
   paddingBottom: 0
 };
 
-
 function App() {
 
   const theme = useTheme();
@@ -42,10 +36,6 @@ function App() {
   const toggleDrawer = () => {
     setDrawerOpen(!drawerOpen);
   };
-  
-/*   const [drawerOpen, setDrawerOpen] = React.useState(false);
-  */ 
-  
 
   return (
     <CollectionContext.Provider value={{ selectedCollection, setSelectedCollection }}>
@@ -53,16 +43,18 @@ function App() {
       <Grid container spacing={0} sx={{...gridStyles, ...tallGrid}} >
       <CustomToolbar onToggleDrawer={toggleDrawer}  drawerOpen={drawerOpen} />
         <Grid container spacing={0} >
-{/*           <Grid item xs={2}>
-            <FlightComponent />
-          </Grid> */}
-          <Grid item xs={drawerOpen ? 9 : 12}>
-            <MyMapComponent drawerOpen={drawerOpen} />
-{/*             <div style={{ height: '200px' }}>
-              <MyTabsComponent />
-            </div> */}
-          </Grid>
 
+          <Grid item xs>
+            <MyMapComponent />
+          </Grid>      
+{/*           <Grid item xs={drawerOpen ? 9 : 12}>
+            <MyMapComponent drawerOpen={drawerOpen} />
+          </Grid>
+ */}
+         {drawerOpen && <Grid item style={{ width: '390px' }}>
+            <MyDataGrid />
+          </Grid>}   
+{/* 
           {drawerOpen &&
             <Grid item xs={3}>
               <Drawer
@@ -79,18 +71,9 @@ function App() {
               >
                 <MyDataGrid />
               </Drawer>
-            </Grid>}   
-
-          
-{/*           <Grid item xs={10}>
-            <MyMapComponent />
-            <div style={{ height: '100px' }}>
-            <MyTabsComponent />
-            </div>
-         */}
+            </Grid>}    */}
          </Grid>
       </Grid>  
-
     </FlightContext.Provider>
     </CollectionContext.Provider>
   );

@@ -208,11 +208,11 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen }) => {
   };
 
   const { setSelectedFlight } = useContext(FlightContext);
-
+  const appBarHeight = theme.mixins.toolbar.minHeight;
 
   return (
-    <AppBar position="static">
-        <Toolbar>
+    <AppBar position="static" sx={{ height: '64px' }}>  {/*  '64px' */}
+        <Toolbar >
 
         <IconButton
           color="inherit"
