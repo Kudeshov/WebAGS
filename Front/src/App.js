@@ -58,9 +58,9 @@ function App() {
           </Grid>
           <Grid item xs={drawerOpen ? 7 : 10}>
             <MyMapComponent drawerOpen={drawerOpen} />
-            <div style={{ height: '200px' }}>
+{/*             <div style={{ height: '200px' }}>
               <MyTabsComponent />
-            </div>
+            </div> */}
           </Grid>
 
           {drawerOpen &&
