@@ -15,20 +15,47 @@ import Tooltip from '@mui/material/Tooltip';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import { useTheme } from '@mui/material/styles';
+import TextField from '@mui/material/TextField';
+
 
 import MapIcon from '@mui/icons-material/Map';
 import { Rect } from 'victory';
 import { FlightContext } from './App';
+import { CollectionContext } from './App';
+
+function convertDateTime(dateTimeString) {
+  if (!dateTimeString) return '';
+  const date = new Date(dateTimeString);
+  const day = date.getDate().toString().padStart(2, '0');
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const year = date.getFullYear();
+  const hours = date.getHours().toString().padStart(2, '0');
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+  return `${day}.${month}.${year} ${hours}:${minutes}`;
+}
 
 const CustomToolbar = ({ onToggleDrawer, drawerOpen }) => {
   const [anchorEl, setAnchorEl] = useState(null);
+  const [anchorCollection, setAnchorCollection] = useState(null);
+  const { selectedCollection, setSelectedCollection } = useContext(CollectionContext);
+
   const [mapMenuAnchorEl, setMapMenuAnchorEl] = useState(null);
   const [filterMenuAnchorEl, setFilterMenuAnchorEl] = useState(null);
   const [unitMenuAnchorEl, setUnitMenuAnchorEl] = useState(null);
   const [settingsMenuAnchorEl, setSettingsMenuAnchorEl] = useState(null);
-
+  const { selectedFlight } = useContext(FlightContext);
+  
   const [filterMenuAnchorE2, setDatabaseMenuAnchorE2] = useState(null);
+  const [filterMenuAnchorCollection, setDatabaseMenuAnchorCollection] = useState(null);
+
+
   const [flightOptions, setFlightOptions] = useState([]);
+  const [collectionOptions, setCollectionOptions] = useState([]);
+
+  const [dataCollection, setDataCollection] = useState([]);
+  const [loadingCollection, setLoadingCollection] = useState(false);
+  const [selectedItem, setSelectedItem] = useState(null);
+
   const [buttonClickCount, setButtonClickCount] = useState(0);
   const theme = useTheme();
   const tableButtonStyle = {
@@ -41,12 +68,6 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen }) => {
     //borderRadius: drawerOpen ? "50%" : "0",
   };
 
-/*   const tableButtonStyle = {
-    fill: "white",
-    width: 24, // Оставляем исходный размер иконки
-    height: 24, // Оставляем исходный размер иконки
- 
-  }; */
 
   // Измените обработчик для кнопки
   const handleDataGridToggle = () => {
@@ -64,7 +85,23 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen }) => {
         console.error('Ошибка при загрузке списка полетов:', error);
       });
   }, []);
+
+  useEffect(() => {
+    if (!selectedFlight) return;
+    setLoadingCollection(true);
+    fetch(`http://localhost:3001/api/collection/${selectedFlight}`)
+      .then(response => response.json())
+      .then(data => {
+        setDataCollection(data);
+        setLoadingCollection(false);
+      })
+      .catch(error => {
+        console.error('Ошибка при загрузке данных:', error);
+        setLoadingCollection(false);
+      });
+  }, [selectedFlight]);
   
+
   const fetchData = async () => {
     try {
       const response = await fetch('http://localhost:3001/api/flights');
@@ -72,6 +109,16 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen }) => {
       setFlightOptions(data);
     } catch (error) {
       console.error('Ошибка при загрузке списка полетов:', error);
+    }
+  };
+
+  const fetchDataCollection = async () => {
+    try {
+      const response = await fetch(`http://localhost:3001/api/collection/${selectedFlight}`)
+      const data = await response.json();
+      setCollectionOptions(data);
+    } catch (error) {
+      console.error('Ошибка при загрузке списка коллекций:', error);
     }
   };
 
@@ -111,6 +158,16 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen }) => {
     setDatabaseMenuAnchorE2(null);
   };
 
+  const handleCollectionMenuClick = (event) => {
+    // Обновляем список при каждом открытии меню
+    fetchDataCollection();
+    setDatabaseMenuAnchorCollection(event.currentTarget);
+  };
+
+  const handleCollectionMenuClose = () => {
+    setDatabaseMenuAnchorCollection(null);
+  };
+
   const handleFilterMenuClose = () => {
     setFilterMenuAnchorEl(null);
   };
@@ -119,6 +176,13 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen }) => {
     setSelectedFlight(flightName);
     // Закрыть меню после выбора
     setDatabaseMenuAnchorE2(null);
+  };
+
+  const handleCollectionSelect = (value) => {
+    console.log('value = ', value);
+    setSelectedCollection(value);
+    // Закрыть меню после выбора
+    setDatabaseMenuAnchorCollection(null);
   };
 
   const handleUnitMenuClick = (event) => {
@@ -135,6 +199,12 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen }) => {
 
   const handleSettingsMenuClose = () => {
     setSettingsMenuAnchorEl(null);
+  };
+  
+  const handleSelectionChange = (event, value) => {
+    console.log('handleSelectionChange value', value)
+    setSelectedCollection(value);
+    setSelectedItem(value);
   };
 
   const { setSelectedFlight } = useContext(FlightContext);
@@ -153,6 +223,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen }) => {
             <DatabaseIcon style={{ fill: "white", width: 24, height: 24 }} />
           </Tooltip>
         </IconButton>
+
         <Menu
           anchorEl={filterMenuAnchorE2}
           open={Boolean(filterMenuAnchorE2)}
@@ -169,18 +240,31 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen }) => {
         ))}
         </Menu>
 
-          
         <IconButton
           color="inherit"
-          onClick={() => {
-            // Добавьте здесь логику для открытия полёта
-          }}
+          onClick={handleCollectionMenuClick}
         >
           <Tooltip title="Открыть полёт">
-          <PlaneIcon style={{ fill: "white", width: 24, height: 24 }} />
+            <PlaneIcon style={{ fill: "white", width: 24, height: 24 }} />
           </Tooltip>
         </IconButton>
 
+        <Menu
+          anchorEl={filterMenuAnchorCollection} // Используйте anchorEl вместо anchorCollection
+          open={Boolean(filterMenuAnchorCollection)}
+          onClose={handleCollectionMenuClose}
+          MenuListProps={{
+            subheader: <ListSubheader>Полет</ListSubheader>,
+          }}
+        >
+          {/* Маппинг массива коллекций в элементы меню */}
+          {collectionOptions.map((collection, index) => (
+            <MenuItem key={collection._id} onClick={() => handleCollectionSelect(collection)}>
+              {collection.description} {/* Используйте collection.description для отображения */}
+            </MenuItem>
+          ))}
+        </Menu>
+  
         <IconButton
           color="inherit"
           onClick={handleMapMenuClick}
@@ -223,7 +307,6 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen }) => {
 
         <div style={{
           backgroundColor: drawerOpen ? "white" : "transparent",
-/*           color: drawerOpen ? "blue" : "white", */
           borderRadius: '50%',
           padding: '0px',  
         }}>
@@ -233,40 +316,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen }) => {
             </Tooltip>
           </IconButton>
         </div>
-{/* 
-        <IconButton color="inherit" onClick={handleDataGridToggle} style={{ borderRadius: '50%' }}>
-          <div style={{
-            backgroundColor: drawerOpen ? "grey" : "transparent",
-            borderRadius: '50%',
-            padding: '10px', // Увеличиваем отступ для создания крупного круглого фона
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-          }}>
-            <Tooltip title="Таблица измерений">
-              <AnalyticsIcon style={{ fill: "white", width: 24, height: 24 }} />
-            </Tooltip>
-          </div>
-        </IconButton> */}
 
-{/*         <IconButton color="inherit" onClick={handleDataGridToggle}>
-          <Tooltip title="Таблица измерений">
-            <AnalyticsIcon style={tableButtonStyle} />
-          </Tooltip>
-        </IconButton> */}
-
-{/*         <IconButton
-  color="inherit"
-  onClick={() => {
-    // Добавьте здесь логику для "Таблица измерений"
-  }}
->
-
-  
-          <Tooltip title="Таблица измерений"  onClick={handleDataGridToggle}>
-            <AnalyticsIcon style={{ fill: "white", width: 24, height: 24 }} />
-          </Tooltip>
-</IconButton> */}
 <IconButton
   color="inherit"
   onClick={() => {
@@ -355,10 +405,39 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen }) => {
           <MenuItem onClick={handleSettingsMenuClose}>Option 2</MenuItem>
           {/* Add more settings options as needed */}
         </Menu>
-      </Toolbar>
+        <div style={{ color: 'white', fontSize: 'small' }}>
+          <span>P0: {selectedCollection ? selectedCollection.P0 : ''} | </span>
+          <span>P1: {selectedCollection ? selectedCollection.P1 : ''} | </span>
+          <span>Описание: {selectedCollection ? selectedCollection.description : ''} | </span>
+          <span>Дата: {selectedCollection ? convertDateTime(selectedCollection.dateTime) : ''}</span>
+        </div>
 
+       
+ {/*        <TextField
+        onChange={handleSelectionChange}
 
-    </AppBar>
+        label="P0"
+        value={selectedCollection ? selectedCollection.P0 : ''}
+        size="small"
+        variant="outlined"
+        margin="normal"
+        fullWidth
+        disabled={!selectedItem}
+      />
+      
+         <TextField
+        label="P1"
+        size="small"
+        value={selectedCollection ? selectedCollection.P1 : ''}
+        variant="outlined"
+        margin="normal"
+        fullWidth
+        disabled={!selectedItem}
+      /> */}
+
+     </Toolbar>
+          
+         </AppBar>
   );
 }
 
