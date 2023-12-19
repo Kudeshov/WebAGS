@@ -284,6 +284,8 @@ app.get('/api/spectrum/:dbname/:id', (req, res) => {
     return;
   const id = req.params.id;
 
+  console.log('id = ', id);
+
   const db = new sqlite3.Database(flightsDirectory+'/'+dbname+'.sqlite', (err) => {
     if (err) {
       console.error(err.message);
@@ -305,6 +307,8 @@ app.get('/api/spectrum/:dbname/:id', (req, res) => {
       return;
     }
     const coords = toLLA(row.gpsX, row.gpsY, row.gpsZ);
+
+    console.log('coords '+coords);
     
     if(row.spectrum === undefined) {
       console.error("spectrum is undefined for row: ", row);

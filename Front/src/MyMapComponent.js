@@ -34,7 +34,7 @@ const initialCenter = {
  */
 function SpectrumChartWithLabel({ data, isLoading }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', width: '350px', height: '200px' }}>
+    <div style={{ display: 'flex', alignItems: 'center', width: '293px', height: '200px' }}>
       <div style={{
         transform: 'rotate(-90deg)',
         transformOrigin: 'left top',
@@ -104,8 +104,31 @@ function MyMapComponent() {
   const [spectrumData, setSpectrumData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedMeasurement, setSelectedMeasurement] = useState(null);
-// const [selectedMeasurementId, setSelectedMeasurementId] = useState(null);
   const panelRef = useRef(null); // Ссылка на DOM-элемент панели
+  const spectrumPanelRef = useRef(null); 
+  const [isCtrlPressed, setIsCtrlPressed] = useState(false);
+ 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.ctrlKey) {
+        setIsCtrlPressed(true);
+      }
+    };
+  
+    const handleKeyUp = (e) => {
+      if (e.key === "Control") {
+        setIsCtrlPressed(false);
+      }
+    };
+  
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+  
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, []);  
 
   function SpectrumControlComponent({ data, isLoading }) {
     // Компонент для рендеринга внутри элемента управления Leaflet
@@ -117,6 +140,19 @@ function MyMapComponent() {
     );
   }
   
+  const handlePointClick = (measurement) => {
+    if (isCtrlPressed) {
+      // Добавляем точку в массив, если Ctrl нажат
+      setSelectedPoints(prevPoints => [...prevPoints, measurement]);
+    } else {
+      // Заменяем массив одной точкой, если Ctrl не нажат
+      setSelectedPoints([measurement]);
+    }
+  
+    fetchSpectrumData(measurement);
+  };
+  
+
 /*   function createSpectrumControl(map) {
     var control = L.control({ position: 'bottomright' });
   
@@ -176,6 +212,34 @@ function MyMapComponent() {
   
   const [selectedPoints, setSelectedPoints] = useState([]);
 
+
+  const fetchSpectrumData = (measurement) => {
+    if (!selectedFlight) return;
+  
+    setSelectedMeasurement(measurement);
+    setIsLoading(true);
+    fetch(`http://localhost:3001/api/spectrum/${selectedFlight}/${measurement.id}`)
+      .then(response => response.json())
+      .then(data => {
+        const preparedData = data.spectrum.map((value, index) => ({
+          channel: index,
+          value,
+        }));
+        setSpectrumData(preparedData);
+        setIsLoading(false);
+  
+        // Создаем панель графика, если она еще не существует
+        if (!spectrumPanelRef.current) {
+          createSpectrumPanel(mapInstance);
+        }
+  
+        // Обновляем панель графика
+        updateSpectrumPanel(preparedData, isLoading);
+      });
+  };
+  
+
+  /* 
   const fetchSpectrumData = (measurement) => {
     if (!selectedFlight) return;
 
@@ -183,9 +247,9 @@ function MyMapComponent() {
 
 //    setSelectedMeasurementId(id); // Обновляем выбранный ID
 
-/*     setIsLoading(true); // устанавливаем перед запросом
+    setIsLoading(true); // устанавливаем перед запросом
     
-    fetch(`http://localhost:3001/api/spectrum/${selectedFlight}/${selectedCollection._id}`)
+    fetch(`http://localhost:3001/api/spectrum/${selectedFlight}/${measurement.id}`)
 
       .then(response => response.json())
       .then(data => {
@@ -195,8 +259,9 @@ function MyMapComponent() {
         }));
         setSpectrumData(preparedData);
         setIsLoading(false); // устанавливаем после успешного выполнения
-      }); */
-  };  
+        updateSpectrumPanel(preparedData, isLoading); // Функция для обновления данных панели
+.      });
+  };   */
 
   useEffect(() => {
     if (selectMode) {
@@ -249,35 +314,44 @@ function MyMapComponent() {
   const [map, setMap] = useState(null);
   const [mapLoaded, setMapLoaded] = useState(false);  
 
-/*   function createSimpleControl(map) {
-    var control = L.control({ position: 'bottomright' });
+  function createSpectrumPanel(map) {
+    const spectrumControl = L.control({ position: 'bottomright' });
   
-    control.onAdd = function() {
-      var div = L.DomUtil.create('div', 'simple-panel');
-      div.innerHTML = '<strong>Простая панель</strong>';
-      return div;
+    spectrumControl.onAdd = function() {
+      spectrumPanelRef.current = L.DomUtil.create('div', 'spectrum-panel');
+      ReactDOM.render(
+        <SpectrumChartWithLabel data={spectrumData} isLoading={isLoading} />,
+        spectrumPanelRef.current
+      );
+      return spectrumPanelRef.current;
     };
   
-    control.addTo(map);
-  } 
-  function createSimpleControl(map, measurementId) {
-    var control = L.control({ position: 'bottomright' });
-    control.onAdd = function() {
-      var div = L.DomUtil.create('div', 'simple-panel');
-      div.innerHTML = '<strong>' + (measurementId ? `ID: ${measurementId}` : 'Простая панель') + '</strong>';
-      return div;
-    };
-    control.addTo(map);
-  }*/
+    spectrumControl.addTo(map);
+  }
 
+  const updateSpectrumPanel = (data, isLoading) => {
+    if (spectrumPanelRef.current) {
+      ReactDOM.render(
+        <SpectrumChartWithLabel data={data} isLoading={isLoading} />,
+        spectrumPanelRef.current
+      );
+    }
+  }
 
+/*   useEffect(() => {
+    console.log('mapInstance', mapInstance);
+    if (mapInstance && spectrumData) {
+      createSpectrumPanel(mapInstance, spectrumData, isLoading);
+    }
+  }, [mapInstance, spectrumData, isLoading]); */
+  
   function createSimpleControl(map, panelRef) {
     var control = L.control({ position: 'bottomright' });
   
     control.onAdd = function() {
       if (!panelRef.current) {
         panelRef.current = L.DomUtil.create('div', 'simple-panel');
-        panelRef.current.innerHTML = '<strong>Простая панель</strong>';
+        panelRef.current.innerHTML = '<strong>Выберите точку на карте</strong>';
       }
       return panelRef.current;
     };
@@ -290,6 +364,12 @@ function MyMapComponent() {
       createSimpleControl(mapInstance, panelRef);
     }
   }, [mapInstance]);
+
+/*   useEffect(() => {
+    if (mapInstance) {
+      createSpectrumPanel(mapInstance);
+    }
+  }, [mapInstance]); */
 
 /*   useEffect(() => {
     // Обновляем содержимое панели при изменении selectedMeasurementId
@@ -377,8 +457,11 @@ function MyMapComponent() {
                       key={markerKey}
                       center={[measurement.lat, measurement.lon]}
                       {...markerStyle}
-                      eventHandlers={{
+/*                       eventHandlers={{
                           click: () => fetchSpectrumData(measurement),
+                      }} */
+                      eventHandlers={{
+                        click: () => handlePointClick(measurement),
                       }}
                   >
                   {/* <Popup>

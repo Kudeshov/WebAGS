@@ -49,12 +49,28 @@
   cursor: crosshair;
 }
 
-/* В вашем CSS-файле */
-.simple-panel {
+/* .simple-panel {
   background-color: white;
   padding: 10px;
   border: 1px solid #ccc;
   border-radius: 4px;
   box-shadow: 0 1px 5px rgba(0, 0, 0, 0.2);
   font-family: 'Roboto', 'Helvetica', 'Arial', sans-serif;
+}
+
+.spectrum-panel {
+  background-color: white;
+  padding: 10px;
+  border-radius: 5px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.25);
+} */
+
+.spectrum-panel, .simple-panel {
+  background-color: rgba(255, 255, 255, 0.91);  
+  font-family: 'Roboto', 'Helvetica', 'Arial', sans-serif;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.2);
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  /* другие стили, если необходимо */
 }
