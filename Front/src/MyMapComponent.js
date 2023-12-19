@@ -298,14 +298,33 @@ function MyMapComponent() {
     }
   }, [selectedMeasurementId]);
  */
+  function convertDateTime(dateTimeString) {
+
+    if (!dateTimeString)
+      return;
+    const date = new Date(dateTimeString);
+  
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0'); // Месяцы начинаются с 0
+    const year = date.getFullYear();
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+  
+    return `${day}.${month}.${year} ${hours}:${minutes}`;
+  }
+
+
 
   useEffect(() => {
     // Обновляем содержимое панели при изменении selectedMeasurement
     if (panelRef.current && selectedMeasurement) {
       panelRef.current.innerHTML = `
+        Дата: ${convertDateTime(selectedMeasurement.datetime)}<br>
         Время измерения: 1 сек<br>
         Счёт в окне: 92 имп/с<br>
-        Высота: 7.6 м<br>
+        Высота: ${selectedMeasurement.alt.toFixed(2)} м<br>
+        Долгота: ${selectedMeasurement.lon.toFixed(6)}<br>
+        Широта: ${selectedMeasurement.lat.toFixed(6)}<br>
         Мощность дозы на высоте 1м: <strong>${parseFloat(selectedMeasurement.dose).toFixed(3)}</strong> мкЗв/час<br>
         Счётчик ГМ: 0 имп/с<br>
         Мощность дозы ГМ: 0 мкЗв/час
