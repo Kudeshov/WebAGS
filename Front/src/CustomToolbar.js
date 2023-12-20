@@ -34,7 +34,7 @@ function convertDateTime(dateTimeString) {
   return `${day}.${month}.${year} ${hours}:${minutes}`;
 }
 
-const CustomToolbar = ({ onToggleDrawer, drawerOpen }) => {
+const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen }) => {
   const [anchorEl, setAnchorEl] = useState(null);
   const [anchorCollection, setAnchorCollection] = useState(null);
   const { selectedCollection, setSelectedCollection } = useContext(CollectionContext);
@@ -72,6 +72,10 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen }) => {
   // Измените обработчик для кнопки
   const handleDataGridToggle = () => {
     onToggleDrawer();
+  };
+
+  const handleChartToggle = () => {
+    onToggleChart();
   };
 
   useEffect(() => {
@@ -317,7 +321,19 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen }) => {
           </IconButton>
         </div>
 
-<IconButton
+        <div style={{
+          backgroundColor: chartOpen ? "white" : "transparent",
+          borderRadius: '50%',
+          padding: '0px',  
+        }}>
+          <IconButton color="inherit" onClick={handleChartToggle}>
+            <Tooltip title="График">
+              <ChartIcon style={{ fill: chartOpen ? theme.palette.primary.main : "white", width: 24, height: 24 }} />
+            </Tooltip>
+          </IconButton>
+        </div>
+
+{/* <IconButton
   color="inherit"
   onClick={() => {
     // Добавьте здесь логику для "Графики"
@@ -326,7 +342,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen }) => {
 <Tooltip title="Графики">
           <ChartIcon style={{ fill: "white", width: 24, height: 24 }} />
           </Tooltip>
-</IconButton>
+</IconButton> */}
 <IconButton
   color="inherit"
   onClick={() => {

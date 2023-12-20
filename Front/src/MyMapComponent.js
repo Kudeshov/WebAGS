@@ -92,6 +92,7 @@ function MyMapComponent() {
   };
   const { selectedFlight } = useContext(FlightContext);
   const { selectedCollection } = useContext(CollectionContext);
+  const { chartOpen } = useContext(FlightContext);
   const googleMapsUrl = 'http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}&hl=ru';
   const googleSatelliteUrl = 'http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}&hl=ru';
 
@@ -311,6 +312,8 @@ function MyMapComponent() {
     }
   }, [selectMode]);
 
+  
+
   const [map, setMap] = useState(null);
   const [mapLoaded, setMapLoaded] = useState(false);  
 
@@ -337,6 +340,27 @@ function MyMapComponent() {
       );
     }
   }
+
+  const hideSpectrumPanel = () => {
+    if (spectrumPanelRef.current) {
+      spectrumPanelRef.current.style.display = 'none';
+    }
+  };
+
+  const showSpectrumPanel = () => {
+    if (spectrumPanelRef.current) {
+      spectrumPanelRef.current.style.display = 'block';
+    }
+  };
+
+  useEffect(() => {
+    console.log('chartOpen ',chartOpen);
+    if (chartOpen) {
+      showSpectrumPanel()
+    } else {
+      hideSpectrumPanel()
+    }
+  }, [chartOpen]);
 
 /*   useEffect(() => {
     console.log('mapInstance', mapInstance);
