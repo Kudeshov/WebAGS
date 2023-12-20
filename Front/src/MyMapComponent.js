@@ -401,12 +401,15 @@ function MyMapComponent() {
       panelRef.current.innerHTML = `
         Дата: ${convertDateTime(selectedMeasurement.datetime)}<br>
         Время измерения: 1 сек<br>
-        Счёт в окне: 92 имп/с<br>
-        Высота: ${selectedMeasurement.alt.toFixed(2)} м<br>
+        Счёт в окне: ${selectedMeasurement.countw} имп/с<br>
+        Высота GPS: ${selectedMeasurement.alt.toFixed(2)} м<br>
+        Высота баром.: ${selectedMeasurement.height.toFixed(2)} м<br>
         Долгота: ${selectedMeasurement.lon.toFixed(6)}<br>
         Широта: ${selectedMeasurement.lat.toFixed(6)}<br>
-        Мощность дозы на высоте 1м: <strong>${parseFloat(selectedMeasurement.dose).toFixed(3)}</strong> мкЗв/час<br>
-        Счётчик ГМ: 0 имп/с<br>
+        Мощность дозы (полином): ${parseFloat(selectedMeasurement.dose).toFixed(3)} мкЗв/час<br>
+        Мощность дозы (по окну): ${parseFloat(selectedMeasurement.dosew).toFixed(5)} мкЗв/час<br>
+        Счётчик ГМ1: ${selectedMeasurement.geiger1} имп/с<br>
+        Счётчик ГМ2: ${selectedMeasurement.geiger2} имп/с<br>
         Мощность дозы ГМ: 0 мкЗв/час
       `;
     }
