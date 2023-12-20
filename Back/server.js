@@ -9,13 +9,12 @@ const path = require('path');
 const NSPCHANNELS = 238;
 const SPECDEFTIME = 1;
 const winLow = 20;
-const winHigh = 70;
+const winHigh = 200;
 
 const flightsDirectory = './flights'; // Укажите путь к папке с файлами
 
 // Коэффициенты полинома и калибровочные данные
-/* const eP0 = 70; // кэВ
-const eP1 = 11; // кэВ/канал */
+
 const coeffs_below_550 = [3.88e-23, -6.70e-20, 4.28e-17, -8.48e-15, 5.97e-13];
 const coeffs_above_550 = [-2.08e-27, 8.32e-23, -1.03e-18, 4.67e-15, -9.95e-13];
 
@@ -31,15 +30,6 @@ function calculateConversionFactor(E) {
            coeffs_above_550[2] * E**2 + coeffs_above_550[3] * E + coeffs_above_550[4];
   }
 }
-/* function calculateConversionFactors(eP0, eP1) {
-  let conversionFactors = [];
-  for (let i = 0; i < NSPCHANNELS; i++) {
-    const E = eP0 + eP1 * i; // Calculate the energy for the channel
-    const conversionFactor = calculateConversionFactor(E);  
-    conversionFactors.push(conversionFactor);
-  }
-  return conversionFactors;
-} */
 
 function calculateConversionFactors(eP0, eP1) {
   return Array.from({ length: NSPCHANNELS }, (_, i) => eP0 + eP1 * i)
@@ -53,6 +43,7 @@ class Spectrum {
   }
 
   valueInChannels(start, end, normalized = false) {
+    //console.log(start,end);
     let result = 0;
 
     if (start < 0) start = 0;
@@ -80,52 +71,8 @@ class Spectrum {
     // Перевод из Зв/с в мкЗв/ч
     return totalDose * 1e6 * 3600;
   }
-/*   calculateTotalDose(eP0, eP1, conversionFactors) {
-    let totalDose = 0;
-    for (let i = 0; i < NSPCHANNELS; i++) {
-      totalDose += this.channels[i] * conversionFactors[i]; 
-    }
-    // Перевод из Зв/с в мкЗв/ч
-    return totalDose * 1e6 * 3600;
-  } */
+
 }
-
-/* function toLLA(x, y, z) {
-  if (Math.abs(x) < 100 || Math.abs(y) < 100) {
-    return { lat: -1, lon: -1 };
-  }
-
-  const WGS84A = 6378137.0000;
-  const WGS84B = 6356752.31424517929;
-
-  const lx = x / 100.0;
-  const ly = y / 100.0;
-  const lz = z / 100.0;
-
-  const a = WGS84A;
-  const b = WGS84B;
-
-  const e = Math.sqrt(((a * a) - (b * b)) / (a * a));
-  const e1 = Math.sqrt(((a * a) - (b * b)) / (b * b));
-
-  const p = Math.sqrt((lx * lx) + (ly * ly));
-  const q = Math.atan2((lz * a), (p * b));
-
-  const lon = Math.atan2(ly, lx);
-  const lat = Math.atan2(
-    (lz + (e1 * e1) * b * Math.pow(Math.sin(q), 3)),
-    (p - (e * e) * a * Math.pow(Math.cos(q), 3))
-  );
-
-  const N = a / Math.sqrt(1 - ((e * e) * Math.pow(Math.sin(lat), 2)));
-  const alt = (p / Math.cos(lat)) - N;
-
-  return {
-    lat: (lat * 180.0 / Math.PI),
-    lon: (lon * 180.0 / Math.PI),
-    alt: alt
-  };
-} */
 
 const WGS84A = 6378137.0000;
 const WGS84B = 6356752.31424517929;
@@ -169,6 +116,128 @@ function toLLA(x, y, z) {
   };
 }
 
+function getDose(value, height, gm = false, gmNum = 1, gm1Coeff, gm2Coeff, winCoeff) {
+  let result = 0;
+  
+  if (gm) {
+    result = value * (gmNum === 1 ? gm1Coeff : gm2Coeff);
+  } else {
+    result = value * winCoeff;
+  }
+
+  if (height > 1) {
+    const Kh = 0.988 - 0.1768 * Math.log(Math.abs(height));
+    if (Kh && result > 0.15) {
+      result = (result - 0.15) / Kh + 0.15; // перевод в мкЗв/час
+    }
+  }
+  console.log(value, result);
+  // Предполагаем, что результат уже в мкЗв/час
+  return result;
+}
+
+
+app.get('/api/data/:dbname/:collectionId', (req, res) => {
+  const dbname = req.params.dbname;
+  const collectionId = req.params.collectionId;
+  console.log(dbname, ' ', collectionId);
+
+  if (!dbname || dbname === 'null' || !collectionId || collectionId === 'null') {
+    res.status(400).send('Invalid database name or collection ID');
+    return;
+  }
+
+  const db_current = new sqlite3.Database(`${flightsDirectory}/${dbname}.sqlite`, (err) => {
+    if (err) {
+      console.error(err.message);
+      return;
+    }
+    console.log(`Connected to the database ${dbname}`);
+  });
+
+  // Получение коэффициентов из таблицы arms_settings
+  db_current.get("SELECT gm1Coeff, gm2Coeff, winCoeff FROM arms_settings LIMIT 1", [], (err, settings) => {
+    if (err) {
+      console.error(err.message);
+      res.status(500).send('Error querying the arms_settings');
+      return;
+    }
+
+    if (!settings) {
+      res.status(404).send('Settings not found');
+      return;
+    }
+
+    console.log(settings);
+
+    const { gm1Coeff, gm2Coeff, winCoeff } = settings;
+
+    // Запрос для получения калибровочных коэффициентов
+    const sqlCalibration = `SELECT P0, P1 FROM collection WHERE _id = ?`;
+    db_current.get(sqlCalibration, [collectionId], (err, calibration) => {
+      if (err) {
+        console.error(err.message);
+        res.status(500).send('Error querying the calibration data');
+        return;
+      }
+
+      if (!calibration) {
+        res.status(404).send('Calibration data not found');
+        return;
+      }
+
+      const eP0 = calibration.P0;
+      const eP1 = calibration.P1;
+      let doseRateConversionFactors = calculateConversionFactors(eP0, eP1);
+
+      const B = parseInt(collectionId, 10) + 0xFFFF;
+      const sql = `SELECT * FROM measurement WHERE (_id >= ${collectionId}) AND (_id <= ${B})`;
+
+      db_current.all(sql, [], (err, rows) => {
+        if (err) {
+          console.error(err.message);
+          return;
+        }
+
+        const results = rows.map(row => {
+          let coords = toLLA(row.gpsX, row.gpsY, row.gpsZ);
+
+          if(row.spectrum === undefined) {
+            console.error("spectrum is undefined for row: ", row);
+            return null;
+          }
+
+          const buffer = Buffer.from(row.spectrum, 'binary');
+          const spectrumData = [];
+          for (let i = 0; i < NSPCHANNELS; i++) {
+            spectrumData.push(buffer.readUInt16LE(i * 2));
+          }
+
+          const spectrum = new Spectrum(spectrumData, SPECDEFTIME);
+          const countInWindow = spectrum.valueInChannels(winLow, winHigh, false);
+          const windose = getDose(countInWindow, row.rHeight, false, 1, gm1Coeff, gm2Coeff, 0.0073);
+
+          return {
+            id: row._id,
+            datetime: row.dateTime,
+            lat: coords.lat,
+            lon: coords.lon,
+            alt: coords.alt,
+            height: row.rHeight,
+            countw: countInWindow,
+            dosew: windose,
+            dose: spectrum.calculateTotalDose(eP0, eP1, doseRateConversionFactors),
+            geiger1: row.geiger1,
+            geiger2: row.geiger2
+          };
+        }).filter(item => item !== null);
+
+        res.json(results);
+      });
+    });
+  });
+});
+/* 
 app.get('/api/data/:dbname/:collectionId', (req, res) => {
   const dbname = req.params.dbname;
   const collectionId = req.params.collectionId;
@@ -229,21 +298,26 @@ app.get('/api/data/:dbname/:collectionId', (req, res) => {
           spectrumData.push(buffer.readUInt16LE(i * 2));
         }
         const spectrum = new Spectrum(spectrumData, SPECDEFTIME);
+        const countInWindow = spectrum.valueInChannels(winLow, winHigh, true);
+        const windose = getDose(countInWindow, coords.alt);
         return {
           id: row._id,
           datetime: row.dateTime,
           lat: coords.lat,
           lon: coords.lon,
           alt: coords.alt,
-          spectrumValue: spectrum.valueInChannels(winLow, winHigh, true),
-          dose: spectrum.calculateTotalDose(eP0, eP1, doseRateConversionFactors)
+          countw: countInWindow,
+          dosew: windose,
+          dose: spectrum.calculateTotalDose(eP0, eP1, doseRateConversionFactors),
+          geiger1: row.geiger1,
+          geiger2: row.geiger2
         };
       }).filter(item => item !== null);
       console.timeEnd('ProcessingTime');
       res.json(results);
     });
   });
-});
+}); */
 
 app.get('/api/collection/:dbname', (req, res) => {
   const dbname = req.params.dbname;
