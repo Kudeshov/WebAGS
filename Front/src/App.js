@@ -33,6 +33,9 @@ function App() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [chartOpen, setChartOpen] = useState(false);
   const [selectedCollection, setSelectedCollection] = useState(null);
+  // Глобальные состояния для хранения значений высот
+  const [heightFrom, setHeightFrom] = useState(0);
+  const [heightTo, setHeightTo] = useState(1000);
 
   const toggleDrawer = () => {
     setDrawerOpen(!drawerOpen);
@@ -45,7 +48,7 @@ function App() {
 
   return (
     <CollectionContext.Provider value={{ selectedCollection, setSelectedCollection }}>
-    <FlightContext.Provider value={{ selectedFlight, setSelectedFlight, chartOpen }}>
+    <FlightContext.Provider value={{ selectedFlight, setSelectedFlight, chartOpen, heightFrom, setHeightFrom, heightTo, setHeightTo }}>
       <Grid container spacing={0} sx={{...gridStyles, ...tallGrid}} >
       <CustomToolbar 
         onToggleDrawer={toggleDrawer} drawerOpen={drawerOpen} 

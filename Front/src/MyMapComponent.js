@@ -91,6 +91,7 @@ function MyMapComponent() {
     setSelectMode(!selectMode);
   };
   const { selectedFlight } = useContext(FlightContext);
+  
   const { selectedCollection } = useContext(CollectionContext);
   const { chartOpen } = useContext(FlightContext);
   const googleMapsUrl = 'http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}&hl=ru';
@@ -108,7 +109,10 @@ function MyMapComponent() {
   const panelRef = useRef(null); // Ссылка на DOM-элемент панели
   const spectrumPanelRef = useRef(null); 
   const [isCtrlPressed, setIsCtrlPressed] = useState(false);
- 
+
+  const { heightFrom, setHeightFrom } = useContext(FlightContext);
+  const { heightTo, setHeightTo } = useContext(FlightContext);
+
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.ctrlKey) {
@@ -173,7 +177,16 @@ function MyMapComponent() {
     fetch(apiUrl)
       .then(response => response.json())
       .then(data => {
-        setMeasurements(data);
+
+        const filteredData = data.filter(measurement => {
+          const height = measurement.height; // Используйте подходящее свойство для высоты
+          return height >= heightFrom && height <= heightTo;
+        });
+
+        // Остальная часть обработки данных
+        setMeasurements(filteredData);
+
+        //setMeasurements(data);
         console.log("Data from API:", data);
   
         if (data.length > 0) {
@@ -209,7 +222,7 @@ function MyMapComponent() {
           }
         }
       });
-  }, [selectedFlight, selectedCollection]);
+  }, [selectedFlight, selectedCollection, heightFrom, heightTo]);
   
   const [selectedPoints, setSelectedPoints] = useState([]);
 
