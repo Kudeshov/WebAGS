@@ -6,6 +6,7 @@ import MyDataGrid from './MyDataGrid';
 import { Grid } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import Drawer from '@mui/material/Drawer';
+import { FlightDataProvider } from './FlightDataContext';
 
 // Создание контекста
 export const FlightContext = React.createContext();
@@ -38,8 +39,10 @@ function App() {
   };
 
   return (
-    <CollectionContext.Provider value={{ selectedCollection, setSelectedCollection }}>
-    <FlightContext.Provider value={{ selectedFlight, setSelectedFlight }}>
+/*     <CollectionContext.Provider value={{ selectedCollection, setSelectedCollection }}>
+    <FlightContext.Provider value={{ selectedFlight, setSelectedFlight }}> */
+    <FlightDataProvider>
+    
       <Grid container spacing={0} sx={{...gridStyles, ...tallGrid}} >
       <CustomToolbar onToggleDrawer={toggleDrawer}  drawerOpen={drawerOpen} />
         <Grid container spacing={0} >
@@ -54,28 +57,12 @@ function App() {
          {drawerOpen && <Grid item style={{ width: '390px' }}>
             <MyDataGrid />
           </Grid>}   
-{/* 
-          {drawerOpen &&
-            <Grid item xs={3}>
-              <Drawer
-                sx={{
-                  width: 380,
-                  flexShrink: 0,
-                  '& .MuiDrawer-paper': {
-                    width: 380,
-                  },
-                }}
-                variant="persistent"
-                anchor="right"
-                open={drawerOpen}
-              >
-                <MyDataGrid />
-              </Drawer>
-            </Grid>}    */}
          </Grid>
       </Grid>  
-    </FlightContext.Provider>
-    </CollectionContext.Provider>
+    </FlightDataProvider>
+/*     </FlightContext.Provider>
+    
+    </CollectionContext.Provider> */
   );
 }
 

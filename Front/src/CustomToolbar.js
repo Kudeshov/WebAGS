@@ -20,8 +20,10 @@ import TextField from '@mui/material/TextField';
 
 import MapIcon from '@mui/icons-material/Map';
 import { Rect } from 'victory';
-import { FlightContext } from './App';
-import { CollectionContext } from './App';
+/* import { FlightContext } from './App';
+import { CollectionContext } from './App'; */
+
+import { FlightDataContext } from './FlightDataContext';
 
 function convertDateTime(dateTimeString) {
   if (!dateTimeString) return '';
@@ -37,13 +39,15 @@ function convertDateTime(dateTimeString) {
 const CustomToolbar = ({ onToggleDrawer, drawerOpen }) => {
   const [anchorEl, setAnchorEl] = useState(null);
   const [anchorCollection, setAnchorCollection] = useState(null);
-  const { selectedCollection, setSelectedCollection } = useContext(CollectionContext);
+
+  const { selectedCollection, setSelectedCollection } = useContext(FlightDataContext);
+  const { selectedFlight, setSelectedFlight } = useContext(FlightDataContext);
 
   const [mapMenuAnchorEl, setMapMenuAnchorEl] = useState(null);
   const [filterMenuAnchorEl, setFilterMenuAnchorEl] = useState(null);
   const [unitMenuAnchorEl, setUnitMenuAnchorEl] = useState(null);
   const [settingsMenuAnchorEl, setSettingsMenuAnchorEl] = useState(null);
-  const { selectedFlight } = useContext(FlightContext);
+
   
   const [filterMenuAnchorE2, setDatabaseMenuAnchorE2] = useState(null);
   const [filterMenuAnchorCollection, setDatabaseMenuAnchorCollection] = useState(null);
@@ -207,7 +211,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen }) => {
     setSelectedItem(value);
   };
 
-  const { setSelectedFlight } = useContext(FlightContext);
+
   const appBarHeight = theme.mixins.toolbar.minHeight;
 
   return (

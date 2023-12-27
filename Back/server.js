@@ -64,7 +64,6 @@ class Spectrum {
     return this.channels.map(value => value / this.liveTime);
   }
 
-
   calculateTotalDose(eP0, eP1, conversionFactors) {
     // Используем метод reduce для суммирования произведений значений каналов и коэффициентов
     const totalDose = this.channels.reduce((sum, channel, index) => sum + channel * conversionFactors[index], 0);
@@ -131,7 +130,7 @@ function getDose(value, height, gm = false, gmNum = 1, gm1Coeff, gm2Coeff, winCo
       result = (result - 0.15) / Kh + 0.15; // перевод в мкЗв/час
     }
   }
-  console.log(value, result);
+  //console.log(value, result);
   // Предполагаем, что результат уже в мкЗв/час
   return result;
 }
