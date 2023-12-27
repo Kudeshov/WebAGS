@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useContext} from 'react';
-import { AppBar, Toolbar, IconButton, Menu, MenuItem, ListItemIcon, ListSubheader } from '@mui/material';
 import { Flight, MoreVert, Person, Settings } from '@mui/icons-material';
 import { ReactComponent as PlaneIcon } from './icons/plane.svg';
 import { ReactComponent as AnalyticsIcon } from './icons/analytics.svg';
@@ -15,8 +14,10 @@ import Tooltip from '@mui/material/Tooltip';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import { useTheme } from '@mui/material/styles';
-import TextField from '@mui/material/TextField';
-
+import Typography from '@mui/material/Typography'; // Import Typography
+import FilterListIcon from '@mui/icons-material/FilterList';
+import TuneIcon from '@mui/icons-material/Tune';
+import { AppBar, Toolbar, IconButton, Menu, MenuItem, ListSubheader, Dialog, DialogTitle, DialogContent, DialogActions,  TextField, Button } from '@mui/material';
 
 import MapIcon from '@mui/icons-material/Map';
 import { Rect } from 'victory';
@@ -36,7 +37,7 @@ function convertDateTime(dateTimeString) {
   return `${day}.${month}.${year} ${hours}:${minutes}`;
 }
 
-const CustomToolbar = ({ onToggleDrawer, drawerOpen }) => {
+const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen }) => {
   const [anchorEl, setAnchorEl] = useState(null);
   const [anchorCollection, setAnchorCollection] = useState(null);
 
@@ -61,6 +62,46 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen }) => {
   const [selectedItem, setSelectedItem] = useState(null);
 
   const [buttonClickCount, setButtonClickCount] = useState(0);
+  const [heightFilterDialogOpen, setHeightFilterDialogOpen] = useState(false);
+
+  const { heightFrom, setHeightFrom } = useContext(FlightDataContext);
+  const { heightTo, setHeightTo } = useContext(FlightDataContext);
+
+  // Функции для открытия и закрытия диалогового окна
+  const handleHeightFilterClickOpen = () => {
+    setHeightFilterDialogOpen(true);
+  };
+
+  const handleHeightFilterClose = () => {
+    setHeightFilterDialogOpen(false);
+  };
+
+    // Локальные состояния для временного хранения значений высот
+    const [localHeightFrom, setLocalHeightFrom] = useState(0);
+    const [localHeightTo, setLocalHeightTo] = useState(1000);
+  
+    // Функции для обновления локальных состояний
+    const handleLocalHeightFromChange = (event) => {
+      setLocalHeightFrom(event.target.value);
+    };
+  
+    const handleLocalHeightToChange = (event) => {
+      setLocalHeightTo(event.target.value);
+    };
+  
+  // Функция применения фильтра
+  const applyHeightFilter = () => {
+    // Обновление глобального состояния или контекста с новыми значениями
+    setHeightFrom(localHeightFrom);
+    setHeightTo(localHeightTo);
+
+    // Фильтрация данных с использованием новых значений высоты
+    // filterDataByHeight(localHeightFrom, localHeightTo);
+
+    // Закрытие диалогового окна
+    setHeightFilterDialogOpen(false);
+  };
+
   const theme = useTheme();
   const tableButtonStyle = {
     fill: drawerOpen ? "white" : "white",
@@ -76,6 +117,10 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen }) => {
   // Измените обработчик для кнопки
   const handleDataGridToggle = () => {
     onToggleDrawer();
+  };
+
+  const handleChartToggle = () => {
+    onToggleChart();
   };
 
   useEffect(() => {
@@ -177,6 +222,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen }) => {
   };
 
   const handleFlightSelect = (flightName) => {
+    setSelectedCollection(null); // Установите в null перед получением новых коллекций
     setSelectedFlight(flightName);
     // Закрыть меню после выбора
     setDatabaseMenuAnchorE2(null);
@@ -280,7 +326,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen }) => {
 
        
 
-        <Menu
+       {/*  <Menu
           anchorEl={mapMenuAnchorEl}
           open={Boolean(mapMenuAnchorEl)}
           onClose={handleMapMenuClose}
@@ -306,8 +352,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen }) => {
             </ListItemIcon>
             Open OpenStreetMap
           </MenuItem>
-          {/* Add more menu items as needed */}
-        </Menu>
+        </Menu> */}
 
         <div style={{
           backgroundColor: drawerOpen ? "white" : "transparent",
@@ -321,7 +366,19 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen }) => {
           </IconButton>
         </div>
 
-<IconButton
+        <div style={{
+          backgroundColor: chartOpen ? "white" : "transparent",
+          borderRadius: '50%',
+          padding: '0px',  
+        }}>
+          <IconButton color="inherit" onClick={handleChartToggle}>
+            <Tooltip title="График">
+              <ChartIcon style={{ fill: chartOpen ? theme.palette.primary.main : "white", width: 24, height: 24 }} />
+            </Tooltip>
+          </IconButton>
+        </div>
+
+{/* <IconButton
   color="inherit"
   onClick={() => {
     // Добавьте здесь логику для "Графики"
@@ -330,7 +387,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen }) => {
 <Tooltip title="Графики">
           <ChartIcon style={{ fill: "white", width: 24, height: 24 }} />
           </Tooltip>
-</IconButton>
+</IconButton> */}
 <IconButton
   color="inherit"
   onClick={() => {
@@ -347,26 +404,45 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen }) => {
 
         <IconButton
           color="inherit"
-          onClick={handleFilterMenuClick}
+          onClick={handleHeightFilterClickOpen} // Обработчик открытия диалога
         >
-         <Tooltip title="Отфильтровать по высоте">
-          <FilterIcon style={{ fill: "white", width: 24, height: 24 }} />
-          </Tooltip>
-
+          <TuneIcon />
         </IconButton>
-        <Menu
-          anchorEl={filterMenuAnchorEl}
-          open={Boolean(filterMenuAnchorEl)}
-          onClose={handleFilterMenuClose}
-          MenuListProps={{
-            subheader: <ListSubheader>Отфильтровать по высоте</ListSubheader>,
-          }}
-        >
-          {/* Add filter options */}
-          <MenuItem onClick={handleFilterMenuClose}>Option 1</MenuItem>
-          <MenuItem onClick={handleFilterMenuClose}>Option 2</MenuItem>
-          {/* Add more filter options as needed */}
-        </Menu>
+
+        {/* Диалоговое окно для фильтрации по высоте */}
+        <Dialog open={heightFilterDialogOpen} onClose={() => setHeightFilterDialogOpen(false)}>
+          <DialogTitle>Фильтр по высоте</DialogTitle>
+          <DialogContent>
+            <TextField
+              autoFocus
+              margin="dense"
+              label="Высота от"
+              type="number"
+              fullWidth
+              variant="standard"
+              value={localHeightFrom}
+              onChange={handleLocalHeightFromChange}
+            />
+            <TextField
+              margin="dense"
+              label="Высота до"
+              type="number"
+              fullWidth
+              variant="standard"
+              value={localHeightTo}
+              onChange={handleLocalHeightToChange}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setHeightFilterDialogOpen(false)} color="primary">
+              Отмена
+            </Button>
+            <Button onClick={applyHeightFilter} color="primary">
+              Применить
+            </Button>
+          </DialogActions>
+        </Dialog>
+
         <IconButton
           color="inherit"
           onClick={handleUnitMenuClick}

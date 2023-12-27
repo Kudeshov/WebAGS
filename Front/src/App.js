@@ -29,31 +29,36 @@ function App() {
 
   const theme = useTheme();
   const appBarHeight = theme.mixins.toolbar.minHeight;
-  console.log('appBarHeight', appBarHeight);
-  const [selectedFlight, setSelectedFlight] = useState(null);
+  //console.log('appBarHeight', appBarHeight);
+  //const [selectedFlight, setSelectedFlight] = useState(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [selectedCollection, setSelectedCollection] = useState(null);
+  const [chartOpen, setChartOpen] = useState(false);
+  //const [selectedCollection, setSelectedCollection] = useState(null);
+
 
   const toggleDrawer = () => {
     setDrawerOpen(!drawerOpen);
+  };
+
+  const toggleChart = () => {
+    console.log('App.js chartopen', chartOpen);
+    setChartOpen(!chartOpen);
   };
 
   return (
 /*     <CollectionContext.Provider value={{ selectedCollection, setSelectedCollection }}>
     <FlightContext.Provider value={{ selectedFlight, setSelectedFlight }}> */
     <FlightDataProvider>
-    
       <Grid container spacing={0} sx={{...gridStyles, ...tallGrid}} >
-      <CustomToolbar onToggleDrawer={toggleDrawer}  drawerOpen={drawerOpen} />
+      <CustomToolbar 
+        onToggleDrawer={toggleDrawer} drawerOpen={drawerOpen} 
+        onToggleChart={toggleChart} chartOpen={chartOpen} 
+      />
         <Grid container spacing={0} >
 
           <Grid item xs>
-            <MyMapComponent />
+            <MyMapComponent chartOpen={chartOpen} />
           </Grid>      
-{/*           <Grid item xs={drawerOpen ? 9 : 12}>
-            <MyMapComponent drawerOpen={drawerOpen} />
-          </Grid>
- */}
          {drawerOpen && <Grid item style={{ width: '390px' }}>
             <MyDataGrid />
           </Grid>}   

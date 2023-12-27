@@ -76,7 +76,7 @@ function MapEffect({ setMapInstance }) {
   return null;
 }
 
-function MyMapComponent() {
+function MyMapComponent({ chartOpen }) {
   const [mapInstance, setMapInstance] = React.useState(null);
   const [selectMode, setSelectMode] = useState(false);
 
@@ -90,6 +90,7 @@ function MyMapComponent() {
   const { selectedCollection } = useContext(FlightDataContext);
   const { selectedFlight } = useContext(FlightDataContext);
 
+  //const { chartOpen } = useContext(FlightContext);
   const googleMapsUrl = 'http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}&hl=ru';
   const googleSatelliteUrl = 'http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}&hl=ru';
 
@@ -112,7 +113,10 @@ function MyMapComponent() {
   const panelRef = useRef(null); // Ссылка на DOM-элемент панели
   const spectrumPanelRef = useRef(null); 
   const [isCtrlPressed, setIsCtrlPressed] = useState(false);
- 
+
+  const { heightFrom, setHeightFrom } = useContext(FlightDataContext);
+  const { heightTo, setHeightTo } = useContext(FlightDataContext);
+
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.ctrlKey) {
@@ -164,7 +168,16 @@ function MyMapComponent() {
     fetch(apiUrl)
       .then(response => response.json())
       .then(data => {
-        setMeasurements(data);
+
+        const filteredData = data.filter(measurement => {
+          const height = measurement.height; // Используйте подходящее свойство для высоты
+          return height >= heightFrom && height <= heightTo;
+        });
+
+        // Остальная часть обработки данных
+        setMeasurements(filteredData);
+
+        //setMeasurements(data);
         console.log("Data from API:", data);
   
         if (data.length > 0) {
@@ -317,6 +330,8 @@ function MyMapComponent() {
     }
   }, [selectMode]);
 
+  
+
   const [map, setMap] = useState(null);
   const [mapLoaded, setMapLoaded] = useState(false);  
 
@@ -343,6 +358,34 @@ function MyMapComponent() {
       );
     }
   }
+
+  const hideSpectrumPanel = () => {
+    if (spectrumPanelRef.current) {
+      spectrumPanelRef.current.style.display = 'none';
+    }
+  };
+
+  const showSpectrumPanel = () => {
+    if (spectrumPanelRef.current) {
+      spectrumPanelRef.current.style.display = 'block';
+    }
+  };
+
+  useEffect(() => {
+    console.log('chartOpen ',chartOpen);
+    if (chartOpen) {
+      showSpectrumPanel()
+    } else {
+      hideSpectrumPanel()
+    }
+  }, [chartOpen]);
+
+/*   useEffect(() => {
+    console.log('mapInstance', mapInstance);
+    if (mapInstance && spectrumData) {
+      createSpectrumPanel(mapInstance, spectrumData, isLoading);
+    }
+  }, [mapInstance, spectrumData, isLoading]); */
   
   function createSimpleControl(map, panelRef) {
     var control = L.control({ position: 'bottomright' });

@@ -11,11 +11,38 @@ export const FlightDataProvider = ({ children }) => {
   const [selectedFlight, setSelectedFlight] = useState(null);
   const [selectedCollection, setSelectedCollection] = useState(null);
   const [measurements, setMeasurements] = useState([]);
+  const [validMeasurements, setValidMeasurements] = useState([]);
+
   const [minDoseValue, setMinDoseValue] = useState(null);
   const [maxDoseValue, setMaxDoseValue] = useState(null);
 
   const [geoCenter, setGeoCenter] = useState(initialCenter);
-  const [validMeasurements, setValidMeasurements] = useState([]);
+  // Глобальные состояния для хранения значений высот
+  const [heightFrom, setHeightFrom] = useState(0);
+  const [heightTo, setHeightTo] = useState(1000);
+
+  const fetchCollections = useCallback(() => {
+    console.log('вызвана fetchCollections')
+    if (selectedFlight) {
+
+      fetch(`http://localhost:3001/api/collection/${selectedFlight}`)
+        .then(response => response.json())
+        .then(collections => {
+          // Автоматически выбираем первую коллекцию из списка
+          if (collections && collections.length > 0) {
+            setSelectedCollection(collections[0]);
+          } else {
+            setSelectedCollection(null);
+          }
+        })
+        .catch(error => console.error('Ошибка при загрузке списка коллекций:', error));
+    }
+  }, [selectedFlight]);
+
+  useEffect(() => {
+    console.log('вызвана fetchCollections из useEffect')
+    fetchCollections();
+  }, [fetchCollections]);
 
   const fetchMeasurements = useCallback(() => {
     if (selectedFlight && selectedCollection) {
@@ -43,22 +70,6 @@ export const FlightDataProvider = ({ children }) => {
     }
   }, [selectedFlight, selectedCollection]);
   
-/* 
-  const fetchMeasurements = useCallback(() => {
-    console.log('fetchMeasurements selectedFlight', selectedFlight, 'selectedCollection?._id ', selectedCollection?._id || null );
-    if (selectedFlight && selectedCollection) {
-      
-      const apiUrl = `http://localhost:3001/api/data/${selectedFlight}/${selectedCollection?._id || null}`;
-      console.log('fetchMeasurements apiUrl ', apiUrl);
-      fetch(apiUrl)
-        .then(response => response.json())
-        .then(data => {
-          setMeasurements(data);
-        });
-    }
-  }, [selectedFlight, selectedCollection]);
-   */
-
   useEffect(() => {
     fetchMeasurements();
   }, [fetchMeasurements]);
@@ -74,7 +85,11 @@ export const FlightDataProvider = ({ children }) => {
       minDoseValue,
       maxDoseValue,
       geoCenter,
-      validMeasurements
+      validMeasurements,
+      heightFrom, 
+      setHeightFrom,
+      heightTo, 
+      setHeightTo
     }}>
       {children}
     </FlightDataContext.Provider>
