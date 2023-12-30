@@ -1,10 +1,16 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useContext } from 'react';
 import { DataGrid } from '@mui/x-data-grid';
 import { FlightDataContext } from './FlightDataContext';
 
-const MyDataGrid = () => {
-  const { measurements } = useContext(FlightDataContext);
+const MyDataGrid = ({ heightFilterActive }) => {
+  const { measurements, heightFrom, heightTo } = useContext(FlightDataContext);
 
+  // Фильтрация данных измерений по высоте
+  const filteredMeasurements = heightFilterActive 
+    ? measurements.filter(measurement => 
+        measurement.height >= heightFrom && measurement.height <= heightTo)
+    : measurements;
+    
   const columns = [
     { field: 'id', headerName: 'ID', width: 60, hide: true },
     {
@@ -40,7 +46,6 @@ const MyDataGrid = () => {
       width: 70,
       valueFormatter: (params) => params.value.toFixed(2),
     },
-/*     { field: 'alt', headerName: 'Высота GPS', width: 70 }, */
     {
       field: 'dose',
       headerName: 'МЭД',
@@ -53,7 +58,7 @@ const MyDataGrid = () => {
   return (
     <div style={{ height: window.innerHeight - 70, width: '100%' }}>
       <DataGrid
-        rows={measurements}
+        rows={filteredMeasurements}
         columns={columns}
         rowHeight={24} // Уменьшенная высота строки
         sx={{

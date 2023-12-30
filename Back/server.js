@@ -227,7 +227,8 @@ app.get('/api/data/:dbname/:collectionId', (req, res) => {
             dosew: windose,
             dose: spectrum.calculateTotalDose(eP0, eP1, doseRateConversionFactors),
             geiger1: row.geiger1,
-            geiger2: row.geiger2
+            geiger2: row.geiger2,
+            spectrum: spectrum
           };
         }).filter(item => item !== null);
 

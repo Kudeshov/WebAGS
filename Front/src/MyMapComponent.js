@@ -1,12 +1,11 @@
 import React, { useEffect, useState, useRef, useContext } from 'react';
-import { MapContainer, TileLayer, CircleMarker, Popup, LayersControl, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, CircleMarker, LayersControl, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import './MyMapComponent.css';
 import { FeatureGroup } from 'react-leaflet';
 import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { HeatmapLayer } from 'react-leaflet-heatmap-layer-v3';
-import { useTheme } from '@mui/material/styles';
 import { getColor } from './colorUtils';
 import RectangularSelection from './RectangularSelection';
 import { ReactComponent as RectangleIcon } from './icons/rectangle-landscape.svg';
@@ -76,7 +75,7 @@ function MapEffect({ setMapInstance }) {
   return null;
 }
 
-function MyMapComponent({ chartOpen }) {
+function MyMapComponent({ chartOpen, heightFilterActive }) {
   const [mapInstance, setMapInstance] = React.useState(null);
   const [selectMode, setSelectMode] = useState(false);
 
@@ -84,28 +83,19 @@ function MyMapComponent({ chartOpen }) {
   const toggleSelectMode = () => {
     setSelectMode(!selectMode);
   };
-/*   const { selectedFlight } = useContext(FlightContext);
-  const { selectedCollection } = useContext(CollectionContext); */
 
-  const { selectedCollection } = useContext(FlightDataContext);
+/*   const { selectedCollection } = useContext(FlightDataContext); */
   const { selectedFlight } = useContext(FlightDataContext);
 
-  //const { chartOpen } = useContext(FlightContext);
   const googleMapsUrl = 'http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}&hl=ru';
   const googleSatelliteUrl = 'http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}&hl=ru';
 
-  //const [measurements, setMeasurements] = useState([]);
-
-  const { measurements, setMeasurements } = useContext(FlightDataContext);
-  const { validMeasurements, setValidMeasurements } = useContext(FlightDataContext);
+  const { measurements } = useContext(FlightDataContext);
+  const { validMeasurements } = useContext(FlightDataContext);
     
   const { geoCenter } = useContext(FlightDataContext);
 
   const { minDoseValue, maxDoseValue } = useContext(FlightDataContext);
-/*   const [mapCenter, setMapCenter] = useState(initialCenter); */
-
-/*   const [minSpectrumValue, setMinSpectrumValue] = useState(null);
-  const [maxSpectrumValue, setMaxSpectrumValue] = useState(null); */
 
   const [spectrumData, setSpectrumData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -114,8 +104,8 @@ function MyMapComponent({ chartOpen }) {
   const spectrumPanelRef = useRef(null); 
   const [isCtrlPressed, setIsCtrlPressed] = useState(false);
 
-  const { heightFrom, setHeightFrom } = useContext(FlightDataContext);
-  const { heightTo, setHeightTo } = useContext(FlightDataContext);
+  const { heightFrom } = useContext(FlightDataContext);
+  const { heightTo } = useContext(FlightDataContext);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -139,15 +129,15 @@ function MyMapComponent({ chartOpen }) {
     };
   }, []);  
 
-  function SpectrumControlComponent({ data, isLoading }) {
+/*   function SpectrumControlComponent({ data, isLoading }) {
     // Компонент для рендеринга внутри элемента управления Leaflet
     return (
       <div>
-        {/* Ваш React-компонент для отображения графика */}
+        
         <SpectrumChartWithLabel data={data} isLoading={isLoading} />
       </div>
     );
-  }
+  } */
   
   const handlePointClick = (measurement) => {
     if (isCtrlPressed) {
@@ -160,63 +150,6 @@ function MyMapComponent({ chartOpen }) {
   
     fetchSpectrumData(measurement);
   };
-  
- /*  useEffect(() => {
-    if (!selectedFlight) return;
-    const apiUrl = `http://localhost:3001/api/data/${selectedFlight}/${selectedCollection?._id || null}`;
-    console.log('myMapComponent apiUrl ', apiUrl);
-    fetch(apiUrl)
-      .then(response => response.json())
-      .then(data => {
-
-        const filteredData = data.filter(measurement => {
-          const height = measurement.height; // Используйте подходящее свойство для высоты
-          return height >= heightFrom && height <= heightTo;
-        });
-
-        // Остальная часть обработки данных
-        setMeasurements(filteredData);
-
-        //setMeasurements(data);
-        console.log("Data from API:", data);
-  
-        if (data.length > 0) {
-          const spectrumValues = data.map(measurement => measurement.dose);
-          setMinSpectrumValue(Math.min(...spectrumValues));
-          setMaxSpectrumValue(Math.max(...spectrumValues));
-
-          console.log('min ', Math.min(...spectrumValues), ' max', Math.max(...spectrumValues))
-  
-          // Фильтрация данных для исключения нулевых значений широты и долготы
-          const filteredData = data.filter(measurement => measurement.lat >= 0 && measurement.lon >= 0);
-  
-          if (filteredData.length > 0) {
-            // Найти минимальную и максимальную широту и долготу
-            const latitudes = filteredData.map(measurement => measurement.lat);
-            const longitudes = filteredData.map(measurement => measurement.lon);
-            const minLat = Math.min(...latitudes);
-            const maxLat = Math.max(...latitudes);
-            const minLng = Math.min(...longitudes);
-            const maxLng = Math.max(...longitudes);
-  
-            // Вычислить средние значения для широты и долготы
-            const centerLat = (minLat + maxLat) / 2;
-            const centerLng = (minLng + maxLng) / 2;
-            console.log( centerLat, centerLng );
-            // Установить центр карты
-            setMapCenter({
-              lat: centerLat,
-              lng: centerLng
-            });
-
-            if (mapInstance) {
-              mapInstance.setView([centerLat, centerLng], mapInstance.getZoom());
-            }
-          }
-        }
-      });
-  }, [selectedFlight, selectedCollection]); */
-
 
   useEffect(() => {
 
@@ -226,35 +159,11 @@ function MyMapComponent({ chartOpen }) {
     if (!validMeasurements.length) return;
 
     mapInstance?.setView([geoCenter.lat, geoCenter.lng], mapInstance.getZoom());
-    
 
-/*     const validMeasurements = measurements.filter(m => m.lat >= 0 && m.lon >= 0);
-    if (validMeasurements.length > 0) {
-
-      const spectrumValues = validMeasurements.map(measurement => measurement.dose);
-      console.log('min ', Math.min(...spectrumValues), ' max', Math.max(...spectrumValues))
-      setMinSpectrumValue(Math.min(...spectrumValues));
-      setMaxSpectrumValue(Math.max(...spectrumValues));
-
-      const latitudes = validMeasurements.map(m => m.lat);
-      const longitudes = validMeasurements.map(m => m.lon);
-      const minLat = Math.min(...latitudes);
-      const maxLat = Math.max(...latitudes);
-      const minLng = Math.min(...longitudes);
-      const maxLng = Math.max(...longitudes);
-  
-      const centerLat = (minLat + maxLat) / 2;
-      const centerLng = (minLng + maxLng) / 2;
-      
-      setMapCenter({ lat: centerLat, lng: centerLng });
-
-      mapInstance?.setView([centerLat, centerLng], mapInstance.getZoom());
-    } */
-  }, [measurements, mapInstance]);
+  }, [measurements, mapInstance, validMeasurements, geoCenter]);
   
   
   const [selectedPoints, setSelectedPoints] = useState([]);
-
 
   const fetchSpectrumData = (measurement) => {
     if (!selectedFlight) return;
@@ -269,13 +178,18 @@ function MyMapComponent({ chartOpen }) {
           value,
         }));
         setSpectrumData(preparedData);
+        console.log('preparedData length ', preparedData.length);
+        
+
         setIsLoading(false);
   
         // Создаем панель графика, если она еще не существует
         if (!spectrumPanelRef.current) {
+          console.log('Create spectrum panel');
           createSpectrumPanel(mapInstance);
         }
-  
+        
+        console.log('Update spectrum panel');
         // Обновляем панель графика
         updateSpectrumPanel(preparedData, isLoading);
       });
@@ -294,10 +208,6 @@ function MyMapComponent({ chartOpen }) {
     const intensity = (measurement.dose - minDoseValue) / (maxDoseValue - minDoseValue);
     return [measurement.lat, measurement.lon, intensity];
   });
-
-
-  const theme = useTheme();
-  const appBarHeight = theme.mixins.toolbar.minHeight;
 
   const handleSelectionComplete = (bounds) => {
     console.log('Selected Bounds:', bounds);
@@ -331,17 +241,13 @@ function MyMapComponent({ chartOpen }) {
   }, [selectMode]);
 
   
-
-  const [map, setMap] = useState(null);
-  const [mapLoaded, setMapLoaded] = useState(false);  
-
   function createSpectrumPanel(map) {
     const spectrumControl = L.control({ position: 'bottomright' });
   
     spectrumControl.onAdd = function() {
       spectrumPanelRef.current = L.DomUtil.create('div', 'spectrum-panel');
       ReactDOM.render(
-        <SpectrumChartWithLabel data={spectrumData} isLoading={isLoading} />,
+        <SpectrumChartWithLabel data={spectrumData} isLoading={false} />,
         spectrumPanelRef.current
       );
       return spectrumPanelRef.current;
@@ -353,7 +259,7 @@ function MyMapComponent({ chartOpen }) {
   const updateSpectrumPanel = (data, isLoading) => {
     if (spectrumPanelRef.current) {
       ReactDOM.render(
-        <SpectrumChartWithLabel data={data} isLoading={isLoading} />,
+        <SpectrumChartWithLabel data={data} isLoading={false} />,
         spectrumPanelRef.current
       );
     }
@@ -489,11 +395,14 @@ function MyMapComponent({ chartOpen }) {
 
       <LayersControl.Overlay checked name="Измерения">
         <FeatureGroup>
-          {measurements
-            .filter(measurement => measurement.lat >= 0 && measurement.lon >= 0) // Фильтруем измерения с валидными координатами
-            .map((measurement, index) => {
-              if (minDoseValue === null || maxDoseValue === null) return;
-              //console.log('minSpectrumValue maxSpectrumValue', minSpectrumValue, maxSpectrumValue);
+        {validMeasurements
+
+          .filter(measurement => 
+            !heightFilterActive || // Apply filter only if heightFilterActive is true
+            (measurement.height >= heightFrom && measurement.height <= heightTo)
+          )
+          .map((measurement) => {
+              if (minDoseValue === null || maxDoseValue === null) return null;
               const color = getColor(measurement.dose, minDoseValue, maxDoseValue);
               const isSelected = selectedPoints.some(p => p.id === measurement.id);
               const markerStyle = {
@@ -503,16 +412,12 @@ function MyMapComponent({ chartOpen }) {
                 radius: isSelected ? 7 : 5, // Больший радиус для выбранного маркера
             };
 
-              //const color = getColor(measurement.dose, minSpectrumValue, maxSpectrumValue);
               const markerKey = `${measurement.id}-${isSelected}`;
               return (
                   <CircleMarker
                       key={markerKey}
                       center={[measurement.lat, measurement.lon]}
                       {...markerStyle}
-/*                       eventHandlers={{
-                          click: () => fetchSpectrumData(measurement),
-                      }} */
                       eventHandlers={{
                         click: () => handlePointClick(measurement),
                       }}

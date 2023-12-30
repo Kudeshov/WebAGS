@@ -4,14 +4,8 @@ import MyMapComponent from './MyMapComponent';
 import CustomToolbar from './CustomToolbar';
 import MyDataGrid from './MyDataGrid';
 import { Grid } from '@mui/material';
-import { useTheme } from '@mui/material/styles';
-import Drawer from '@mui/material/Drawer';
 import { FlightDataProvider } from './FlightDataContext';
-
-// Создание контекста
-export const FlightContext = React.createContext();
-export const CollectionContext = React.createContext();
-
+import DroneFlight3D from './DroneFlightVisualization';
 
 const tallGrid = {
   height: '100%'
@@ -26,15 +20,14 @@ const gridStyles = {
 };
 
 function App() {
-
-  const theme = useTheme();
-  const appBarHeight = theme.mixins.toolbar.minHeight;
-  //console.log('appBarHeight', appBarHeight);
-  //const [selectedFlight, setSelectedFlight] = useState(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [chartOpen, setChartOpen] = useState(false);
-  //const [selectedCollection, setSelectedCollection] = useState(null);
-
+  const [heightFilterActive, setHeightFilterActive] = useState(false);
+  const [threeDActive, setThreeDActive] = useState(false);
+  
+  const toggleThreeD = () => {
+    setThreeDActive(!threeDActive);
+  };
 
   const toggleDrawer = () => {
     setDrawerOpen(!drawerOpen);
@@ -46,28 +39,31 @@ function App() {
   };
 
   return (
-/*     <CollectionContext.Provider value={{ selectedCollection, setSelectedCollection }}>
-    <FlightContext.Provider value={{ selectedFlight, setSelectedFlight }}> */
     <FlightDataProvider>
       <Grid container spacing={0} sx={{...gridStyles, ...tallGrid}} >
       <CustomToolbar 
         onToggleDrawer={toggleDrawer} drawerOpen={drawerOpen} 
         onToggleChart={toggleChart} chartOpen={chartOpen} 
+        onHeightFilterActive={setHeightFilterActive} heightFilterActive={heightFilterActive}
+        handleThreeDToggle={toggleThreeD} threeDActive={threeDActive}
       />
         <Grid container spacing={0} >
-
           <Grid item xs>
-            <MyMapComponent chartOpen={chartOpen} />
+          {threeDActive && 
+            <DroneFlight3D/>
+          }
+
+          {!threeDActive && 
+            <MyMapComponent chartOpen={chartOpen} heightFilterActive={heightFilterActive} />
+          }  
           </Grid>      
          {drawerOpen && <Grid item style={{ width: '390px' }}>
-            <MyDataGrid />
+            <MyDataGrid heightFilterActive={heightFilterActive}/>
           </Grid>}   
          </Grid>
       </Grid>  
+      
     </FlightDataProvider>
-/*     </FlightContext.Provider>
-    
-    </CollectionContext.Provider> */
   );
 }
 

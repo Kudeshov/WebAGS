@@ -18,8 +18,9 @@ export const FlightDataProvider = ({ children }) => {
 
   const [geoCenter, setGeoCenter] = useState(initialCenter);
   // Глобальные состояния для хранения значений высот
-  const [heightFrom, setHeightFrom] = useState(0);
+  const [heightFrom, setHeightFrom] = useState(-1000);
   const [heightTo, setHeightTo] = useState(1000);
+ 
 
   const fetchCollections = useCallback(() => {
     console.log('вызвана fetchCollections')
@@ -51,6 +52,7 @@ export const FlightDataProvider = ({ children }) => {
         .then(response => response.json())
         .then(data => {
           const validData = data.filter(m => m.lat >= 0 && m.lon >= 0);
+
           setValidMeasurements(validData);
   
           if (validData.length > 0) {

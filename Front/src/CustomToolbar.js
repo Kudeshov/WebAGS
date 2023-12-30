@@ -1,29 +1,18 @@
 import React, { useState, useEffect, useContext} from 'react';
-import { Flight, MoreVert, Person, Settings } from '@mui/icons-material';
 import { ReactComponent as PlaneIcon } from './icons/plane.svg';
-import { ReactComponent as AnalyticsIcon } from './icons/analytics.svg';
+import { ReactComponent as AnalyticsIcon } from './icons/table.svg';
 import { ReactComponent as ChartIcon } from './icons/chart-bar.svg';
 import { ReactComponent as CogIcon } from './icons/cog.svg';
 import { ReactComponent as DatabaseIcon } from './icons/database.svg';
-import { ReactComponent as FilterIcon } from './icons/filter.svg';
-import { ReactComponent as MapIconSVG } from './icons/map.svg';
-import { ReactComponent as RectangleIcon } from './icons/rectangle-landscape.svg';
+/* import { ReactComponent as MapIconSVG } from './icons/map.svg';
+import { ReactComponent as RectangleIcon } from './icons/rectangle-landscape.svg'; */
 import { ReactComponent as RulerIcon } from './icons/ruler.svg';
-import { ReactComponent as TableIcon } from './icons/table.svg';
+import { ReactComponent as FilterIcon } from './icons/filter.svg';
+import { ReactComponent as CubeIcon } from './icons/cube.svg';
 import Tooltip from '@mui/material/Tooltip';
-import ToggleButton from '@mui/material/ToggleButton';
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import { useTheme } from '@mui/material/styles';
-import Typography from '@mui/material/Typography'; // Import Typography
-import FilterListIcon from '@mui/icons-material/FilterList';
-import TuneIcon from '@mui/icons-material/Tune';
+/* import TuneIcon from '@mui/icons-material/Tune'; */
 import { AppBar, Toolbar, IconButton, Menu, MenuItem, ListSubheader, Dialog, DialogTitle, DialogContent, DialogActions,  TextField, Button } from '@mui/material';
-
-import MapIcon from '@mui/icons-material/Map';
-import { Rect } from 'victory';
-/* import { FlightContext } from './App';
-import { CollectionContext } from './App'; */
-
 import { FlightDataContext } from './FlightDataContext';
 
 function convertDateTime(dateTimeString) {
@@ -37,15 +26,11 @@ function convertDateTime(dateTimeString) {
   return `${day}.${month}.${year} ${hours}:${minutes}`;
 }
 
-const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen }) => {
-  const [anchorEl, setAnchorEl] = useState(null);
-  const [anchorCollection, setAnchorCollection] = useState(null);
+const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, onHeightFilterActive, heightFilterActive,
+    handleThreeDToggle, threeDActive }) => {
 
   const { selectedCollection, setSelectedCollection } = useContext(FlightDataContext);
   const { selectedFlight, setSelectedFlight } = useContext(FlightDataContext);
-
-  const [mapMenuAnchorEl, setMapMenuAnchorEl] = useState(null);
-  const [filterMenuAnchorEl, setFilterMenuAnchorEl] = useState(null);
   const [unitMenuAnchorEl, setUnitMenuAnchorEl] = useState(null);
   const [settingsMenuAnchorEl, setSettingsMenuAnchorEl] = useState(null);
 
@@ -56,16 +41,16 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen })
 
   const [flightOptions, setFlightOptions] = useState([]);
   const [collectionOptions, setCollectionOptions] = useState([]);
+ //  const [dataCollection, setDataCollection] = useState([]);
 
-  const [dataCollection, setDataCollection] = useState([]);
-  const [loadingCollection, setLoadingCollection] = useState(false);
+/*  const [loadingCollection, setLoadingCollection] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
 
-  const [buttonClickCount, setButtonClickCount] = useState(0);
+  const [buttonClickCount, setButtonClickCount] = useState(0); */
   const [heightFilterDialogOpen, setHeightFilterDialogOpen] = useState(false);
 
-  const { heightFrom, setHeightFrom } = useContext(FlightDataContext);
-  const { heightTo, setHeightTo } = useContext(FlightDataContext);
+  const { setHeightFrom } = useContext(FlightDataContext);
+  const { setHeightTo } = useContext(FlightDataContext);
 
   // Функции для открытия и закрытия диалогового окна
   const handleHeightFilterClickOpen = () => {
@@ -77,7 +62,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen })
   };
 
     // Локальные состояния для временного хранения значений высот
-    const [localHeightFrom, setLocalHeightFrom] = useState(0);
+    const [localHeightFrom, setLocalHeightFrom] = useState(-1000);
     const [localHeightTo, setLocalHeightTo] = useState(1000);
   
     // Функции для обновления локальных состояний
@@ -94,24 +79,21 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen })
     // Обновление глобального состояния или контекста с новыми значениями
     setHeightFrom(localHeightFrom);
     setHeightTo(localHeightTo);
-
-    // Фильтрация данных с использованием новых значений высоты
-    // filterDataByHeight(localHeightFrom, localHeightTo);
+     
+    onHeightFilterActive(true);
 
     // Закрытие диалогового окна
     setHeightFilterDialogOpen(false);
   };
 
-  const theme = useTheme();
-  const tableButtonStyle = {
+   const theme = useTheme();
+ /* const tableButtonStyle = {
     fill: drawerOpen ? "white" : "white",
     width: 24,
     height: 24,
     border: '1px dashed grey',
     backgroundColor: drawerOpen ? "grey" : "transparent",
-    /* borderRadius: "50%", */ // Сделайте borderRadius всегда круглым
-    //borderRadius: drawerOpen ? "50%" : "0",
-  };
+  }; */
 
 
   // Измените обработчик для кнопки
@@ -137,16 +119,16 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen })
 
   useEffect(() => {
     if (!selectedFlight) return;
-    setLoadingCollection(true);
+    //setLoadingCollection(true);
     fetch(`http://localhost:3001/api/collection/${selectedFlight}`)
       .then(response => response.json())
       .then(data => {
-        setDataCollection(data);
-        setLoadingCollection(false);
+        //setDataCollection(data);
+        //setLoadingCollection(false);
       })
       .catch(error => {
         console.error('Ошибка при загрузке данных:', error);
-        setLoadingCollection(false);
+        //setLoadingCollection(false);
       });
   }, [selectedFlight]);
   
@@ -171,13 +153,13 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen })
     }
   };
 
-  const handleButtonClick = () => {
+/*   const handleButtonClick = () => {
     // Увеличиваем счетчик при каждом нажатии на кнопку
     setButtonClickCount((prevCount) => prevCount + 1);
   };
+ */
 
-
-  const handleMenuClick = (event) => {
+/*   const handleMenuClick = (event) => {
     setAnchorEl(event.currentTarget);
   };
 
@@ -193,9 +175,11 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen })
     setMapMenuAnchorEl(null);
   };
 
+
   const handleFilterMenuClick = (event) => {
     setFilterMenuAnchorEl(event.currentTarget);
   };
+ */
 
   const handleDatabaseMenuClick = (event) => {
     // Обновляем список при каждом открытии меню
@@ -217,9 +201,9 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen })
     setDatabaseMenuAnchorCollection(null);
   };
 
-  const handleFilterMenuClose = () => {
+/*   const handleFilterMenuClose = () => {
     setFilterMenuAnchorEl(null);
-  };
+  }; */
 
   const handleFlightSelect = (flightName) => {
     setSelectedCollection(null); // Установите в null перед получением новых коллекций
@@ -251,14 +235,11 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen })
     setSettingsMenuAnchorEl(null);
   };
   
-  const handleSelectionChange = (event, value) => {
+/*   const handleSelectionChange = (event, value) => {
     console.log('handleSelectionChange value', value)
     setSelectedCollection(value);
-    setSelectedItem(value);
-  };
-
-
-  const appBarHeight = theme.mixins.toolbar.minHeight;
+    //setSelectedItem(value);
+  }; */
 
   return (
     <AppBar position="static" sx={{ height: '64px' }}>  {/*  '64px' */}
@@ -310,50 +291,20 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen })
           {/* Маппинг массива коллекций в элементы меню */}
           {collectionOptions.map((collection, index) => (
             <MenuItem key={collection._id} onClick={() => handleCollectionSelect(collection)}>
-              {collection.description} {/* Используйте collection.description для отображения */}
+              {collection.description} 
             </MenuItem>
           ))}
         </Menu>
   
-        <IconButton
+{/*         <IconButton
           color="inherit"
           onClick={handleMapMenuClick}
         >
           <Tooltip title="Открыть карту">
           <MapIconSVG style={{ fill: "white", width: 24, height: 24 }} />
           </Tooltip>
-        </IconButton>
-
-       
-
-       {/*  <Menu
-          anchorEl={mapMenuAnchorEl}
-          open={Boolean(mapMenuAnchorEl)}
-          onClose={handleMapMenuClose}
-          MenuListProps={{
-            subheader: <ListSubheader>Открыть карту</ListSubheader>,
-          }}
-        >
-          <MenuItem onClick={handleMapMenuClose}>
-            <ListItemIcon>
-              <MapIcon />
-            </ListItemIcon>
-            Open Map
-          </MenuItem>
-          <MenuItem onClick={handleMapMenuClose}>
-            <ListItemIcon>
-              <MapIcon />
-            </ListItemIcon>
-            Open Google
-          </MenuItem>
-          <MenuItem onClick={handleMapMenuClose}>
-            <ListItemIcon>
-              <MapIcon />
-            </ListItemIcon>
-            Open OpenStreetMap
-          </MenuItem>
-        </Menu> */}
-
+        </IconButton> */}
+ 
         <div style={{
           backgroundColor: drawerOpen ? "white" : "transparent",
           borderRadius: '50%',
@@ -378,39 +329,32 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen })
           </IconButton>
         </div>
 
-{/* <IconButton
-  color="inherit"
-  onClick={() => {
-    // Добавьте здесь логику для "Графики"
-  }}
->
-<Tooltip title="Графики">
-          <ChartIcon style={{ fill: "white", width: 24, height: 24 }} />
-          </Tooltip>
-</IconButton> */}
-<IconButton
-  color="inherit"
-  onClick={() => {
-    // Добавьте здесь логику для "Указатель"
-  }}
->
+        <div style={{
+          backgroundColor: threeDActive ? "white" : "transparent",
+          borderRadius: '50%',
+          padding: '0px',  
+        }}>
+          <IconButton color="inherit" onClick={handleThreeDToggle}>
+            <Tooltip title="Трехмерная модель">
+              <CubeIcon style={{ fill: threeDActive ? theme.palette.primary.main : "white", width: 24, height: 24 }} />
+            </Tooltip>
+          </IconButton>
+        </div>        
 
-  
-<Tooltip title="Выбрать">
-          <RectangleIcon style={{ fill: "white", width: 24, height: 24 }} />
-          </Tooltip>
-</IconButton>
-
-
-        <IconButton
-          color="inherit"
-          onClick={handleHeightFilterClickOpen} // Обработчик открытия диалога
-        >
-          <TuneIcon />
-        </IconButton>
+        <div style={{
+          backgroundColor: heightFilterActive ? "white" : "transparent",
+          borderRadius: '50%',
+          padding: '0px',  
+        }}>
+          <IconButton color="inherit" onClick={handleHeightFilterClickOpen}>
+            <Tooltip title="Фильтр по высоте">
+              <FilterIcon style={{ fill: heightFilterActive ? theme.palette.primary.main : "white", width: 24, height: 24 }} />
+            </Tooltip>
+          </IconButton>
+        </div>
 
         {/* Диалоговое окно для фильтрации по высоте */}
-        <Dialog open={heightFilterDialogOpen} onClose={() => setHeightFilterDialogOpen(false)}>
+        <Dialog open={heightFilterDialogOpen} onClose={handleHeightFilterClose}>
           <DialogTitle>Фильтр по высоте</DialogTitle>
           <DialogContent>
             <TextField
@@ -434,11 +378,19 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen })
             />
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setHeightFilterDialogOpen(false)} color="primary">
-              Отмена
+            <Button onClick={handleHeightFilterClose} color="primary">
+              Закрыть
             </Button>
             <Button onClick={applyHeightFilter} color="primary">
               Применить
+            </Button>
+            <Button onClick={() => {
+                setHeightFilterDialogOpen(false); 
+                onHeightFilterActive(false);
+                setLocalHeightFrom(-1000);
+                setLocalHeightTo(1000);
+                }} color="primary">
+              Сбросить фильтр
             </Button>
           </DialogActions>
         </Dialog>
@@ -485,35 +437,16 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen })
           <MenuItem onClick={handleSettingsMenuClose}>Option 2</MenuItem>
           {/* Add more settings options as needed */}
         </Menu>
-        <div style={{ color: 'white', fontSize: 'small' }}>
-          <span>P0: {selectedCollection ? selectedCollection.P0 : ''} | </span>
-          <span>P1: {selectedCollection ? selectedCollection.P1 : ''} | </span>
-          <span>Описание: {selectedCollection ? selectedCollection.description : ''} | </span>
-          <span>Дата: {selectedCollection ? convertDateTime(selectedCollection.dateTime) : ''}</span>
+        <div style={{ flexGrow: 1, display: 'flex', justifyContent: 'flex-end' }}>
+          <div style={{ color: 'white', fontSize: 'small' }}>
+            <span>База: {selectedFlight ? selectedFlight : ''} | </span>
+            <span>Полет: {selectedCollection ? selectedCollection.description : ''} | </span>
+            <span>Дата: {selectedCollection ? convertDateTime(selectedCollection.dateTime) : ''} | </span>
+            <span>P0: {selectedCollection ? selectedCollection.P0 : ''} | </span>
+            <span>P1: {selectedCollection ? selectedCollection.P1 : ''}</span>        
+          </div>
         </div>
 
-       
- {/*        <TextField
-        onChange={handleSelectionChange}
-
-        label="P0"
-        value={selectedCollection ? selectedCollection.P0 : ''}
-        size="small"
-        variant="outlined"
-        margin="normal"
-        fullWidth
-        disabled={!selectedItem}
-      />
-      
-         <TextField
-        label="P1"
-        size="small"
-        value={selectedCollection ? selectedCollection.P1 : ''}
-        variant="outlined"
-        margin="normal"
-        fullWidth
-        disabled={!selectedItem}
-      /> */}
 
      </Toolbar>
           
