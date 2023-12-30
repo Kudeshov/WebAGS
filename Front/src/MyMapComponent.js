@@ -107,6 +107,9 @@ function MyMapComponent({ chartOpen, heightFilterActive }) {
   const { heightFrom } = useContext(FlightDataContext);
   const { heightTo } = useContext(FlightDataContext);
 
+  const [averageMeasurement, setAverageMeasurement] = useState(null);
+  const [averageDiapasone, setAverageDiaposone] = useState(null);
+
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.ctrlKey) {
@@ -138,6 +141,8 @@ function MyMapComponent({ chartOpen, heightFilterActive }) {
       </div>
     );
   } */
+  const [selectedPoints, setSelectedPoints] = useState([]);
+
   
   const handlePointClick = (measurement) => {
     if (isCtrlPressed) {
@@ -151,6 +156,95 @@ function MyMapComponent({ chartOpen, heightFilterActive }) {
     fetchSpectrumData(measurement);
   };
 
+
+  useEffect(() => {
+    // This assumes there's an array of selected points
+    console.log('Calc average, selectedPoints', selectedPoints);
+    if (selectedPoints.length > 0) {
+
+      console.log('Calc average, selectedPoints.length > 0', selectedPoints);
+      // Calculate sums and ranges
+      let sumDose = 0, sumCountW = 0;
+      let minTime = new Date('9999-12-31T23:59:59Z'), maxTime = new Date('1000-01-01T00:00:00Z');
+      let minLat = Infinity, maxLat = -Infinity;
+      let minLong = Infinity, maxLong = -Infinity;
+  
+      // Iterate over selectedPoints to accumulate values and find min/max
+      selectedPoints.forEach(point => {
+        sumDose += parseFloat(point.dose);
+        sumCountW += point.countw;
+        const pointTime = new Date(point.datetime);
+        if (pointTime < minTime) minTime = pointTime;
+        if (pointTime > maxTime) maxTime = pointTime;
+        minLat = Math.min(minLat, point.lat);
+        maxLat = Math.max(maxLat, point.lat);
+        minLong = Math.min(minLong, point.lon);
+        maxLong = Math.max(maxLong, point.lon);
+      });
+  
+      // Calculate averages
+      const avgDose = sumDose / selectedPoints.length;
+      const avgCountW = sumCountW / selectedPoints.length;
+  
+      // Create ranges for time, latitude, and longitude
+      const timeRange = [minTime, maxTime];
+      const latRange = [minLat, maxLat];
+      const longRange = [minLong, maxLong];
+  
+      // Create the averageMeasurement object
+      const tempAverageMeasurement = {
+        dose: avgDose,
+        dosew: avgCountW,
+        timeRange: timeRange,
+        latRange: latRange,
+        longRange: longRange
+        // ... other averaged values and ranges
+      };
+      setAverageMeasurement(tempAverageMeasurement)
+  
+      // Now use averageMeasurement to update the panel content
+      // You would replace selectedMeasurement with averageMeasurement here
+    }
+  }, [selectedPoints]); // This useEffect should depend on selectedPoints array
+
+
+
+  useEffect(() => {
+    if (selectedPoints.length > 0) {
+      let minDose = Infinity, maxDose = -Infinity;
+      let minCountW = Infinity, maxCountW = -Infinity;
+      let minLat = Infinity, maxLat = -Infinity;
+      let minLong = Infinity, maxLong = -Infinity;
+      let minTime = new Date('9999-12-31T23:59:59Z'), maxTime = new Date('1000-01-01T00:00:00Z');
+  
+      selectedPoints.forEach(point => {
+        minDose = Math.min(minDose, parseFloat(point.dose));
+        maxDose = Math.max(maxDose, parseFloat(point.dose));
+        minCountW = Math.min(minCountW, point.countw);
+        maxCountW = Math.max(maxCountW, point.countw);
+        const pointTime = new Date(point.datetime);
+        minTime = minTime > pointTime ? pointTime : minTime;
+        maxTime = maxTime < pointTime ? pointTime : maxTime;
+        minLat = Math.min(minLat, point.lat);
+        maxLat = Math.max(maxLat, point.lat);
+        minLong = Math.min(minLong, point.lon);
+        maxLong = Math.max(maxLong, point.lon);
+      });
+  
+      setAverageDiaposone({
+        doseRange: [minDose, maxDose],
+        countwRange: [minCountW, maxCountW],
+        latRange: [minLat, maxLat],
+        longRange: [minLong, maxLong],
+        timeRange: [minTime, maxTime]
+      });
+    }
+  }, [selectedPoints]);
+
+
+
+
+  
   useEffect(() => {
 
     console.log('validMeasurements ', validMeasurements);
@@ -163,7 +257,6 @@ function MyMapComponent({ chartOpen, heightFilterActive }) {
   }, [measurements, mapInstance, validMeasurements, geoCenter]);
   
   
-  const [selectedPoints, setSelectedPoints] = useState([]);
 
   const fetchSpectrumData = (measurement) => {
     if (!selectedFlight) return;
@@ -324,29 +417,49 @@ function MyMapComponent({ chartOpen, heightFilterActive }) {
     const year = date.getFullYear();
     const hours = date.getHours().toString().padStart(2, '0');
     const minutes = date.getMinutes().toString().padStart(2, '0');
+    const seconds = date.getSeconds().toString().padStart(2, '0');
   
-    return `${day}.${month}.${year} ${hours}:${minutes}`;
+    return `${day}.${month}.${year} ${hours}:${minutes}:${seconds}`;
   }
 
   useEffect(() => {
     // Обновляем содержимое панели при изменении selectedMeasurement
-    if (panelRef.current && selectedMeasurement) {
+    if (panelRef.current && averageMeasurement && averageDiapasone) {
+      if (selectedPoints.length>1) {
       panelRef.current.innerHTML = `
-        Дата: ${convertDateTime(selectedMeasurement.datetime)}<br>
+        Количество измерений: ${selectedPoints.length}<br>
+        Дата: ${convertDateTime(averageDiapasone.timeRange[0])} -  ${convertDateTime(averageDiapasone.timeRange[1])}<br>
+        Время измерения: ${(averageDiapasone.timeRange[1].getTime() - averageDiapasone.timeRange[0].getTime()) / 1000} сек<br>
+        Счёт в окне: ${averageDiapasone.countwRange[0]} - ${averageDiapasone.countwRange[1]} имп/с<br>
+        Высота баром.: ${averageDiapasone.doseRange[0].toFixed(2)} - ${averageDiapasone.doseRange[1].toFixed(2)} м<br>
+        Долгота: ${averageDiapasone.longRange[0].toFixed(6)} - ${averageDiapasone.longRange[1].toFixed(6)}<br>
+        Широта: ${averageDiapasone.latRange[0].toFixed(6)} - ${averageDiapasone.latRange[1].toFixed(6)}<br>
+        Мощность дозы (полином): ${parseFloat(averageMeasurement.dose).toFixed(3)} мкЗв/час<br>
+        Мощность дозы (по окну): ${parseFloat(averageMeasurement.dosew).toFixed(3)} мкЗв/час<br>
+        
+        Счётчик ГМ1: ${averageMeasurement.geiger1} имп/с<br>
+        Счётчик ГМ2: ${averageMeasurement.geiger2} имп/с<br>
+        Мощность дозы ГМ: 0 мкЗв/час`
+       ;
+      }
+      else
+      {
+        panelRef.current.innerHTML = `
+        Дата: ${convertDateTime(averageDiapasone.timeRange[0])}<br>
         Время измерения: 1 сек<br>
-        Счёт в окне: ${selectedMeasurement.countw} имп/с<br>
-        Высота GPS: ${selectedMeasurement.alt.toFixed(2)} м<br>
-        Высота баром.: ${selectedMeasurement.height.toFixed(2)} м<br>
-        Долгота: ${selectedMeasurement.lon.toFixed(6)}<br>
-        Широта: ${selectedMeasurement.lat.toFixed(6)}<br>
-        Мощность дозы (полином): ${parseFloat(selectedMeasurement.dose).toFixed(3)} мкЗв/час<br>
-        Мощность дозы (по окну): ${parseFloat(selectedMeasurement.dosew).toFixed(5)} мкЗв/час<br>
-        Счётчик ГМ1: ${selectedMeasurement.geiger1} имп/с<br>
-        Счётчик ГМ2: ${selectedMeasurement.geiger2} имп/с<br>
-        Мощность дозы ГМ: 0 мкЗв/час
-      `;
+        Счёт в окне: ${averageDiapasone.countwRange[0]} имп/с<br>
+        Высота баром.: ${averageDiapasone.doseRange[0].toFixed(2)} м<br>
+        Долгота: ${averageDiapasone.longRange[0].toFixed(6)}<br>
+        Широта: ${averageDiapasone.latRange[0].toFixed(6)} <br>
+        Мощность дозы (полином): ${parseFloat(averageMeasurement.dose).toFixed(3)} мкЗв/час<br>
+        Мощность дозы (по окну): ${parseFloat(averageMeasurement.dosew).toFixed(3)} мкЗв/час<br>
+        
+        Счётчик ГМ1: ${averageMeasurement.geiger1} имп/с<br>
+        Счётчик ГМ2: ${averageMeasurement.geiger2} имп/с<br>
+        Мощность дозы ГМ: 0 мкЗв/час`        
+      }
     }
-  }, [selectedMeasurement]);
+  }, [averageMeasurement]);
 
   return (
     <div>
