@@ -13,6 +13,12 @@ const winHigh = 200;
 
 const flightsDirectory = './flights'; // Укажите путь к папке с файлами
 
+// Инициализация начальных значений координат и высоты
+let lat = 55.704034038232834; // Начальная широта
+let lon = 37.62119540524117;  // Начальная долгота
+let alt = 100;                // Начальная высота, например 100 метров
+
+
 // Коэффициенты полинома и калибровочные данные
 
 const coeffs_below_550 = [3.88e-23, -6.70e-20, 4.28e-17, -8.48e-15, 5.97e-13];
@@ -20,6 +26,7 @@ const coeffs_above_550 = [-2.08e-27, 8.32e-23, -1.03e-18, 4.67e-15, -9.95e-13];
 
 app.use(cors());
 
+const flightSimulations = {};
 
 function calculateConversionFactor(E) {
   if (E <= 550) {
@@ -237,6 +244,156 @@ app.get('/api/data/:dbname/:collectionId', (req, res) => {
     });
   });
 });
+
+app.use(express.json());
+
+app.post('/start-flight-simulation', (req, res) => {
+  console.log(req.body);
+  console.log(flightsDirectory);
+  
+  const dbName = req.body.dbName;
+  //const dbPath = './flights/sarov_4источника_22.5м.sqlite';
+  const db = new sqlite3.Database(`${flightsDirectory}/${dbName}.sqlite`);
+  //const db = new sqlite3.Database(dbPath);
+  
+
+  createFlightRecord(db, (flightId) => {
+    flightSimulations[flightId] = setInterval(() => {
+      generateMeasurementData(db, flightId);
+    }, 1000);
+
+    res.json({ message: "Эмуляция полета запущена", flightId });
+  });
+});
+
+app.post('/stop-flight-simulation', (req, res) => {
+  const flightId = req.body.flightId;
+
+  if (flightSimulations[flightId]) {
+    clearInterval(flightSimulations[flightId]);
+    delete flightSimulations[flightId];
+    console.log( "Эмуляция полета остановлена", flightId);
+    res.json({ message: "Эмуляция полета остановлена", flightId });
+  } else {
+    console.log( "Эмуляция полета  не найдена", flightId);
+    res.status(404).json({ message: "Эмуляция полета не найдена", flightId });
+  }
+});
+
+function createFlightRecord(db, callback) {
+  const dateTime = new Date().toISOString();
+  const description = "Полет";
+  const insertSql = "INSERT INTO online_collection (dateTime, winLow, winHigh, description) VALUES (?, 20, 200, ?)";
+
+  db.run(insertSql, [dateTime, description], function(err) {
+    if (err) {
+      console.error(err.message);
+      // Можно добавить обработку ошибки, например, отправку ответа с ошибкой
+      return;
+    }
+    const newFlightId = this.lastID;
+    callback(newFlightId);
+  });
+}
+
+/* function createFlightRecord() {
+  db.serialize(() => {
+    const dateTime = new Date().toISOString();
+    const description = `Полет`;
+    const insertSql = `INSERT INTO online_collection (dateTime, winLow, winHigh, description) VALUES (?, 20, 200, ?)`;
+
+    db.run(insertSql, [dateTime, description], function(err) {
+      if (err) {
+        console.error(err.message);
+      } else {
+        console.log(`Новый полет создан`);
+        const newFlightId = this.lastID; // Получаем ID только что созданного полета
+        startGeneratingMeasurements(newFlightId);
+      }
+    });
+  });
+} */
+
+/* 
+function createFlightRecord() {
+    db.serialize(() => {
+      const dateTime = new Date().toISOString();
+      const description = `Полет`;
+      const insertSql = `INSERT INTO online_collection (dateTime, winLow, winHigh, description) VALUES (?, 20, 200, ?)`;
+  
+      db.run(insertSql, [dateTime, description], function(err) {
+        if (err) {
+          console.error(err.message);
+        } else {
+          console.log(`Новый полет создан`);
+          const newFlightId = this.lastID; // Получаем ID только что созданного полета
+          startGeneratingMeasurements(newFlightId);
+        }
+      });
+    });
+  }
+ */
+
+function startGeneratingMeasurements(db, flightId) {
+  setInterval(() => {
+    generateMeasurementData(db, flightId);
+  }, 1000);
+}
+
+function toECEF(lat, lon, alt) {
+    // Константы для WGS-84
+    const a = 6378137; // длина большой полуоси
+    const b = 6356752.3142; // длина малой полуоси
+    const f = (a - b) / a; // сплюснутость
+    const e_sq = f * (2-f); // квадрат эксцентриситета
+  
+    const lambda = lat * Math.PI / 180; // широта в радианах
+    const phi = lon * Math.PI / 180; // долгота в радианах
+  
+    const cosLambda = Math.cos(lambda);
+    const sinLambda = Math.sin(lambda);
+    const cosPhi = Math.cos(phi);
+    const sinPhi = Math.sin(phi);
+  
+    const N = a / Math.sqrt(1 - e_sq * sinLambda * sinLambda); // радиус кривизны в первом вертикале
+  
+    const x = (N + alt) * cosLambda * cosPhi;
+    const y = (N + alt) * cosLambda * sinPhi;
+    const z = (N * (1 - e_sq) + alt) * sinLambda;
+  
+    return { x, y, z };
+  }
+  
+  function insertMeasurementData(db, flightId, ecefCoords, rHeight, winCount) {
+    const dateTime = new Date().toISOString();
+    const insertSql = `INSERT INTO online_measurement (flightId, dateTime, gpsX, gpsY, gpsZ, rHeight, srtmHeight, calcHeight, geiger1, geiger2, winCount) VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, 0, 0, ?)`;
+  
+    db.run(insertSql, [flightId, dateTime, ecefCoords.x, ecefCoords.y, ecefCoords.z, rHeight, winCount], function(err) {
+      if (err) {
+        console.error(err.message);
+      } else {
+        console.log(dateTime, `Запись измерения добавлена для flightId: ${flightId}`);
+      }
+    });
+  }
+
+  
+  function generateMeasurementData(db, flightId) {
+    // Генерация изменений координат
+    lat += (Math.random() - 0.5) * 0.0001; // Случайное изменение широты
+    lon += (Math.random() - 0.5) * 0.0001; // Случайное изменение долготы
+    alt += (Math.random() - 0.5) * 2; // Случайное изменение высоты в диапазоне +/- 1 метр
+  
+    // Преобразование в ECEF
+    const ecefCoords = toECEF(lat, lon, alt);
+  
+    // Случайное значение для winCount
+    const winCount = Math.floor(Math.random() * (100 - 20 + 1)) + 20;
+  
+    // Вставка данных измерения в базу данных
+    insertMeasurementData(db, flightId, ecefCoords, alt, winCount);
+
+  }
 
 app.get('/api/collection/:dbname', (req, res) => {
   const dbname = req.params.dbname;
