@@ -9,9 +9,10 @@
   import { getColor } from './colorUtils';
   import RectangularSelection from './RectangularSelection';
   import { ReactComponent as RectangleIcon } from './icons/rectangle-landscape.svg';
-  import ReactDOM from 'react-dom';
+  //import ReactDOM from 'react-dom';
   import { FlightDataContext } from './FlightDataContext';
-  
+  import { createRoot } from 'react-dom/client';
+
   delete L.Icon.Default.prototype._getIconUrl;
 
   L.Icon.Default.mergeOptions({
@@ -43,23 +44,35 @@
           Скорость счета 1/с
         </div>
         <div style={{ width: '100%', height: '100%' }}>
-          {isLoading ? 'Загрузка...' : <SpectrumChart data={data} />}
+          {/* isLoading ? 'Загрузка...' :  */<SpectrumChart data={data} />}
         </div>
       </div>
     );
   }
+  
+  const formatXAxis = (tickItem) => {
+    // Задайте интервал, до которого вы хотите округлить (например, 400)
+    const interval = 400;
+    // Округляем до ближайшего интервала
+    return Math.round(tickItem / interval) * interval;
+  }
 
   function SpectrumChart({ data }) {
     return (
-      <LineChart width={330} height={200} data={data} isAnimationActive={false}>
-        <Line type="monotone" dataKey="value" stroke="#8884d8" isAnimationActive={false} />
+      <LineChart width={330} height={200} data={data}>
+        <Line 
+          type="monotone" 
+          dataKey="value" 
+          stroke="#0000FF" // Синий цвет линии
+          dot={false} // Отключить отображение точек
+        />
         <CartesianGrid stroke="#ccc" />
         <XAxis 
-          dataKey="channel" 
+          tickFormatter={formatXAxis}
+          dataKey="energy" // Использование 'energy' в качестве ключа
           label={{ value: "Энергия (keV)", position: "bottom", offset: -6, style: { fontSize: 12 } }}  
         />
-        <YAxis >
-        </YAxis>
+        <YAxis />
         <Tooltip />
       </LineChart>
     );
@@ -84,7 +97,7 @@
       setSelectMode(!selectMode);
     };
 
-  /*   const { selectedCollection } = useContext(FlightDataContext); */
+    const { selectedCollection } = useContext(FlightDataContext);
     const { selectedFlight } = useContext(FlightDataContext);
 
     const googleMapsUrl = 'http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}&hl=ru';
@@ -132,15 +145,6 @@
       };
     }, []);  
 
-  /*   function SpectrumControlComponent({ data, isLoading }) {
-      // Компонент для рендеринга внутри элемента управления Leaflet
-      return (
-        <div>
-          
-          <SpectrumChartWithLabel data={data} isLoading={isLoading} />
-        </div>
-      );
-    } */
     const [selectedPoints, setSelectedPoints] = useState([]);
 
     
@@ -152,8 +156,6 @@
         // Заменяем массив одной точкой, если Ctrl не нажат
         setSelectedPoints([measurement]);
       }
-    
-      fetchSpectrumData(measurement);
     };
 
 
@@ -164,7 +166,7 @@
 
         console.log('Calc average, selectedPoints.length > 0', selectedPoints);
         // Calculate sums and ranges
-        let sumDose = 0, sumCountW = 0;
+        let sumDose = 0, sumDoseW = 0;
         let minTime = new Date('9999-12-31T23:59:59Z'), maxTime = new Date('1000-01-01T00:00:00Z');
         let minLat = Infinity, maxLat = -Infinity;
         let minLong = Infinity, maxLong = -Infinity;
@@ -172,7 +174,7 @@
         // Iterate over selectedPoints to accumulate values and find min/max
         selectedPoints.forEach(point => {
           sumDose += parseFloat(point.dose);
-          sumCountW += point.countw;
+          sumDoseW += point.dosew;
           const pointTime = new Date(point.datetime);
           if (pointTime < minTime) minTime = pointTime;
           if (pointTime > maxTime) maxTime = pointTime;
@@ -184,7 +186,7 @@
     
         // Calculate averages
         const avgDose = sumDose / selectedPoints.length;
-        const avgCountW = sumCountW / selectedPoints.length;
+        const avgCountW = sumDoseW / selectedPoints.length;
     
         // Create ranges for time, latitude, and longitude
         const timeRange = [minTime, maxTime];
@@ -206,6 +208,72 @@
         // You would replace selectedMeasurement with averageMeasurement here
       }
     }, [selectedPoints]); // This useEffect should depend on selectedPoints array
+
+
+    const calculateAverageSpectrum = (selectedPoints) => {
+      if (selectedPoints.length === 0) {
+        return [];
+      }
+    
+      const { P0, P1 } = selectedCollection; // Получение параметров P0 и P1
+      // Инициализация массива для суммы спектра
+      const sumSpectrum = Array(selectedPoints[0].spectrum.channels.length).fill(0);
+    
+      // Суммирование спектров всех выбранных точек
+      selectedPoints.forEach(point => {
+        point.spectrum.channels.forEach((value, index) => {
+          sumSpectrum[index] += value;
+        });
+      });
+    
+      // Вычисление среднего значения спектра
+      const avgSpectrumGood = sumSpectrum.map(value => value / selectedPoints.length);
+      
+      const avgSpectrum = sumSpectrum.map((value, index) => ({
+        energy: P0 + P1 * index, // Преобразование номера канала в энергию
+        value: value / selectedPoints.length
+      }));
+
+      console.log(avgSpectrumGood, avgSpectrum);
+
+      return avgSpectrum;
+    };
+    
+/*     useEffect(() => {
+      // Вызывается каждый раз при изменении selectedPoints
+      const avgSpectrumData = calculateAverageSpectrum(selectedPoints);
+    
+      // Подготовка данных для графика
+      const preparedData = avgSpectrumData.map((value, index) => ({
+        channel: index,
+        value,
+      }));
+    
+      setSpectrumData(preparedData);
+    
+      // Обновление панели графика
+      if (spectrumPanelRef.current && spectrumPanelRef.current._root) {
+        spectrumPanelRef.current._root.render(
+          <SpectrumChartWithLabel data={preparedData} isLoading={false} />
+        );
+      }
+    }, [selectedPoints]);
+     */
+
+    useEffect(() => {
+      // Вызывается каждый раз при изменении selectedPoints
+      const avgSpectrumData = calculateAverageSpectrum(selectedPoints);
+    
+      setSpectrumData(avgSpectrumData); // Прямое присвоение обработанных данных
+    
+      // Обновление панели графика
+      if (spectrumPanelRef.current && spectrumPanelRef.current._root) {
+        spectrumPanelRef.current._root.render(
+          <SpectrumChartWithLabel data={avgSpectrumData} isLoading={false} />
+        );
+      }
+    }, [selectedPoints]);
+    
 
 
 
@@ -256,38 +324,7 @@
 
     }, [measurements, mapInstance, validMeasurements, geoCenter]);
     
-    
-
-    const fetchSpectrumData = (measurement) => {
-      if (!selectedFlight) return;
-    
-      setSelectedMeasurement(measurement);
-      setIsLoading(true);
-      fetch(`http://localhost:3001/api/spectrum/${selectedFlight}/${measurement.id}`)
-        .then(response => response.json())
-        .then(data => {
-          const preparedData = data.spectrum.map((value, index) => ({
-            channel: index,
-            value,
-          }));
-          setSpectrumData(preparedData);
-          console.log('preparedData length ', preparedData.length);
-          
-
-          setIsLoading(false);
-    
-          // Создаем панель графика, если она еще не существует
-          if (!spectrumPanelRef.current) {
-            console.log('Create spectrum panel');
-            createSpectrumPanel(mapInstance);
-          }
-          
-          console.log('Update spectrum panel');
-          // Обновляем панель графика
-          updateSpectrumPanel(preparedData, isLoading);
-        });
-    };
-    
+  
 
     useEffect(() => {
       if (selectMode) {
@@ -333,8 +370,33 @@
       }
     }, [selectMode]);
 
+/*     function createSpectrumPanel(map) {
+      const spectrumControl = L.control({ position: 'bottomright' });
     
-    function createSpectrumPanel(map) {
+      spectrumControl.onAdd = function () {
+        spectrumPanelRef.current = L.DomUtil.create('div', 'spectrum-panel');
+        // Создаем корень для рендеринга компонента
+        const root = createRoot(spectrumPanelRef.current);
+        spectrumPanelRef.current._root = root; // Сохраняем корень в свойстве для последующего доступа
+        root.render(<SpectrumChartWithLabel data={spectrumData} isLoading={false} />);
+        return spectrumPanelRef.current;
+      };
+    
+      spectrumControl.addTo(map);
+    }
+    
+    const updateSpectrumPanel = (data, isLoading) => {
+      if (spectrumPanelRef.current && spectrumPanelRef.current._root) {
+        // Используем сохраненный корень для обновления компонента
+        spectrumPanelRef.current._root.render(
+          <SpectrumChartWithLabel data={data} isLoading={false} />
+        );
+      }
+    }; */
+    
+
+    
+/*     function createSpectrumPanel(map) {
       const spectrumControl = L.control({ position: 'bottomright' });
     
       spectrumControl.onAdd = function() {
@@ -356,7 +418,7 @@
           spectrumPanelRef.current
         );
       }
-    }
+    } */
 
     const hideSpectrumPanel = () => {
       if (spectrumPanelRef.current) {
@@ -379,12 +441,6 @@
       }
     }, [chartOpen]);
 
-  /*   useEffect(() => {
-      console.log('mapInstance', mapInstance);
-      if (mapInstance && spectrumData) {
-        createSpectrumPanel(mapInstance, spectrumData, isLoading);
-      }
-    }, [mapInstance, spectrumData, isLoading]); */
     
     function createSimpleControl(map, panelRef) {
       var control = L.control({ position: 'bottomright' });
@@ -400,8 +456,28 @@
       control.addTo(map);
     }
 
+    function createSpectrumControl(map) {
+      const spectrumControl = L.control({ position: 'bottomright' });
+    
+      spectrumControl.onAdd = function () {
+        spectrumPanelRef.current = L.DomUtil.create('div', 'spectrum-panel');
+        // Создаем корень для рендеринга компонента
+        const root = createRoot(spectrumPanelRef.current);
+        spectrumPanelRef.current._root = root; // Сохраняем корень в свойстве для последующего доступа
+        root.render(<SpectrumChartWithLabel data={spectrumData} isLoading={isLoading} />);
+        return spectrumPanelRef.current;
+      };
+    
+      spectrumControl.addTo(map);
+        // Изначально скрываем панель
+    if (spectrumPanelRef.current && !chartOpen) {
+      spectrumPanelRef.current.style.display = 'none';
+  }
+    }
+
     useEffect(() => {
       if (mapInstance) {
+        createSpectrumControl(mapInstance);
         createSimpleControl(mapInstance, panelRef);
       }
     }, [mapInstance]);

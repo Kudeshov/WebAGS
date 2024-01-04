@@ -439,9 +439,9 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
         </Menu>
         <div style={{ flexGrow: 1, display: 'flex', justifyContent: 'flex-end' }}>
           <div style={{ color: 'white', fontSize: 'small' }}>
-            <span>База: {selectedFlight ? selectedFlight : ''} | </span>
-            <span>Полет: {selectedCollection ? selectedCollection.description : ''} | </span>
-            <span>Дата: {selectedCollection ? convertDateTime(selectedCollection.dateTime) : ''} | </span>
+            <span>{selectedFlight ? selectedFlight : ''} | </span>
+            <span>{selectedCollection ? selectedCollection.description : ''} | </span>
+            <span>{selectedCollection ? convertDateTime(selectedCollection.dateTime) : ''} | </span>
             <span>P0: {selectedCollection ? selectedCollection.P0 : ''} | </span>
             <span>P1: {selectedCollection ? selectedCollection.P1 : ''}</span>        
           </div>
