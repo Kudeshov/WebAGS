@@ -221,7 +221,9 @@ app.get('/api/data/:dbname/:collectionId', (req, res) => {
 
           const spectrum = new Spectrum(spectrumData, SPECDEFTIME);
           const countInWindow = spectrum.valueInChannels(winLow, winHigh, false);
-          const windose = getDose(countInWindow, row.rHeight, false, 1, gm1Coeff, gm2Coeff, 0.0073);
+          const windose = getDose(countInWindow, row.rHeight, false, 1, 0.0024, 0.0024, 0.0073); 
+          const gmDose1 = getDose(row.geiger1, row.rHeight, true, 1, 0.0024, 0.0024, 0.0073);
+          const gmDose2 = getDose(row.geiger2, row.rHeight, true, 2, 0.0024, 0.0024, 0.0073);
 
           return {
             id: row._id,
@@ -235,6 +237,8 @@ app.get('/api/data/:dbname/:collectionId', (req, res) => {
             dose: spectrum.calculateTotalDose(eP0, eP1, doseRateConversionFactors),
             geiger1: row.geiger1,
             geiger2: row.geiger2,
+            gmdose1: gmDose1,
+            gmdose2: gmDose2,
             spectrum: spectrum
           };
         }).filter(item => item !== null);

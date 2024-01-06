@@ -1,5 +1,6 @@
   import React, { useEffect, useState, useRef, useContext } from 'react';
-  import { MapContainer, TileLayer, CircleMarker, LayersControl, useMap } from 'react-leaflet';
+  import { MapContainer, TileLayer, CircleMarker, LayersControl, useMap, GeoJSON } from 'react-leaflet';
+  import * as turf from '@turf/turf';  
   import 'leaflet/dist/leaflet.css';
   import L from 'leaflet';
   import './MyMapComponent.css';
@@ -49,7 +50,7 @@
       </div>
     );
   }
-  
+
   const formatXAxis = (tickItem) => {
     // Задайте интервал, до которого вы хотите округлить (например, 400)
     const interval = 400;
@@ -65,6 +66,7 @@
           dataKey="value" 
           stroke="#0000FF" // Синий цвет линии
           dot={false} // Отключить отображение точек
+          isAnimationActive={false}
         />
         <CartesianGrid stroke="#ccc" />
         <XAxis 
@@ -112,7 +114,7 @@
 
     const [spectrumData, setSpectrumData] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
-    const [selectedMeasurement, setSelectedMeasurement] = useState(null);
+/*     const [selectedMeasurement, setSelectedMeasurement] = useState(null); */
     const panelRef = useRef(null); // Ссылка на DOM-элемент панели
     const spectrumPanelRef = useRef(null); 
     const [isCtrlPressed, setIsCtrlPressed] = useState(false);
@@ -121,7 +123,34 @@
     const { heightTo } = useContext(FlightDataContext);
 
     const [averageMeasurement, setAverageMeasurement] = useState(null);
-    const [averageDiapasone, setAverageDiaposone] = useState(null);
+    const [averageDiapasone, setAverageDiapasone] = useState(null);
+
+    const [isIsolineLayerActive, setIsIsolineLayerActive] = useState(false);
+    const [cachedIsolines, setCachedIsolines] = useState(null);
+    const isolineLayerRef = useRef(null);
+
+    useEffect(() => {
+      console.log('изолинии: isIsolineLayerActive && cachedIsolines && mapInstance ', 
+        isIsolineLayerActive, 
+        cachedIsolines,
+        mapInstance);
+
+      if (isIsolineLayerActive && cachedIsolines && mapInstance) {
+        // Удалить предыдущий слой изолиний, если он существует
+        if (isolineLayerRef.current) {
+          isolineLayerRef.current.remove();
+        }
+
+        // Создать новый слой изолиний из кешированных данных
+        isolineLayerRef.current = L.geoJSON(cachedIsolines).addTo(mapInstance);
+      } else {
+        // Удалить слой изолиний при деактивации
+        if (isolineLayerRef.current) {
+          isolineLayerRef.current.remove();
+          isolineLayerRef.current = null;
+        }
+      }
+    }, [isIsolineLayerActive, cachedIsolines, mapInstance]);
 
     useEffect(() => {
       const handleKeyDown = (e) => {
@@ -166,7 +195,7 @@
 
         console.log('Calc average, selectedPoints.length > 0', selectedPoints);
         // Calculate sums and ranges
-        let sumDose = 0, sumDoseW = 0;
+        let sumDose = 0, sumDoseW = 0, sumGeiger1 = 0, sumGeiger2 = 0, sumGMDose1 = 0, sumGMDose2 = 0;
         let minTime = new Date('9999-12-31T23:59:59Z'), maxTime = new Date('1000-01-01T00:00:00Z');
         let minLat = Infinity, maxLat = -Infinity;
         let minLong = Infinity, maxLong = -Infinity;
@@ -175,6 +204,11 @@
         selectedPoints.forEach(point => {
           sumDose += parseFloat(point.dose);
           sumDoseW += point.dosew;
+          sumGeiger1 += point.geiger1;
+          sumGeiger2 += point.geiger2;
+          sumGMDose1 += point.gmdose1;
+          sumGMDose2 += point.gmdose2;   
+
           const pointTime = new Date(point.datetime);
           if (pointTime < minTime) minTime = pointTime;
           if (pointTime > maxTime) maxTime = pointTime;
@@ -187,7 +221,10 @@
         // Calculate averages
         const avgDose = sumDose / selectedPoints.length;
         const avgCountW = sumDoseW / selectedPoints.length;
-    
+        const avgGeiger1 = sumGeiger1 / selectedPoints.length;
+        const avgGeiger2 = sumGeiger2 / selectedPoints.length;
+        const avgGMDose1 = sumGMDose1 / selectedPoints.length;
+        const avgGMDose2 = sumGMDose2 / selectedPoints.length;
         // Create ranges for time, latitude, and longitude
         const timeRange = [minTime, maxTime];
         const latRange = [minLat, maxLat];
@@ -199,7 +236,11 @@
           dosew: avgCountW,
           timeRange: timeRange,
           latRange: latRange,
-          longRange: longRange
+          longRange: longRange,
+          geiger1: avgGeiger1,
+          geiger2: avgGeiger2,
+          gmdose1: avgGMDose1,
+          gmdose2: avgGMDose2,
           // ... other averaged values and ranges
         };
         setAverageMeasurement(tempAverageMeasurement)
@@ -239,27 +280,6 @@
       return avgSpectrum;
     };
     
-/*     useEffect(() => {
-      // Вызывается каждый раз при изменении selectedPoints
-      const avgSpectrumData = calculateAverageSpectrum(selectedPoints);
-    
-      // Подготовка данных для графика
-      const preparedData = avgSpectrumData.map((value, index) => ({
-        channel: index,
-        value,
-      }));
-    
-      setSpectrumData(preparedData);
-    
-      // Обновление панели графика
-      if (spectrumPanelRef.current && spectrumPanelRef.current._root) {
-        spectrumPanelRef.current._root.render(
-          <SpectrumChartWithLabel data={preparedData} isLoading={false} />
-        );
-      }
-    }, [selectedPoints]);
-     */
-
     useEffect(() => {
       // Вызывается каждый раз при изменении selectedPoints
       const avgSpectrumData = calculateAverageSpectrum(selectedPoints);
@@ -275,14 +295,14 @@
     }, [selectedPoints]);
     
 
-
-
     useEffect(() => {
       if (selectedPoints.length > 0) {
         let minDose = Infinity, maxDose = -Infinity;
         let minCountW = Infinity, maxCountW = -Infinity;
         let minLat = Infinity, maxLat = -Infinity;
         let minLong = Infinity, maxLong = -Infinity;
+        let minAlt = Infinity, maxAlt = -Infinity;
+        let minHeight = Infinity, maxHeight = -Infinity;
         let minTime = new Date('9999-12-31T23:59:59Z'), maxTime = new Date('1000-01-01T00:00:00Z');
     
         selectedPoints.forEach(point => {
@@ -297,19 +317,23 @@
           maxLat = Math.max(maxLat, point.lat);
           minLong = Math.min(minLong, point.lon);
           maxLong = Math.max(maxLong, point.lon);
+          minAlt = Math.min(minAlt, point.alt);
+          maxAlt = Math.max(maxAlt, point.alt);
+          minHeight = Math.min(minHeight, point.height);
+          maxHeight = Math.max(maxHeight, point.height);
         });
     
-        setAverageDiaposone({
+        setAverageDiapasone({
           doseRange: [minDose, maxDose],
           countwRange: [minCountW, maxCountW],
           latRange: [minLat, maxLat],
           longRange: [minLong, maxLong],
-          timeRange: [minTime, maxTime]
+          timeRange: [minTime, maxTime],
+          altRange: [minAlt, maxAlt],
+          heightRange: [minHeight, maxHeight]
         });
       }
     }, [selectedPoints]);
-
-
 
 
     
@@ -323,6 +347,14 @@
       mapInstance?.setView([geoCenter.lat, geoCenter.lng], mapInstance.getZoom());
 
     }, [measurements, mapInstance, validMeasurements, geoCenter]);
+
+
+    useEffect(() => {
+
+      console.log('validMeasurements has changed');
+
+
+    }, [ validMeasurements ]);
     
   
 
@@ -369,56 +401,6 @@
         mapElement.style.cursor = ''; // Resets to default cursor
       }
     }, [selectMode]);
-
-/*     function createSpectrumPanel(map) {
-      const spectrumControl = L.control({ position: 'bottomright' });
-    
-      spectrumControl.onAdd = function () {
-        spectrumPanelRef.current = L.DomUtil.create('div', 'spectrum-panel');
-        // Создаем корень для рендеринга компонента
-        const root = createRoot(spectrumPanelRef.current);
-        spectrumPanelRef.current._root = root; // Сохраняем корень в свойстве для последующего доступа
-        root.render(<SpectrumChartWithLabel data={spectrumData} isLoading={false} />);
-        return spectrumPanelRef.current;
-      };
-    
-      spectrumControl.addTo(map);
-    }
-    
-    const updateSpectrumPanel = (data, isLoading) => {
-      if (spectrumPanelRef.current && spectrumPanelRef.current._root) {
-        // Используем сохраненный корень для обновления компонента
-        spectrumPanelRef.current._root.render(
-          <SpectrumChartWithLabel data={data} isLoading={false} />
-        );
-      }
-    }; */
-    
-
-    
-/*     function createSpectrumPanel(map) {
-      const spectrumControl = L.control({ position: 'bottomright' });
-    
-      spectrumControl.onAdd = function() {
-        spectrumPanelRef.current = L.DomUtil.create('div', 'spectrum-panel');
-        ReactDOM.render(
-          <SpectrumChartWithLabel data={spectrumData} isLoading={false} />,
-          spectrumPanelRef.current
-        );
-        return spectrumPanelRef.current;
-      };
-    
-      spectrumControl.addTo(map);
-    }
-
-    const updateSpectrumPanel = (data, isLoading) => {
-      if (spectrumPanelRef.current) {
-        ReactDOM.render(
-          <SpectrumChartWithLabel data={data} isLoading={false} />,
-          spectrumPanelRef.current
-        );
-      }
-    } */
 
     const hideSpectrumPanel = () => {
       if (spectrumPanelRef.current) {
@@ -507,15 +489,16 @@
           Дата: ${convertDateTime(averageDiapasone.timeRange[0])} -  ${convertDateTime(averageDiapasone.timeRange[1])}<br>
           Время измерения: ${(averageDiapasone.timeRange[1].getTime() - averageDiapasone.timeRange[0].getTime()) / 1000} сек<br>
           Счёт в окне: ${averageDiapasone.countwRange[0]} - ${averageDiapasone.countwRange[1]} имп/с<br>
-          Высота баром.: ${averageDiapasone.doseRange[0].toFixed(2)} - ${averageDiapasone.doseRange[1].toFixed(2)} м<br>
+          Высота баром.: ${averageDiapasone.heightRange[0].toFixed(2)} - ${averageDiapasone.heightRange[1].toFixed(2)} м<br>
           Долгота: ${averageDiapasone.longRange[0].toFixed(6)} - ${averageDiapasone.longRange[1].toFixed(6)}<br>
           Широта: ${averageDiapasone.latRange[0].toFixed(6)} - ${averageDiapasone.latRange[1].toFixed(6)}<br>
+          Высота GPS.: ${averageDiapasone.altRange[0].toFixed(2)} - ${averageDiapasone.altRange[1].toFixed(2)} м<br>
           Мощность дозы (полином): ${parseFloat(averageMeasurement.dose).toFixed(3)} мкЗв/час<br>
           Мощность дозы (по окну): ${parseFloat(averageMeasurement.dosew).toFixed(3)} мкЗв/час<br>
           
-          Счётчик ГМ1: ${averageMeasurement.geiger1} имп/с<br>
-          Счётчик ГМ2: ${averageMeasurement.geiger2} имп/с<br>
-          Мощность дозы ГМ: 0 мкЗв/час`
+          Счётчик ГМ1: ${averageMeasurement.geiger1.toFixed(6)} имп/с<br>
+          Счётчик ГМ2: ${averageMeasurement.geiger2.toFixed(6)} имп/с<br>
+          Мощность дозы ГМ: ${averageMeasurement.gmdose1.toFixed(6)} мкЗв/час`
         ;
         }
         else
@@ -524,15 +507,16 @@
           Дата: ${convertDateTime(averageDiapasone.timeRange[0])}<br>
           Время измерения: 1 сек<br>
           Счёт в окне: ${averageDiapasone.countwRange[0]} имп/с<br>
-          Высота баром.: ${averageDiapasone.doseRange[0].toFixed(2)} м<br>
+          Высота баром.: ${averageDiapasone.heightRange[0].toFixed(2)} м<br>
           Долгота: ${averageDiapasone.longRange[0].toFixed(6)}<br>
           Широта: ${averageDiapasone.latRange[0].toFixed(6)} <br>
+          Высота GPS.: ${averageDiapasone.altRange[0].toFixed(2)} м<br>
           Мощность дозы (полином): ${parseFloat(averageMeasurement.dose).toFixed(3)} мкЗв/час<br>
           Мощность дозы (по окну): ${parseFloat(averageMeasurement.dosew).toFixed(3)} мкЗв/час<br>
           
           Счётчик ГМ1: ${averageMeasurement.geiger1} имп/с<br>
           Счётчик ГМ2: ${averageMeasurement.geiger2} имп/с<br>
-          Мощность дозы ГМ: 0 мкЗв/час`        
+          Мощность дозы ГМ1: ${averageMeasurement.gmdose1} мкЗв/час`        
         }
       }
     }, [averageMeasurement]);
@@ -566,15 +550,129 @@
         
 
         div.innerHTML = `
-          <div style="width: 150px; height: 15px; ${gradientStyle}"></div>
-          <div style="width: 150px; display: flex; justify-content: space-between; margin-top: 3px;">
+          <div style="width: 120px; height: 15px; ${gradientStyle}"></div>
+          <div style="width: 120px; display: flex; justify-content: space-between; margin-top: 3px;">
             <span>${minValue.toFixed(3)}</span>
             <span>${maxValue.toFixed(3)}</span>
           </div>
         `;
       }
     };
+
+    const [previousValidMeasurements, setPreviousValidMeasurements] = useState();
+
+    useEffect(() => {
+
+      if (previousValidMeasurements === validMeasurements) {
+        // Выполните действия, когда validMeasurements изменились
+        console.log('validMeasurements не изменились');
+        return;
+      }
+
+      setPreviousValidMeasurements(validMeasurements);
+
+      if (!validMeasurements || validMeasurements.length === 0) {
+        console.log("Нет данных для измерений");
+        return;
+      }
+  
+      const minDose = Math.min(...validMeasurements.map(m => m.dose));
+      const maxDose = Math.max(...validMeasurements.map(m => m.dose));
+  
+      // Нормализация данных
+      console.log("Нормализация данных minDose maxDose", minDose, maxDose);
+      const normalizedPoints = validMeasurements.map(m => ({
+        ...m,
+        normalizedDose: ((m.dose - minDose) / (maxDose - minDose)) * 10
+      }));
+
+      console.log("Нормализация данных normalizedPoints.length", normalizedPoints.length );
+  
+      const pointsCollection = turf.featureCollection(
+        normalizedPoints.map(m => turf.point([m.lon, m.lat], { dose: m.normalizedDose }))
+      );
+
+      console.log("Нормализация данных pointsCollection.length", pointsCollection );
+
+  
+      //const bbox = turf.bbox(pointsCollection);
+      const cellSize = 0.004; // Размер ячейки
+  
+      const interpolated = turf.interpolate(pointsCollection, cellSize, { gridType: 'point', property: 'dose' });
+      // Уровни изолиний
+      const breaks = [0, 0.5, 1, 1.25, 1.5, 2, 2.25, 3, 4, 5, 6, 7, 8, 9, 10];
+
+      var lines = turf.isolines(interpolated, breaks, {zProperty: 'dose'});
+
+      console.log("setCachedIsolines ", lines); 
+
+      setCachedIsolines(lines);
+
+/*       const isolineLayer = L.geoJSON(lines).addTo(map);
+
+      return () => isolineLayer.remove(); */
+      
+    }, [validMeasurements, previousValidMeasurements ]); 
+
+    /* 
+    function IsolineLayer({ validMeasurements }) {
+      const map = useMap();
+      useEffect(() => {
+
+        if (previousValidMeasurements === validMeasurements) {
+          // Выполните действия, когда validMeasurements изменились
+          console.log('validMeasurements не изменились');
+          return;
+        }
+
+        // setPreviousValidMeasurements(validMeasurements);
+
+        if (!validMeasurements || validMeasurements.length === 0) {
+          console.log("Нет данных для измерений");
+          return;
+        }
     
+        const minDose = Math.min(...validMeasurements.map(m => m.dose));
+        const maxDose = Math.max(...validMeasurements.map(m => m.dose));
+    
+        // Нормализация данных
+        console.log("Нормализация данных minDose maxDose", minDose, maxDose);
+        const normalizedPoints = validMeasurements.map(m => ({
+          ...m,
+          normalizedDose: ((m.dose - minDose) / (maxDose - minDose)) * 10
+        }));
+
+        console.log("Нормализация данных normalizedPoints.length", normalizedPoints.length );
+    
+        const pointsCollection = turf.featureCollection(
+          normalizedPoints.map(m => turf.point([m.lon, m.lat], { dose: m.normalizedDose }))
+        );
+
+        console.log("Нормализация данных pointsCollection.length", pointsCollection );
+  
+    
+        //const bbox = turf.bbox(pointsCollection);
+        const cellSize = 0.004; // Размер ячейки
+    
+        const interpolated = turf.interpolate(pointsCollection, cellSize, { gridType: 'point', property: 'dose' });
+        // Уровни изолиний
+        const breaks = [0, 0.5, 1, 1.25, 1.5, 2, 2.25, 3, 4, 5, 6, 7, 8, 9, 10];
+
+        var lines = turf.isolines(interpolated, breaks, {zProperty: 'dose'});
+
+        console.log("test lines", lines); 
+
+        setCachedIsolines(lines);
+
+        const isolineLayer = L.geoJSON(lines).addTo(map);
+
+        return () => isolineLayer.remove();
+        
+      }, [validMeasurements ]); 
+      
+      return null;
+    }
+     */
 
     useEffect(() => {
     if (mapInstance && minDoseValue != null && maxDoseValue != null) {
@@ -686,6 +784,47 @@
             useLocalExtrema={false}
           />
         </LayersControl.Overlay>
+
+{/*         <LayersControl.Overlay 
+          name="Изолинии" 
+          checked={isIsolineLayerActive}
+          onActive={() => setIsIsolineLayerActive(true)}
+          onInactive={() => setIsIsolineLayerActive(false)}
+        >
+          <FeatureGroup>
+            <IsolineLayer validMeasurements={validMeasurements} />
+          </FeatureGroup>
+        </LayersControl.Overlay>  */}      
+
+{/*             <LayersControl.Overlay 
+              name="Изолинии" 
+              checked={isIsolineLayerActive}
+              onActive={() => setIsIsolineLayerActive(true)}
+              onInactive={() => setIsIsolineLayerActive(false)}
+            > */}
+
+            <LayersControl.Overlay
+              name="Изолинии"
+/*               eventHandlers={{
+                add: (e) =>  {
+                  console.log("Added Layer Изолинии:", e);
+                  setIsIsolineLayerActive(true)
+                }, 
+                remove: () => setIsIsolineLayerActive(false)
+              }} */
+            >
+              <FeatureGroup
+                eventHandlers={{
+                add: (e) =>  {
+                  console.log("Added Layer Изолинии:", e);
+                  setIsIsolineLayerActive(true)
+                }, 
+                remove: () => setIsIsolineLayerActive(false)
+              }}>
+                 
+              </FeatureGroup>
+            </LayersControl.Overlay>
+
 
       </LayersControl>
 
