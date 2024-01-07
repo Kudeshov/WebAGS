@@ -10,7 +10,6 @@
   import { getColor } from './colorUtils';
   import RectangularSelection from './RectangularSelection';
   import { ReactComponent as RectangleIcon } from './icons/rectangle-landscape.svg';
-  //import ReactDOM from 'react-dom';
   import { FlightDataContext } from './FlightDataContext';
   import { createRoot } from 'react-dom/client';
 
@@ -114,7 +113,6 @@
 
     const [spectrumData, setSpectrumData] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
-/*     const [selectedMeasurement, setSelectedMeasurement] = useState(null); */
     const panelRef = useRef(null); // Ссылка на DOM-элемент панели
     const spectrumPanelRef = useRef(null); 
     const [isCtrlPressed, setIsCtrlPressed] = useState(false);
@@ -128,29 +126,6 @@
     const [isIsolineLayerActive, setIsIsolineLayerActive] = useState(false);
     const [cachedIsolines, setCachedIsolines] = useState(null);
     const isolineLayerRef = useRef(null);
-
-    useEffect(() => {
-      console.log('изолинии: isIsolineLayerActive && cachedIsolines && mapInstance ', 
-        isIsolineLayerActive, 
-        cachedIsolines,
-        mapInstance);
-
-      if (isIsolineLayerActive && cachedIsolines && mapInstance) {
-        // Удалить предыдущий слой изолиний, если он существует
-        if (isolineLayerRef.current) {
-          isolineLayerRef.current.remove();
-        }
-
-        // Создать новый слой изолиний из кешированных данных
-        isolineLayerRef.current = L.geoJSON(cachedIsolines).addTo(mapInstance);
-      } else {
-        // Удалить слой изолиний при деактивации
-        if (isolineLayerRef.current) {
-          isolineLayerRef.current.remove();
-          isolineLayerRef.current = null;
-        }
-      }
-    }, [isIsolineLayerActive, cachedIsolines, mapInstance]);
 
     useEffect(() => {
       const handleKeyDown = (e) => {
@@ -546,9 +521,7 @@
         div.style.flexDirection = 'column'; // Элементы будут расположены в колонку (один за другим)
         div.style.alignItems = 'center'; // Выравниваем элементы по центру по горизонтали
         div.style.marginLeft = '10';
-        
-        
-
+  
         div.innerHTML = `
           <div style="width: 120px; height: 15px; ${gradientStyle}"></div>
           <div style="width: 120px; display: flex; justify-content: space-between; margin-top: 3px;">
@@ -561,118 +534,82 @@
 
     const [previousValidMeasurements, setPreviousValidMeasurements] = useState();
 
-    useEffect(() => {
 
+    useEffect(() => {
+      if (isIsolineLayerActive && cachedIsolines && mapInstance) {
+        // Удалить предыдущий слой изолиний, если он существует
+        if (isolineLayerRef.current) {
+          isolineLayerRef.current.remove();
+        }
+
+        // Создать новый слой изолиний из кешированных данных
+        isolineLayerRef.current = L.geoJSON(cachedIsolines.lines, {
+          style: feature => {
+            // Применение цвета к изолиниям на основе значения дозы 
+            const doseValue = feature.properties.dose;
+            return {
+              color: getColor(doseValue, cachedIsolines.minDose, cachedIsolines.maxDose),
+              weight: 2
+            };
+          }
+        }).addTo(mapInstance);
+
+      } else {
+        // Удалить слой изолиний при деактивации
+        if (isolineLayerRef.current) {
+          isolineLayerRef.current.remove();
+          isolineLayerRef.current = null;
+        }
+      }
+    }, [isIsolineLayerActive, cachedIsolines, mapInstance]);    
+
+    useEffect(() => {
       if (previousValidMeasurements === validMeasurements) {
-        // Выполните действия, когда validMeasurements изменились
         console.log('validMeasurements не изменились');
         return;
       }
-
+    
       setPreviousValidMeasurements(validMeasurements);
-
+    
       if (!validMeasurements || validMeasurements.length === 0) {
         console.log("Нет данных для измерений");
         return;
       }
-  
-      const minDose = Math.min(...validMeasurements.map(m => m.dose));
-      const maxDose = Math.max(...validMeasurements.map(m => m.dose));
-  
-      // Нормализация данных
-      console.log("Нормализация данных minDose maxDose", minDose, maxDose);
-      const normalizedPoints = validMeasurements.map(m => ({
-        ...m,
-        normalizedDose: ((m.dose - minDose) / (maxDose - minDose)) * 10
-      }));
-
-      console.log("Нормализация данных normalizedPoints.length", normalizedPoints.length );
-  
+    
+      // Создание коллекции точек для интерполяции
       const pointsCollection = turf.featureCollection(
-        normalizedPoints.map(m => turf.point([m.lon, m.lat], { dose: m.normalizedDose }))
+        validMeasurements.map(m => turf.point([m.lon, m.lat], { dose: m.dose }))
       );
-
-      console.log("Нормализация данных pointsCollection.length", pointsCollection );
-
-  
-      //const bbox = turf.bbox(pointsCollection);
-      const cellSize = 0.004; // Размер ячейки
-  
+    
+      const cellSize = 0.003; // Размер ячейки для интерполяции
+    
+      // Выполнение интерполяции
       const interpolated = turf.interpolate(pointsCollection, cellSize, { gridType: 'point', property: 'dose' });
-      // Уровни изолиний
-      const breaks = [0, 0.5, 1, 1.25, 1.5, 2, 2.25, 3, 4, 5, 6, 7, 8, 9, 10];
-
-      var lines = turf.isolines(interpolated, breaks, {zProperty: 'dose'});
-
-      console.log("setCachedIsolines ", lines); 
-
-      setCachedIsolines(lines);
-
-/*       const isolineLayer = L.geoJSON(lines).addTo(map);
-
-      return () => isolineLayer.remove(); */
-      
-    }, [validMeasurements, previousValidMeasurements ]); 
-
-    /* 
-    function IsolineLayer({ validMeasurements }) {
-      const map = useMap();
-      useEffect(() => {
-
-        if (previousValidMeasurements === validMeasurements) {
-          // Выполните действия, когда validMeasurements изменились
-          console.log('validMeasurements не изменились');
-          return;
-        }
-
-        // setPreviousValidMeasurements(validMeasurements);
-
-        if (!validMeasurements || validMeasurements.length === 0) {
-          console.log("Нет данных для измерений");
-          return;
-        }
     
-        const minDose = Math.min(...validMeasurements.map(m => m.dose));
-        const maxDose = Math.max(...validMeasurements.map(m => m.dose));
+      // Получение минимального и максимального значений дозы после интерполяции
+      const minDose = Math.min(...interpolated.features.map(f => f.properties.dose));
+      const maxDose = Math.max(...interpolated.features.map(f => f.properties.dose));
+
+      console.log("minDose maxDose", minDose, maxDose);
     
-        // Нормализация данных
-        console.log("Нормализация данных minDose maxDose", minDose, maxDose);
-        const normalizedPoints = validMeasurements.map(m => ({
-          ...m,
-          normalizedDose: ((m.dose - minDose) / (maxDose - minDose)) * 10
-        }));
-
-        console.log("Нормализация данных normalizedPoints.length", normalizedPoints.length );
+      // Расчет равномерно распределенных уровней изолиний
+      const numBreaks = 11; // Количество уровней изолиний
+      const breaks = Array.from({ length: numBreaks }, (_, i) => 
+        minDose + (maxDose - minDose) * (i / (numBreaks - 1))
+      );
     
-        const pointsCollection = turf.featureCollection(
-          normalizedPoints.map(m => turf.point([m.lon, m.lat], { dose: m.normalizedDose }))
-        );
-
-        console.log("Нормализация данных pointsCollection.length", pointsCollection );
-  
+      // Создание изолиний на основе рассчитанных уровней
+      const lines = turf.isolines(interpolated, breaks, {zProperty: 'dose'});
     
-        //const bbox = turf.bbox(pointsCollection);
-        const cellSize = 0.004; // Размер ячейки
+      // Кэширование рассчитанных изолиний
+      setCachedIsolines({
+        lines: lines,
+        minDose: minDose,
+        maxDose: maxDose
+      });
     
-        const interpolated = turf.interpolate(pointsCollection, cellSize, { gridType: 'point', property: 'dose' });
-        // Уровни изолиний
-        const breaks = [0, 0.5, 1, 1.25, 1.5, 2, 2.25, 3, 4, 5, 6, 7, 8, 9, 10];
-
-        var lines = turf.isolines(interpolated, breaks, {zProperty: 'dose'});
-
-        console.log("test lines", lines); 
-
-        setCachedIsolines(lines);
-
-        const isolineLayer = L.geoJSON(lines).addTo(map);
-
-        return () => isolineLayer.remove();
-        
-      }, [validMeasurements ]); 
-      
-      return null;
-    }
-     */
+    }, [validMeasurements, previousValidMeasurements]);
+    
 
     useEffect(() => {
     if (mapInstance && minDoseValue != null && maxDoseValue != null) {
