@@ -17,10 +17,12 @@ export const FlightDataProvider = ({ children }) => {
   const [maxDoseValue, setMaxDoseValue] = useState(null);
 
   const [geoCenter, setGeoCenter] = useState(initialCenter);
-  // Глобальные состояния для хранения значений высот
+  // Глобальные состояния для хранения значений высот полета
   const [heightFrom, setHeightFrom] = useState(-1000);
   const [heightTo, setHeightTo] = useState(1000);
- 
+
+  const [heightFilterFrom, setHeightFilterFrom] = useState(-1000);
+  const [heightFilterTo, setHeightFilterTo] = useState(1000);
 
   const fetchCollections = useCallback(() => {
     console.log('вызвана fetchCollections')
@@ -45,6 +47,39 @@ export const FlightDataProvider = ({ children }) => {
     fetchCollections();
   }, [fetchCollections]);
 
+  /* const fetchMeasurements = useCallback(() => {
+    if (selectedFlight && selectedCollection) {
+      const apiUrl = `http://localhost:3001/api/data/${selectedFlight}/${selectedCollection?._id || null}`;
+      fetch(apiUrl)
+        .then(response => response.json())
+        .then(data => {
+          const validData = data.filter(m => m.lat >= 0 && m.lon >= 0);
+  
+          if (validData.length > 0) {
+            const doses = validData.map(m => m.dose);
+            setMinDoseValue(Math.min(...doses));
+            setMaxDoseValue(Math.max(...doses));
+  
+            const latitudes = validData.map(m => m.lat);
+            const longitudes = validData.map(m => m.lon);
+            const centerLat = (Math.min(...latitudes) + Math.max(...latitudes)) / 2;
+            const centerLng = (Math.min(...longitudes) + Math.max(...longitudes)) / 2;
+            setGeoCenter({ lat: centerLat, lng: centerLng });
+  
+            // Находим минимальное и максимальное значение высоты
+            const heights = validData.map(m => m.height); // Предполагаем, что данные о высоте хранятся в свойстве height
+            const minHeight = Math.min(...heights);
+            const maxHeight = Math.max(...heights);
+            setHeightFrom(minHeight);
+            setHeightTo(maxHeight);
+          }
+  
+          setMeasurements(data);
+        })
+        .catch(error => console.error('Ошибка при загрузке данных:', error));
+    }
+  }, [selectedFlight, selectedCollection]); */
+
   const fetchMeasurements = useCallback(() => {
     if (selectedFlight && selectedCollection) {
       const apiUrl = `http://localhost:3001/api/data/${selectedFlight}/${selectedCollection?._id || null}`;
@@ -65,12 +100,27 @@ export const FlightDataProvider = ({ children }) => {
             const centerLat = (Math.min(...latitudes) + Math.max(...latitudes)) / 2;
             const centerLng = (Math.min(...longitudes) + Math.max(...longitudes)) / 2;
             setGeoCenter({ lat: centerLat, lng: centerLng });
+            // Находим минимальное и максимальное значение высоты
+            const heights = validData.map(m => m.height); // Предполагаем, что данные о высоте хранятся в свойстве height
+            const minHeight = Math.min(...heights);
+            const maxHeight = Math.max(...heights);
+            setHeightFrom(minHeight);
+            setHeightTo(maxHeight);
+
+            setHeightFilterFrom(minHeight);
+            setHeightFilterTo(maxHeight);
           }
   
           setMeasurements(data);
         });
     }
   }, [selectedFlight, selectedCollection]);
+  
+  useEffect(() => {
+    fetchMeasurements();
+  }, [fetchMeasurements]);
+
+  
   
   useEffect(() => {
     fetchMeasurements();
@@ -91,7 +141,11 @@ export const FlightDataProvider = ({ children }) => {
       heightFrom, 
       setHeightFrom,
       heightTo, 
-      setHeightTo
+      setHeightTo,
+      heightFilterFrom, 
+      setHeightFilterFrom,
+      heightFilterTo, 
+      setHeightFilterTo
     }}>
       {children}
     </FlightDataContext.Provider>
