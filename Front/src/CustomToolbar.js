@@ -14,6 +14,8 @@ import { useTheme } from '@mui/material/styles';
 /* import TuneIcon from '@mui/icons-material/Tune'; */
 import { AppBar, Toolbar, IconButton, Menu, MenuItem, ListSubheader, Dialog, DialogTitle, DialogContent, DialogActions,  TextField, Button } from '@mui/material';
 import { FlightDataContext } from './FlightDataContext';
+import Slider from '@mui/material/Slider';
+
 
 function convertDateTime(dateTimeString) {
   if (!dateTimeString) return '';
@@ -41,16 +43,13 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
 
   const [flightOptions, setFlightOptions] = useState([]);
   const [collectionOptions, setCollectionOptions] = useState([]);
- //  const [dataCollection, setDataCollection] = useState([]);
-
-/*  const [loadingCollection, setLoadingCollection] = useState(false);
-  const [selectedItem, setSelectedItem] = useState(null);
-
-  const [buttonClickCount, setButtonClickCount] = useState(0); */
   const [heightFilterDialogOpen, setHeightFilterDialogOpen] = useState(false);
 
-  const { setHeightFrom } = useContext(FlightDataContext);
-  const { setHeightTo } = useContext(FlightDataContext);
+  const { heightFrom } = useContext(FlightDataContext);
+  const { heightTo } = useContext(FlightDataContext);
+  const { heightFilterFrom, setHeightFilterFrom } = useContext(FlightDataContext);
+  const { heightFilterTo, setHeightFilterTo } = useContext(FlightDataContext);
+
 
   // Функции для открытия и закрытия диалогового окна
   const handleHeightFilterClickOpen = () => {
@@ -64,6 +63,9 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
     // Локальные состояния для временного хранения значений высот
     const [localHeightFrom, setLocalHeightFrom] = useState(-1000);
     const [localHeightTo, setLocalHeightTo] = useState(1000);
+
+    const [selectedPoints, setSelectedPoints] = useState([]);
+
   
     // Функции для обновления локальных состояний
     const handleLocalHeightFromChange = (event) => {
@@ -77,8 +79,8 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   // Функция применения фильтра
   const applyHeightFilter = () => {
     // Обновление глобального состояния или контекста с новыми значениями
-    setHeightFrom(localHeightFrom);
-    setHeightTo(localHeightTo);
+    setHeightFilterFrom(localHeightFrom);
+    setHeightFilterTo(localHeightTo);
      
     onHeightFilterActive(true);
 
@@ -354,29 +356,48 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
         </div>
 
         {/* Диалоговое окно для фильтрации по высоте */}
-        <Dialog open={heightFilterDialogOpen} onClose={handleHeightFilterClose}>
-          <DialogTitle>Фильтр по высоте</DialogTitle>
-          <DialogContent>
-            <TextField
-              autoFocus
-              margin="dense"
-              label="Высота от"
-              type="number"
-              fullWidth
-              variant="standard"
-              value={localHeightFrom}
-              onChange={handleLocalHeightFromChange}
-            />
-            <TextField
-              margin="dense"
-              label="Высота до"
-              type="number"
-              fullWidth
-              variant="standard"
-              value={localHeightTo}
-              onChange={handleLocalHeightToChange}
-            />
-          </DialogContent>
+        <Dialog 
+  open={heightFilterDialogOpen} 
+  onClose={handleHeightFilterClose}
+  PaperProps={{
+    style: {
+      height: 400, // Установите желаемую фиксированную высоту здесь
+    },
+  }}
+  
+>
+  
+  <DialogTitle>Фильтр по высоте</DialogTitle>
+  <DialogContent style={{ display: 'flex', height: 150, justifyContent: 'center', alignItems: 'center' }}>
+    <Slider
+      sx={{ 
+        height: 150, // Установите высоту слайдера
+        marginTop: 'auto',
+        marginBottom: 'auto'
+      }}
+      orientation="vertical"
+      getAriaLabel={() => 'Диапазон высот'}
+      value={[localHeightFrom, localHeightTo]}
+      onChange={(event, newValue) => {
+        setLocalHeightFrom(newValue[0]);
+        setLocalHeightTo(newValue[1]);
+      }}
+      valueLabelDisplay="on"
+      min={heightFrom}
+      max={heightTo}
+      marks={[
+        {
+          value: heightFrom,
+          label: `${heightFrom}`,
+        },
+        {
+          value: heightTo,
+          label: `${heightTo}`,
+        },
+      ]}
+
+    />
+  </DialogContent>
           <DialogActions>
             <Button onClick={handleHeightFilterClose} color="primary">
               Закрыть

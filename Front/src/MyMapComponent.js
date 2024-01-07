@@ -111,8 +111,8 @@
     const panelRef = useRef(null); // Ссылка на DOM-элемент панели
     const spectrumPanelRef = useRef(null); 
     const [isCtrlPressed, setIsCtrlPressed] = useState(false);
-    const { heightFrom } = useContext(FlightDataContext);
-    const { heightTo } = useContext(FlightDataContext);
+    const { heightFilterFrom } = useContext(FlightDataContext);
+    const { heightFilterTo } = useContext(FlightDataContext);
     const [averageMeasurement, setAverageMeasurement] = useState(null);
     const [averageDiapasone, setAverageDiapasone] = useState(null);
     const [isIsolineLayerActive, setIsIsolineLayerActive] = useState(false);
@@ -773,7 +773,7 @@
 
             .filter(measurement => 
               !heightFilterActive || // Apply filter only if heightFilterActive is true
-              (measurement.height >= heightFrom && measurement.height <= heightTo)
+              (measurement.height >= heightFilterFrom && measurement.height <= heightFilterTo)
             )
             .map((measurement) => {
                 if (minDoseValue === null || maxDoseValue === null) return null;
