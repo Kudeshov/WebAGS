@@ -98,34 +98,29 @@
       setSelectMode(!selectMode);
     };
 
-    const { selectedCollection } = useContext(FlightDataContext);
-    const { selectedFlight } = useContext(FlightDataContext);
-
     const googleMapsUrl = 'http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}&hl=ru';
     const googleSatelliteUrl = 'http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}&hl=ru';
-
+    const { selectedCollection } = useContext(FlightDataContext);
+    const { selectedFlight } = useContext(FlightDataContext);
     const { measurements } = useContext(FlightDataContext);
     const { validMeasurements } = useContext(FlightDataContext);
-      
     const { geoCenter } = useContext(FlightDataContext);
-
     const { minDoseValue, maxDoseValue } = useContext(FlightDataContext);
-
     const [spectrumData, setSpectrumData] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const panelRef = useRef(null); // Ссылка на DOM-элемент панели
     const spectrumPanelRef = useRef(null); 
     const [isCtrlPressed, setIsCtrlPressed] = useState(false);
-
     const { heightFilterFrom } = useContext(FlightDataContext);
     const { heightFilterTo } = useContext(FlightDataContext);
-
     const [averageMeasurement, setAverageMeasurement] = useState(null);
     const [averageDiapasone, setAverageDiapasone] = useState(null);
-
     const [isIsolineLayerActive, setIsIsolineLayerActive] = useState(false);
     const [cachedIsolines, setCachedIsolines] = useState(null);
     const isolineLayerRef = useRef(null);
+    const [isIsobandLayerActive, setIsIsobandLayerActive] = useState(false);
+    const [cachedIsobands, setCachedIsobands] = useState(null);
+    const isobandLayerRef = useRef(null);    
 
     useEffect(() => {
       const handleKeyDown = (e) => {
@@ -151,7 +146,6 @@
 
     const [selectedPoints, setSelectedPoints] = useState([]);
 
-    
     const handlePointClick = (measurement) => {
       if (isCtrlPressed) {
         // Добавляем точку в массив, если Ctrl нажат
@@ -161,7 +155,6 @@
         setSelectedPoints([measurement]);
       }
     };
-
 
     useEffect(() => {
       // This assumes there's an array of selected points
@@ -219,9 +212,6 @@
           // ... other averaged values and ranges
         };
         setAverageMeasurement(tempAverageMeasurement)
-    
-        // Now use averageMeasurement to update the panel content
-        // You would replace selectedMeasurement with averageMeasurement here
       }
     }, [selectedPoints]); // This useEffect should depend on selectedPoints array
 
@@ -244,14 +234,10 @@
     
       // Вычисление среднего значения спектра
       const avgSpectrumGood = sumSpectrum.map(value => value / selectedPoints.length);
-      
       const avgSpectrum = sumSpectrum.map((value, index) => ({
         energy: P0 + P1 * index, // Преобразование номера канала в энергию
         value: value / selectedPoints.length
       }));
-
-      console.log(avgSpectrumGood, avgSpectrum);
-
       return avgSpectrum;
     };
     
@@ -310,28 +296,11 @@
       }
     }, [selectedPoints]);
 
-
-    
     useEffect(() => {
-
-      console.log('validMeasurements ', validMeasurements);
-
       if (!measurements.length) return;
       if (!validMeasurements.length) return;
-
       mapInstance?.setView([geoCenter.lat, geoCenter.lng], mapInstance.getZoom());
-
     }, [measurements, mapInstance, validMeasurements, geoCenter]);
-
-
-    useEffect(() => {
-
-      console.log('validMeasurements has changed');
-
-
-    }, [ validMeasurements ]);
-    
-  
 
     useEffect(() => {
       if (selectMode) {
@@ -511,7 +480,6 @@
 
     const legendControlRef = useRef(null);
 
-
     const updateLegend = (minValue, maxValue) => {
       if (legendControlRef.current) {
         const div = legendControlRef.current.getContainer();
@@ -533,46 +501,28 @@
     };
 
     const [previousValidMeasurements, setPreviousValidMeasurements] = useState();
-
+    const [previousValidMeasurementsBand, setPreviousValidMeasurementsBand] = useState();
 
     useEffect(() => {
-      if (isIsolineLayerActive && cachedIsolines && mapInstance) {
-        // Удалить предыдущий слой изолиний, если он существует
-        if (isolineLayerRef.current) {
-          isolineLayerRef.current.remove();
-        }
 
-        // Создать новый слой изолиний из кешированных данных
-        isolineLayerRef.current = L.geoJSON(cachedIsolines.lines, {
-          style: feature => {
-            // Применение цвета к изолиниям на основе значения дозы 
-            const doseValue = feature.properties.dose;
-            return {
-              color: getColor(doseValue, cachedIsolines.minDose, cachedIsolines.maxDose),
-              weight: 2
-            };
-          }
-        }).addTo(mapInstance);
-
-      } else {
-        // Удалить слой изолиний при деактивации
-        if (isolineLayerRef.current) {
-          isolineLayerRef.current.remove();
-          isolineLayerRef.current = null;
-        }
+      if (!isIsolineLayerActive) {
+        return;
       }
-    }, [isIsolineLayerActive, cachedIsolines, mapInstance]);    
 
-    useEffect(() => {
       if (previousValidMeasurements === validMeasurements) {
         console.log('validMeasurements не изменились');
         return;
       }
-    
+
       setPreviousValidMeasurements(validMeasurements);
     
       if (!validMeasurements || validMeasurements.length === 0) {
         console.log("Нет данных для измерений");
+        setCachedIsolines({
+          lines: [],
+          minDose: null,
+          maxDose: null
+        });
         return;
       }
     
@@ -608,9 +558,131 @@
         maxDose: maxDose
       });
     
-    }, [validMeasurements, previousValidMeasurements]);
-    
+    }, [validMeasurements, previousValidMeasurements, isIsolineLayerActive]);
 
+    useEffect(() => {
+      if (isIsolineLayerActive && mapInstance) {
+        // Удалить предыдущий слой изолиний, если он существует
+        if (isolineLayerRef.current) {
+          isolineLayerRef.current.remove();
+        }
+
+        // Создать новый слой изолиний из кешированных данных
+        if (cachedIsolines)  {
+          isolineLayerRef.current = L.geoJSON(cachedIsolines.lines, {
+            style: feature => {
+              // Применение цвета к изолиниям на основе значения дозы 
+              const doseValue = feature.properties.dose;
+              return {
+                color: getColor(doseValue, cachedIsolines.minDose, cachedIsolines.maxDose),
+                weight: 2
+              };
+            }
+          }).addTo(mapInstance);
+        }
+
+      } else {
+        // Удалить слой изолиний при деактивации
+        if (isolineLayerRef.current) {
+          isolineLayerRef.current.remove();
+          isolineLayerRef.current = null;
+        }
+      }
+    }, [isIsolineLayerActive, cachedIsolines, mapInstance]);    
+
+    useEffect(() => {
+      if (isIsobandLayerActive && mapInstance) {
+        // Удалить предыдущий слой изобендов, если он существует
+        if (isobandLayerRef.current) {
+          isobandLayerRef.current.remove();
+        }
+    
+        // Создать новый слой изобендов из кешированных данных
+        if (cachedIsobands) {
+          isobandLayerRef.current = L.geoJSON(cachedIsobands.bands, {
+            style: feature => {
+              const doseRange = feature.properties.dose.split('-').map(Number);
+              const doseValue = (doseRange[0] + doseRange[1]) / 2;
+              console.log("Dose value, minmax:", doseValue); // Добавьте эту строку для проверки значения дозы
+              const fillColor = getColor(doseValue, cachedIsobands.minDose, cachedIsobands.maxDose);
+              return {
+                color: fillColor,
+                weight: 0,
+                fillColor: fillColor,
+                fillOpacity: 0.5
+              };
+            }
+            
+          }).addTo(mapInstance);
+        }
+    
+      } else {
+        // Удалить слой изобендов при деактивации
+        if (isobandLayerRef.current) {
+          isobandLayerRef.current.remove();
+          isobandLayerRef.current = null;
+        }
+      }
+    }, [isIsobandLayerActive, cachedIsobands, mapInstance]);
+  
+
+    useEffect(() => {
+
+      if (!isIsobandLayerActive) {
+        return;
+      }
+
+      if (previousValidMeasurementsBand === validMeasurements) {
+        console.log('validMeasurementsBand не изменились');
+        return;
+      }
+    
+      setPreviousValidMeasurementsBand(validMeasurements);
+    
+      if (!validMeasurements || validMeasurements.length === 0) {
+        console.log("Нет данных для измерений");
+        setCachedIsobands({ // Обновление состояния для хранения изобендов
+          bands: [],
+          minDose: null,
+          maxDose: null
+        });
+        return;
+      }
+    
+      // Создание коллекции точек для интерполяции
+      const pointsCollection = turf.featureCollection(
+        validMeasurements.map(m => turf.point([m.lon, m.lat], { dose: m.dose }))
+      );
+    
+      const cellSize = 0.003; // Размер ячейки для интерполяции
+    
+      // Выполнение интерполяции
+      const interpolated = turf.interpolate(pointsCollection, cellSize, { gridType: 'point', property: 'dose' });
+    
+      // Получение минимального и максимального значений дозы после интерполяции
+      const minDose = Math.min(...interpolated.features.map(f => f.properties.dose));
+      const maxDose = Math.max(...interpolated.features.map(f => f.properties.dose));
+    
+      console.log("minDose maxDose", minDose, maxDose);
+    
+      // Расчет равномерно распределенных уровней изобендов
+      const numBreaks = 11; // Количество уровней изобендов
+      const breaks = Array.from({ length: numBreaks }, (_, i) => 
+        minDose + (maxDose - minDose) * (i / (numBreaks - 1))
+      );
+    
+      // Создание изобендов на основе рассчитанных уровней
+      const bands = turf.isobands(interpolated, breaks, {zProperty: 'dose'});
+    
+      // Кэширование рассчитанных изобендов
+      setCachedIsobands({
+        bands: bands,
+        minDose: minDose,
+        maxDose: maxDose
+      });
+    
+    }, [validMeasurements, previousValidMeasurementsBand, isIsobandLayerActive]);
+    
     useEffect(() => {
     if (mapInstance && minDoseValue != null && maxDoseValue != null) {
       if (!legendControlRef.current) {
@@ -722,46 +794,29 @@
           />
         </LayersControl.Overlay>
 
-{/*         <LayersControl.Overlay 
-          name="Изолинии" 
-          checked={isIsolineLayerActive}
-          onActive={() => setIsIsolineLayerActive(true)}
-          onInactive={() => setIsIsolineLayerActive(false)}
-        >
-          <FeatureGroup>
-            <IsolineLayer validMeasurements={validMeasurements} />
+        <LayersControl.Overlay name="Изолинии">
+          <FeatureGroup
+            eventHandlers={{
+            add: (e) =>  {
+              console.log("Added Layer Изолинии:", e);
+              setIsIsolineLayerActive(true)
+            }, 
+            remove: () => setIsIsolineLayerActive(false)
+          }}>
           </FeatureGroup>
-        </LayersControl.Overlay>  */}      
+        </LayersControl.Overlay>
 
-{/*             <LayersControl.Overlay 
-              name="Изолинии" 
-              checked={isIsolineLayerActive}
-              onActive={() => setIsIsolineLayerActive(true)}
-              onInactive={() => setIsIsolineLayerActive(false)}
-            > */}
-
-            <LayersControl.Overlay
-              name="Изолинии"
-/*               eventHandlers={{
-                add: (e) =>  {
-                  console.log("Added Layer Изолинии:", e);
-                  setIsIsolineLayerActive(true)
-                }, 
-                remove: () => setIsIsolineLayerActive(false)
-              }} */
-            >
-              <FeatureGroup
-                eventHandlers={{
-                add: (e) =>  {
-                  console.log("Added Layer Изолинии:", e);
-                  setIsIsolineLayerActive(true)
-                }, 
-                remove: () => setIsIsolineLayerActive(false)
-              }}>
-                 
-              </FeatureGroup>
-            </LayersControl.Overlay>
-
+        <LayersControl.Overlay name="Изобенды">
+          <FeatureGroup
+            eventHandlers={{
+            add: (e) =>  {
+              console.log("Added Layer ИзоБенд:", e);
+              setIsIsobandLayerActive(true)
+            }, 
+            remove: () => setIsIsobandLayerActive(false)
+          }}>
+          </FeatureGroup>
+        </LayersControl.Overlay>        
 
       </LayersControl>
 
