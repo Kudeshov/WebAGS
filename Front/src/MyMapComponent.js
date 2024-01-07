@@ -505,6 +505,8 @@
 
     useEffect(() => {
 
+      console.log('calc isolines');
+
       if (!isIsolineLayerActive) {
         return;
       }
@@ -525,17 +527,27 @@
         });
         return;
       }
+
+      console.log('calc isolines validMeasurements', validMeasurements);
+
+      
     
       // Создание коллекции точек для интерполяции
       const pointsCollection = turf.featureCollection(
         validMeasurements.map(m => turf.point([m.lon, m.lat], { dose: m.dose }))
       );
-    
+
+      console.log('calc isolines pointsCollection', pointsCollection);
+      console.log( pointsCollection); 
       const cellSize = 0.003; // Размер ячейки для интерполяции
+
     
       // Выполнение интерполяции
       const interpolated = turf.interpolate(pointsCollection, cellSize, { gridType: 'point', property: 'dose' });
-    
+ 
+      console.log('calc isolines interpolated', interpolated);
+       
+
       // Получение минимального и максимального значений дозы после интерполяции
       const minDose = Math.min(...interpolated.features.map(f => f.properties.dose));
       const maxDose = Math.max(...interpolated.features.map(f => f.properties.dose));
@@ -603,7 +615,6 @@
             style: feature => {
               const doseRange = feature.properties.dose.split('-').map(Number);
               const doseValue = (doseRange[0] + doseRange[1]) / 2;
-              console.log("Dose value, minmax:", doseValue); // Добавьте эту строку для проверки значения дозы
               const fillColor = getColor(doseValue, cachedIsobands.minDose, cachedIsobands.maxDose);
               return {
                 color: fillColor,
@@ -628,6 +639,8 @@
 
     useEffect(() => {
 
+      console.log('calc isobands');
+
       if (!isIsobandLayerActive) {
         return;
       }
@@ -637,6 +650,9 @@
         return;
       }
     
+
+      console.log('calc isobands validMeasurements', validMeasurements); 
+
       setPreviousValidMeasurementsBand(validMeasurements);
     
       if (!validMeasurements || validMeasurements.length === 0) {
@@ -653,7 +669,9 @@
       const pointsCollection = turf.featureCollection(
         validMeasurements.map(m => turf.point([m.lon, m.lat], { dose: m.dose }))
       );
-    
+
+      console.log('calc isobands pointsCollection', pointsCollection); 
+      console.log( pointsCollection); 
       const cellSize = 0.003; // Размер ячейки для интерполяции
     
       // Выполнение интерполяции
@@ -664,13 +682,15 @@
       const maxDose = Math.max(...interpolated.features.map(f => f.properties.dose));
     
       console.log("minDose maxDose", minDose, maxDose);
+
+      
     
       // Расчет равномерно распределенных уровней изобендов
       const numBreaks = 11; // Количество уровней изобендов
       const breaks = Array.from({ length: numBreaks }, (_, i) => 
         minDose + (maxDose - minDose) * (i / (numBreaks - 1))
       );
-    
+      console.log('calc isobands breaks', breaks); 
       // Создание изобендов на основе рассчитанных уровней
       const bands = turf.isobands(interpolated, breaks, {zProperty: 'dose'});
     
