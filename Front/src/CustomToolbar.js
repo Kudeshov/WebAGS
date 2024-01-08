@@ -4,14 +4,11 @@ import { ReactComponent as AnalyticsIcon } from './icons/table.svg';
 import { ReactComponent as ChartIcon } from './icons/chart-bar.svg';
 import { ReactComponent as CogIcon } from './icons/cog.svg';
 import { ReactComponent as DatabaseIcon } from './icons/database.svg';
-/* import { ReactComponent as MapIconSVG } from './icons/map.svg';
-import { ReactComponent as RectangleIcon } from './icons/rectangle-landscape.svg'; */
 import { ReactComponent as RulerIcon } from './icons/ruler.svg';
 import { ReactComponent as FilterIcon } from './icons/filter.svg';
 import { ReactComponent as CubeIcon } from './icons/cube.svg';
 import Tooltip from '@mui/material/Tooltip';
 import { useTheme } from '@mui/material/styles';
-/* import TuneIcon from '@mui/icons-material/Tune'; */
 import { AppBar, Toolbar, IconButton, Menu, MenuItem, ListSubheader, Dialog, DialogTitle, DialogContent, DialogActions,  TextField, Button } from '@mui/material';
 import { FlightDataContext } from './FlightDataContext';
 import Slider from '@mui/material/Slider';
@@ -49,7 +46,19 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   const { heightTo } = useContext(FlightDataContext);
   const { heightFilterFrom, setHeightFilterFrom } = useContext(FlightDataContext);
   const { heightFilterTo, setHeightFilterTo } = useContext(FlightDataContext);
+/*   const { localHeightFrom, setLocalHeightFrom } = useContext(FlightDataContext);
+  const { localHeightTo, setLocalHeightTo } = useContext(FlightDataContext); */
 
+  const [localHeightFrom, setLocalHeightFrom] = useState(-1000);
+  const [localHeightTo, setLocalHeightTo] = useState(1000);
+
+  useEffect(() => {
+    setLocalHeightFrom(heightFrom);
+  }, [heightFrom]);
+
+  useEffect(() => {
+    setLocalHeightTo(heightTo);
+  }, [heightTo]);
 
   // Функции для открытия и закрытия диалогового окна
   const handleHeightFilterClickOpen = () => {
@@ -60,13 +69,6 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
     setHeightFilterDialogOpen(false);
   };
 
-    // Локальные состояния для временного хранения значений высот
-    const [localHeightFrom, setLocalHeightFrom] = useState(-1000);
-    const [localHeightTo, setLocalHeightTo] = useState(1000);
-
-    const [selectedPoints, setSelectedPoints] = useState([]);
-
-  
     // Функции для обновления локальных состояний
     const handleLocalHeightFromChange = (event) => {
       setLocalHeightFrom(event.target.value);
@@ -89,14 +91,6 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   };
 
    const theme = useTheme();
- /* const tableButtonStyle = {
-    fill: drawerOpen ? "white" : "white",
-    width: 24,
-    height: 24,
-    border: '1px dashed grey',
-    backgroundColor: drawerOpen ? "grey" : "transparent",
-  }; */
-
 
   // Измените обработчик для кнопки
   const handleDataGridToggle = () => {
@@ -155,34 +149,6 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
     }
   };
 
-/*   const handleButtonClick = () => {
-    // Увеличиваем счетчик при каждом нажатии на кнопку
-    setButtonClickCount((prevCount) => prevCount + 1);
-  };
- */
-
-/*   const handleMenuClick = (event) => {
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleMenuClose = () => {
-    setAnchorEl(null);
-  };
-
-  const handleMapMenuClick = (event) => {
-    setMapMenuAnchorEl(event.currentTarget);
-  };
-
-  const handleMapMenuClose = () => {
-    setMapMenuAnchorEl(null);
-  };
-
-
-  const handleFilterMenuClick = (event) => {
-    setFilterMenuAnchorEl(event.currentTarget);
-  };
- */
-
   const handleDatabaseMenuClick = (event) => {
     // Обновляем список при каждом открытии меню
     fetchData();
@@ -237,12 +203,6 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
     setSettingsMenuAnchorEl(null);
   };
   
-/*   const handleSelectionChange = (event, value) => {
-    console.log('handleSelectionChange value', value)
-    setSelectedCollection(value);
-    //setSelectedItem(value);
-  }; */
-
   return (
     <AppBar position="static" sx={{ height: '64px' }}>  {/*  '64px' */}
         <Toolbar >
@@ -367,13 +327,15 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   
 >
   
-  <DialogTitle>Фильтр по высоте</DialogTitle>
-  <DialogContent style={{ display: 'flex', height: 150, justifyContent: 'center', alignItems: 'center' }}>
+<DialogTitle>Фильтр по высоте</DialogTitle>
+<DialogContent style={{ display: 'flex', height: 170, justifyContent: 'center', alignItems: 'center' }}>
+  <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
     <Slider
       sx={{ 
-        height: 150, // Установите высоту слайдера
+        height: 170, // Установите высоту слайдера
         marginTop: 'auto',
-        marginBottom: 'auto'
+        marginBottom: 'auto',
+        marginLeft: 5
       }}
       orientation="vertical"
       getAriaLabel={() => 'Диапазон высот'}
@@ -395,26 +357,27 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
           label: `${heightTo}`,
         },
       ]}
-
     />
-  </DialogContent>
-          <DialogActions>
-            <Button onClick={handleHeightFilterClose} color="primary">
-              Закрыть
-            </Button>
-            <Button onClick={applyHeightFilter} color="primary">
-              Применить
-            </Button>
-            <Button onClick={() => {
-                setHeightFilterDialogOpen(false); 
-                onHeightFilterActive(false);
-                setLocalHeightFrom(-1000);
-                setLocalHeightTo(1000);
-                }} color="primary">
-              Сбросить фильтр
-            </Button>
-          </DialogActions>
-        </Dialog>
+  </div>
+</DialogContent>
+<DialogActions>
+  <Button onClick={handleHeightFilterClose} color="primary">
+    Закрыть
+  </Button>
+  <Button onClick={applyHeightFilter} color="primary">
+    Применить
+  </Button>
+  <Button onClick={() => {
+      setHeightFilterDialogOpen(false); 
+      onHeightFilterActive(false);
+      setLocalHeightFrom(heightFrom);
+      setLocalHeightTo(heightTo);
+      }} color="primary">
+    Сбросить фильтр
+  </Button>
+</DialogActions>
+</Dialog>
+
 
         <IconButton
           color="inherit"

@@ -18,12 +18,6 @@ export function getColor(value, doseLow, doseHigh) {
       g = 255;
       r = 255 * (diff - 0.33) / 0.33;
     }
-/*     //yellow
-    else if (diff > 0.5 && diff <= 0.75) {
-      r = 255;
-      g = 255;
-      b = 0;
-    } */
     //yellow to red
     else if (diff > 0.66 && diff <= 1) {
       g = 255 * (1 - diff) / 0.33;
@@ -31,13 +25,13 @@ export function getColor(value, doseLow, doseHigh) {
       b = 0;
     }
 
-  const color = `rgb(${r}, ${g}, ${b})`;
-  return color;
+    const color = rgb(r, g, b);
+    return color.toString();
 }
 
 
-
-/* export function getColor(value, doseLow, doseHigh) {
+/* 
+export function getColor(value, doseLow, doseHigh) {
     const diff = 1 - (doseHigh - value) / (doseHigh - doseLow);
     let r = 0;
     let g = 0;

@@ -102,7 +102,7 @@
     const googleSatelliteUrl = 'http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}&hl=ru';
     const { selectedCollection } = useContext(FlightDataContext);
     const { selectedFlight } = useContext(FlightDataContext);
-    const { measurements } = useContext(FlightDataContext);
+/*     const { measurements } = useContext(FlightDataContext); */
     const { validMeasurements } = useContext(FlightDataContext);
     const { geoCenter } = useContext(FlightDataContext);
     const { minDoseValue, maxDoseValue } = useContext(FlightDataContext);
@@ -158,10 +158,7 @@
 
     useEffect(() => {
       // This assumes there's an array of selected points
-      console.log('Calc average, selectedPoints', selectedPoints);
       if (selectedPoints.length > 0) {
-
-        console.log('Calc average, selectedPoints.length > 0', selectedPoints);
         // Calculate sums and ranges
         let sumDose = 0, sumDoseW = 0, sumGeiger1 = 0, sumGeiger2 = 0, sumGMDose1 = 0, sumGMDose2 = 0;
         let minTime = new Date('9999-12-31T23:59:59Z'), maxTime = new Date('1000-01-01T00:00:00Z');
@@ -297,10 +294,8 @@
     }, [selectedPoints]);
 
     useEffect(() => {
-      if (!measurements.length) return;
-      if (!validMeasurements.length) return;
       mapInstance?.setView([geoCenter.lat, geoCenter.lng], mapInstance.getZoom());
-    }, [measurements, mapInstance, validMeasurements, geoCenter]);
+    }, [mapInstance, geoCenter]);
 
     useEffect(() => {
       if (selectMode) {
@@ -310,19 +305,17 @@
       }
     }, [selectMode]);
 
-    const heatPoints = measurements.map(measurement => {
+    const heatPoints = validMeasurements.map(measurement => {
       const intensity = (measurement.dose - minDoseValue) / (maxDoseValue - minDoseValue);
       return [measurement.lat, measurement.lon, intensity];
     });
 
     const handleSelectionComplete = (bounds) => {
-      console.log('Selected Bounds:', bounds);
-    
       // Разбиваем bounds на отдельные переменные для удобства
       const { _southWest, _northEast } = bounds;
     
       // Фильтруем измерения, чтобы найти те, которые находятся внутри прямоугольника
-      const selected = measurements.filter((measurement) => {
+      const selected = validMeasurements.filter((measurement) => {
         return (
           measurement.lat >= _southWest.lat &&
           measurement.lat <= _northEast.lat &&
@@ -359,7 +352,6 @@
     };
 
     useEffect(() => {
-      console.log('chartOpen ',chartOpen);
       if (chartOpen) {
         showSpectrumPanel()
       } else {
@@ -504,22 +496,17 @@
     const [previousValidMeasurementsBand, setPreviousValidMeasurementsBand] = useState();
 
     useEffect(() => {
-
-      console.log('calc isolines');
-
       if (!isIsolineLayerActive) {
         return;
       }
 
       if (previousValidMeasurements === validMeasurements) {
-        console.log('validMeasurements не изменились');
         return;
       }
 
       setPreviousValidMeasurements(validMeasurements);
     
       if (!validMeasurements || validMeasurements.length === 0) {
-        console.log("Нет данных для измерений");
         setCachedIsolines({
           lines: [],
           minDose: null,
@@ -527,33 +514,22 @@
         });
         return;
       }
-
-      console.log('calc isolines validMeasurements', validMeasurements);
-
-      
-    
+     
       // Создание коллекции точек для интерполяции
       const pointsCollection = turf.featureCollection(
         validMeasurements.map(m => turf.point([m.lon, m.lat], { dose: m.dose }))
       );
 
-      console.log('calc isolines pointsCollection', pointsCollection);
-      console.log( pointsCollection); 
       const cellSize = 0.003; // Размер ячейки для интерполяции
 
     
       // Выполнение интерполяции
       const interpolated = turf.interpolate(pointsCollection, cellSize, { gridType: 'point', property: 'dose' });
- 
-      console.log('calc isolines interpolated', interpolated);
-       
 
       // Получение минимального и максимального значений дозы после интерполяции
       const minDose = Math.min(...interpolated.features.map(f => f.properties.dose));
       const maxDose = Math.max(...interpolated.features.map(f => f.properties.dose));
 
-      console.log("minDose maxDose", minDose, maxDose);
-    
       // Расчет равномерно распределенных уровней изолиний
       const numBreaks = 11; // Количество уровней изолиний
       const breaks = Array.from({ length: numBreaks }, (_, i) => 
@@ -572,6 +548,8 @@
     
     }, [validMeasurements, previousValidMeasurements, isIsolineLayerActive]);
 
+
+
     useEffect(() => {
       if (isIsolineLayerActive && mapInstance) {
         // Удалить предыдущий слой изолиний, если он существует
@@ -587,10 +565,14 @@
               const doseValue = feature.properties.dose;
               return {
                 color: getColor(doseValue, cachedIsolines.minDose, cachedIsolines.maxDose),
-                weight: 2
+                weight: 2,
+                opacity: 0.6
               };
             }
           }).addTo(mapInstance);
+          if (measurementsLayerRef.current) {
+            measurementsLayerRef.current.bringToFront();
+          }
         }
 
       } else {
@@ -625,6 +607,10 @@
             }
             
           }).addTo(mapInstance);
+
+          if (measurementsLayerRef.current) {
+            measurementsLayerRef.current.bringToFront();
+          }
         }
     
       } else {
@@ -639,24 +625,17 @@
 
     useEffect(() => {
 
-      console.log('calc isobands');
-
       if (!isIsobandLayerActive) {
         return;
       }
 
       if (previousValidMeasurementsBand === validMeasurements) {
-        console.log('validMeasurementsBand не изменились');
         return;
       }
-    
-
-      console.log('calc isobands validMeasurements', validMeasurements); 
 
       setPreviousValidMeasurementsBand(validMeasurements);
     
       if (!validMeasurements || validMeasurements.length === 0) {
-        console.log("Нет данных для измерений");
         setCachedIsobands({ // Обновление состояния для хранения изобендов
           bands: [],
           minDose: null,
@@ -670,8 +649,6 @@
         validMeasurements.map(m => turf.point([m.lon, m.lat], { dose: m.dose }))
       );
 
-      console.log('calc isobands pointsCollection', pointsCollection); 
-      console.log( pointsCollection); 
       const cellSize = 0.003; // Размер ячейки для интерполяции
     
       // Выполнение интерполяции
@@ -681,16 +658,11 @@
       const minDose = Math.min(...interpolated.features.map(f => f.properties.dose));
       const maxDose = Math.max(...interpolated.features.map(f => f.properties.dose));
     
-      console.log("minDose maxDose", minDose, maxDose);
-
-      
-    
       // Расчет равномерно распределенных уровней изобендов
       const numBreaks = 11; // Количество уровней изобендов
       const breaks = Array.from({ length: numBreaks }, (_, i) => 
         minDose + (maxDose - minDose) * (i / (numBreaks - 1))
       );
-      console.log('calc isobands breaks', breaks); 
       // Создание изобендов на основе рассчитанных уровней
       const bands = turf.isobands(interpolated, breaks, {zProperty: 'dose'});
     
@@ -722,11 +694,20 @@
     }
   }, [mapInstance, minDoseValue, maxDoseValue]);
 
+
+  const measurementsLayerRef = useRef(null);
+
+  useEffect(() => {
+    if (measurementsLayerRef.current) {
+      console.log('measurementsLayerRef.current.bringToFront();');
+      measurementsLayerRef.current.bringToFront();
+    }
+  }, [measurementsLayerRef, validMeasurements]);
+
     return (
       <div>
       <MapContainer 
         whenCreated={(mapInstance) => {
-          console.log('Map created. Instance:', mapInstance);
           mapRef.current = mapInstance;
         }}
         id="map" 
@@ -734,7 +715,6 @@
         zoom={18} 
         style={{ width: '100%', height:  window.innerHeight - 64   }}>
       <MapEffect setMapInstance={setMapInstance} />
-  {/*     <ChangeMapView coords={mapCenter} /> */}
 
       <LayersControl position="topright">
         <LayersControl.Overlay name="Marker with popup">
@@ -768,13 +748,9 @@
         </LayersControl.Overlay>
 
         <LayersControl.Overlay checked name="Измерения">
-          <FeatureGroup>
-          {validMeasurements
-
-            .filter(measurement => 
-              !heightFilterActive || // Apply filter only if heightFilterActive is true
-              (measurement.height >= heightFilterFrom && measurement.height <= heightFilterTo)
-            )
+          <FeatureGroup ref={measurementsLayerRef}>
+          {
+          validMeasurements
             .map((measurement) => {
                 if (minDoseValue === null || maxDoseValue === null) return null;
                 const color = getColor(measurement.dose, minDoseValue, maxDoseValue);
@@ -818,7 +794,6 @@
           <FeatureGroup
             eventHandlers={{
             add: (e) =>  {
-              console.log("Added Layer Изолинии:", e);
               setIsIsolineLayerActive(true)
             }, 
             remove: () => setIsIsolineLayerActive(false)
@@ -826,11 +801,11 @@
           </FeatureGroup>
         </LayersControl.Overlay>
 
-        <LayersControl.Overlay name="Изобенды">
+        <LayersControl.Overlay name="Изобанды (послойная окраска)">
           <FeatureGroup
+            zIndex={40}
             eventHandlers={{
             add: (e) =>  {
-              console.log("Added Layer ИзоБенд:", e);
               setIsIsobandLayerActive(true)
             }, 
             remove: () => setIsIsobandLayerActive(false)

@@ -39,7 +39,7 @@ function App() {
   };
 
   return (
-    <FlightDataProvider>
+    <FlightDataProvider heightFilterActive={heightFilterActive} onHeightFilterActive={setHeightFilterActive}>
       <Grid container spacing={0} sx={{...gridStyles, ...tallGrid}} >
       <CustomToolbar 
         onToggleDrawer={toggleDrawer} drawerOpen={drawerOpen} 

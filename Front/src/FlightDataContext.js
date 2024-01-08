@@ -7,7 +7,10 @@ const initialCenter = {
 
 export const FlightDataContext = createContext();
 
-export const FlightDataProvider = ({ children }) => {
+/* = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, onHeightFilterActive, heightFilterActive,
+  handleThreeDToggle, threeDActive }) => 
+ */
+export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilterActive }) => {
   const [selectedFlight, setSelectedFlight] = useState(null);
   const [selectedCollection, setSelectedCollection] = useState(null);
   const [measurements, setMeasurements] = useState([]);
@@ -24,8 +27,11 @@ export const FlightDataProvider = ({ children }) => {
   const [heightFilterFrom, setHeightFilterFrom] = useState(-1000);
   const [heightFilterTo, setHeightFilterTo] = useState(1000);
 
+  const [localHeightFrom, setLocalHeightFrom] = useState(-1000);
+  const [localHeightTo, setLocalHeightTo] = useState(1000);
+
   const fetchCollections = useCallback(() => {
-    console.log('вызвана fetchCollections')
+    //console.log('вызвана fetchCollections')
     if (selectedFlight) {
 
       fetch(`http://localhost:3001/api/collection/${selectedFlight}`)
@@ -43,42 +49,9 @@ export const FlightDataProvider = ({ children }) => {
   }, [selectedFlight]);
 
   useEffect(() => {
-    console.log('вызвана fetchCollections из useEffect')
+    //console.log('вызвана fetchCollections из useEffect')
     fetchCollections();
   }, [fetchCollections]);
-
-  /* const fetchMeasurements = useCallback(() => {
-    if (selectedFlight && selectedCollection) {
-      const apiUrl = `http://localhost:3001/api/data/${selectedFlight}/${selectedCollection?._id || null}`;
-      fetch(apiUrl)
-        .then(response => response.json())
-        .then(data => {
-          const validData = data.filter(m => m.lat >= 0 && m.lon >= 0);
-  
-          if (validData.length > 0) {
-            const doses = validData.map(m => m.dose);
-            setMinDoseValue(Math.min(...doses));
-            setMaxDoseValue(Math.max(...doses));
-  
-            const latitudes = validData.map(m => m.lat);
-            const longitudes = validData.map(m => m.lon);
-            const centerLat = (Math.min(...latitudes) + Math.max(...latitudes)) / 2;
-            const centerLng = (Math.min(...longitudes) + Math.max(...longitudes)) / 2;
-            setGeoCenter({ lat: centerLat, lng: centerLng });
-  
-            // Находим минимальное и максимальное значение высоты
-            const heights = validData.map(m => m.height); // Предполагаем, что данные о высоте хранятся в свойстве height
-            const minHeight = Math.min(...heights);
-            const maxHeight = Math.max(...heights);
-            setHeightFrom(minHeight);
-            setHeightTo(maxHeight);
-          }
-  
-          setMeasurements(data);
-        })
-        .catch(error => console.error('Ошибка при загрузке данных:', error));
-    }
-  }, [selectedFlight, selectedCollection]); */
 
   const fetchMeasurements = useCallback(() => {
     if (selectedFlight && selectedCollection) {
@@ -86,15 +59,15 @@ export const FlightDataProvider = ({ children }) => {
       fetch(apiUrl)
         .then(response => response.json())
         .then(data => {
-          const validData = data.filter(m => m.lat >= 0 && m.lon >= 0);
-
+          onHeightFilterActive(false);
+          let validData = data.filter(m => m.lat >= 0 && m.lon >= 0 && m.dose >= 0 && m.dosew >= 0 && m.countw<1000000);
           setValidMeasurements(validData);
-  
+
           if (validData.length > 0) {
             const doses = validData.map(m => m.dose);
             setMinDoseValue(Math.min(...doses));
             setMaxDoseValue(Math.max(...doses));
-  
+      
             const latitudes = validData.map(m => m.lat);
             const longitudes = validData.map(m => m.lon);
             const centerLat = (Math.min(...latitudes) + Math.max(...latitudes)) / 2;
@@ -106,12 +79,18 @@ export const FlightDataProvider = ({ children }) => {
             const maxHeight = Math.max(...heights);
             setHeightFrom(minHeight);
             setHeightTo(maxHeight);
-
+            console.log('setHeightFilterTo(maxHeight)', maxHeight);
             setHeightFilterFrom(minHeight);
             setHeightFilterTo(maxHeight);
+            setLocalHeightFrom(minHeight);
+            setLocalHeightTo(maxHeight);    
+            console.log(' heightFrom, heightTo', heightFrom, heightTo, minHeight, maxHeight);
+            setLocalHeightFrom(minHeight);
+            setLocalHeightTo(maxHeight);
           }
-  
+      
           setMeasurements(data);
+         
         });
     }
   }, [selectedFlight, selectedCollection]);
@@ -120,11 +99,20 @@ export const FlightDataProvider = ({ children }) => {
     fetchMeasurements();
   }, [fetchMeasurements]);
 
-  
-  
+
+  const filterMeasurementsByHeight = useCallback(() => {
+    let validData = measurements.filter(m => m.lat >= 0 && m.lon >= 0 && m.dose >= 0 && m.dosew >= 0 && m.countw<1000000);
+    if (heightFilterActive) {
+    validData = validData.filter(m => 
+      (m.height >= heightFilterFrom && m.height <= heightFilterTo)) 
+    }
+
+    setValidMeasurements(validData);
+  }, [measurements, heightFilterFrom, heightFilterTo, heightFilterActive]);
+
   useEffect(() => {
-    fetchMeasurements();
-  }, [fetchMeasurements]);
+    filterMeasurementsByHeight()
+  }, [heightFilterFrom, heightFilterTo, filterMeasurementsByHeight]); 
 
   return (
     <FlightDataContext.Provider value={{
@@ -145,7 +133,11 @@ export const FlightDataProvider = ({ children }) => {
       heightFilterFrom, 
       setHeightFilterFrom,
       heightFilterTo, 
-      setHeightFilterTo
+      setHeightFilterTo,
+      localHeightFrom, 
+      setLocalHeightFrom,
+      localHeightTo, 
+      setLocalHeightTo
     }}>
       {children}
     </FlightDataContext.Provider>
