@@ -30,6 +30,9 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
   const [localHeightFrom, setLocalHeightFrom] = useState(-1000);
   const [localHeightTo, setLocalHeightTo] = useState(1000);
 
+  const [saveMapAsImage, setSaveMapAsImage] = useState(() => {});
+
+
   const fetchCollections = useCallback(() => {
     //console.log('вызвана fetchCollections')
     if (selectedFlight) {
@@ -90,7 +93,6 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
           }
       
           setMeasurements(data);
-         
         });
     }
   }, [selectedFlight, selectedCollection]);
@@ -137,7 +139,9 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
       localHeightFrom, 
       setLocalHeightFrom,
       localHeightTo, 
-      setLocalHeightTo
+      setLocalHeightTo,
+      saveMapAsImage,
+      setSaveMapAsImage,
     }}>
       {children}
     </FlightDataContext.Provider>

@@ -12,6 +12,7 @@
   import { ReactComponent as RectangleIcon } from './icons/rectangle-landscape.svg';
   import { FlightDataContext } from './FlightDataContext';
   import { createRoot } from 'react-dom/client';
+  import 'leaflet-easyprint';
 
   delete L.Icon.Default.prototype._getIconUrl;
 
@@ -86,18 +87,12 @@
         setMapInstance(map);
       }
     }, [map, setMapInstance]);
+    
     return null;
   }
 
   function MyMapComponent({ chartOpen, heightFilterActive }) {
     const [mapInstance, setMapInstance] = React.useState(null);
-    const [selectMode, setSelectMode] = useState(false);
-
-    // Функция для переключения режима выделения
-    const toggleSelectMode = () => {
-      setSelectMode(!selectMode);
-    };
-
     const googleMapsUrl = 'http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}&hl=ru';
     const googleSatelliteUrl = 'http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}&hl=ru';
     const { selectedCollection } = useContext(FlightDataContext);
@@ -106,6 +101,7 @@
     const { validMeasurements } = useContext(FlightDataContext);
     const { geoCenter } = useContext(FlightDataContext);
     const { minDoseValue, maxDoseValue } = useContext(FlightDataContext);
+    const { setSaveMapAsImage } = useContext(FlightDataContext);
     const [spectrumData, setSpectrumData] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const panelRef = useRef(null); // Ссылка на DOM-элемент панели
@@ -120,7 +116,8 @@
     const isolineLayerRef = useRef(null);
     const [isIsobandLayerActive, setIsIsobandLayerActive] = useState(false);
     const [cachedIsobands, setCachedIsobands] = useState(null);
-    const isobandLayerRef = useRef(null);    
+    const isobandLayerRef = useRef(null);
+    const [selectMode, setSelectMode] = useState(false);    
 
     useEffect(() => {
       const handleKeyDown = (e) => {
@@ -372,6 +369,20 @@
       };
     
       control.addTo(map);
+  
+      const printPlugin = L.easyPrint({
+        title: 'Моя карта',
+        position: 'topright',
+        sizeModes: ['Current', 'A4Landscape', 'A4Portrait'],
+        filename: 'myMap',
+        exportOnly: true,
+        hideControlContainer: true,
+        hidden: true // Скрываем кнопку на карте
+      }).addTo(map);
+
+  
+      // Задаем функцию в контекст
+      setSaveMapAsImage(() => () => printPlugin.printMap('CurrentSize', 'myMap'));
     }
 
     function createSpectrumControl(map) {
@@ -694,15 +705,80 @@
     }
   }, [mapInstance, minDoseValue, maxDoseValue]);
 
-
   const measurementsLayerRef = useRef(null);
 
+  const toggleSelectMode = () => {
+    setSelectMode(!selectMode);
+  };
+
   useEffect(() => {
-    if (measurementsLayerRef.current) {
-      console.log('measurementsLayerRef.current.bringToFront();');
-      measurementsLayerRef.current.bringToFront();
+    if (mapInstance) {
+      if (!mapInstance.selectionModeControl) {
+        createSelectionModeControl(mapInstance, toggleSelectMode);
+      }
     }
-  }, [measurementsLayerRef, validMeasurements]);
+  }, [mapInstance]);
+  
+  useEffect(() => {
+    if (mapInstance?.selectionModeControl) {
+      const container = mapInstance.selectionModeControl.getContainer();
+      if (container) {
+        container.innerHTML = getSvgContent(selectMode);
+        container.title = updateTitle(selectMode);
+      }
+    }
+  }, [selectMode]);
+
+  const getSvgContent = (selectMode) => {
+    return selectMode
+      ? '<svg width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!-- Font Awesome Pro 5.15.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) --><path d="M360.543 188.156c-17.46-28.491-54.291-37.063-82.138-19.693-15.965-20.831-42.672-28.278-66.119-20.385V60.25c0-33.222-26.788-60.25-59.714-60.25S92.857 27.028 92.857 60.25v181.902c-20.338-13.673-47.578-13.89-68.389 1.472-26.556 19.605-32.368 57.08-13.132 83.926l114.271 159.5C136.803 502.673 154.893 512 174 512h185.714c27.714 0 51.832-19.294 58.145-46.528l28.571-123.25a60.769 60.769 0 0 0 1.57-13.723v-87c0-45.365-48.011-74.312-87.457-53.343zM82.097 275.588l28.258 39.439a7.999 7.999 0 1 0 14.503-4.659V60.25c0-37.35 55.428-37.41 55.428 0V241.5a8 8 0 0 0 8 8h7.144a8 8 0 0 0 8-8v-36.25c0-37.35 55.429-37.41 55.429 0v36.25a8 8 0 0 0 8 8H274a8 8 0 0 0 8-8v-21.75c0-37.351 55.429-37.408 55.429 0v21.75a8 8 0 0 0 8 8h7.143a8 8 0 0 0 8-8c0-37.35 55.429-37.41 55.429 0v87c0 2.186-.25 4.371-.742 6.496l-28.573 123.251C383.717 471.055 372.626 480 359.715 480H174c-8.813 0-17.181-4.332-22.381-11.588l-114.283-159.5c-22.213-31.004 23.801-62.575 44.761-33.324zM180.285 401v-87a8 8 0 0 1 8-8h7.144a8 8 0 0 1 8 8v87a8 8 0 0 1-8 8h-7.144a8 8 0 0 1-8-8zm78.572 0v-87a8 8 0 0 1 8-8H274a8 8 0 0 1 8 8v87a8 8 0 0 1-8 8h-7.143a8 8 0 0 1-8-8zm78.572 0v-87a8 8 0 0 1 8-8h7.143a8 8 0 0 1 8 8v87a8 8 0 0 1-8 8h-7.143a8 8 0 0 1-8-8z"/></svg>' 
+      : '<svg width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!-- Font Awesome Pro 5.15.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) --><path d="M464 64H48C21.5 64 0 85.5 0 112v288c0 26.5 21.5 48 48 48h416c26.5 0 48-21.5 48-48V112c0-26.5-21.5-48-48-48zm16 336c0 8.8-7.2 16-16 16H48c-8.8 0-16-7.2-16-16V112c0-8.8 7.2-16 16-16h416c8.8 0 16 7.2 16 16v288z"/></svg>';
+  };
+
+
+  // Функция для обновления хинта
+  const updateTitle = ( selectMode ) => {
+    return selectMode
+      ? "Перейти в режим навигации" 
+      : "Перейти в режим выделения"; 
+  }
+
+  function createSelectionModeControl(map, onToggleSelectMode) {
+    const SelectionModeControl = L.Control.extend({
+      onAdd: function(map) {
+        const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-custom');
+        container.style.backgroundColor = 'white';
+        container.style.width = '30px';
+        container.style.height = '30px';
+        container.style.display = 'flex';
+        container.style.alignItems = 'center'; // Центрирование по вертикали
+        container.style.justifyContent = 'center'; // Центрирование по горизонтали
+        container.title = updateTitle(selectMode);
+        //updateTitle(container, selectMode);
+        container.innerHTML = getSvgContent(selectMode); // Инициализация с текущим состоянием selectMode
+        // Стили для эффекта затемнения при наведении
+        container.onmouseover = function() {
+          this.style.backgroundColor = 'rgba(244,244,244)'; // Затемнение
+        };
+        container.onmouseout = function() {
+          this.style.backgroundColor = 'white'; // Возвращение к исходному состоянию
+        };
+        container.onclick = function() {
+          setSelectMode(prevSelectMode => !prevSelectMode);
+        };
+        return container;
+      },
+      onRemove: function(map) {
+        // Удаление обработчиков событий и дополнительной очистки
+      }
+    });
+  
+    // Создание и добавление нового контрола
+    const selectionModeControl = new SelectionModeControl({ position: 'topleft' });
+    selectionModeControl.addTo(map);
+    // Сохранение ссылки на контрол в свойство карты
+    map.selectionModeControl = selectionModeControl;
+  }
 
     return (
       <div>
@@ -820,7 +896,7 @@
           onSelectionComplete={handleSelectionComplete}
       />
 
-      <div style={{ position: 'absolute', top: '66px', right: '10px', zIndex: 600 }}>
+{/*       <div style={{ position: 'absolute', top: '66px', right: '10px', zIndex: 600 }}>
         <button 
           className={`selection-toggle-button ${selectMode ? 'active' : ''}`} 
           onClick={toggleSelectMode}
@@ -828,7 +904,7 @@
         >
           <RectangleIcon style={{ fill: selectMode ? 'blue' : 'gray', width: 27, height: 27 }} />
         </button>
-      </div>
+      </div> */}
     </MapContainer>
 
     </div>    

@@ -24,7 +24,8 @@ function App() {
   const [chartOpen, setChartOpen] = useState(false);
   const [heightFilterActive, setHeightFilterActive] = useState(false);
   const [threeDActive, setThreeDActive] = useState(false);
-  
+  const [colorOverrideActive, setColorOverrideActive] = useState(false);
+
   const toggleThreeD = () => {
     setThreeDActive(!threeDActive);
   };
@@ -46,6 +47,7 @@ function App() {
         onToggleChart={toggleChart} chartOpen={chartOpen} 
         onHeightFilterActive={setHeightFilterActive} heightFilterActive={heightFilterActive}
         handleThreeDToggle={toggleThreeD} threeDActive={threeDActive}
+        onColorOverrideActive={setColorOverrideActive} colorOverrideActive={colorOverrideActive}
       />
         <Grid container spacing={0} >
           <Grid item xs>
