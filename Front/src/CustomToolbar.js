@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext} from 'react';
+import React, { useState, useEffect, useContext, useRef, useLayoutEffect} from 'react';
 import { ReactComponent as PlaneIcon } from './icons/plane.svg';
 import { ReactComponent as AnalyticsIcon } from './icons/table.svg';
 import { ReactComponent as ChartIcon } from './icons/chart-bar.svg';
@@ -16,7 +16,7 @@ import { useTheme } from '@mui/material/styles';
 import { AppBar, Toolbar, IconButton, Menu, MenuItem, ListSubheader, Dialog, DialogTitle, DialogContent, DialogActions,  TextField, Button } from '@mui/material';
 import { FlightDataContext } from './FlightDataContext';
 import Slider from '@mui/material/Slider';
-
+import { getColor, createGradient } from './colorUtils';
 
 function convertDateTime(dateTimeString) {
   if (!dateTimeString) return '';
@@ -44,11 +44,19 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   const [flightOptions, setFlightOptions] = useState([]);
   const [collectionOptions, setCollectionOptions] = useState([]);
   const [heightFilterDialogOpen, setHeightFilterDialogOpen] = useState(false);
+  const [colorLegendFilterDialogOpen, setColorLegendFilterDialogOpen] = useState(false);
+  const [midDoseValue1, setMidDoseValue1] = useState(0);
+  const [midDoseValue2, setMidDoseValue2] = useState(100);
 
   const { heightFrom } = useContext(FlightDataContext);
   const { heightTo } = useContext(FlightDataContext);
   const { heightFilterFrom, setHeightFilterFrom } = useContext(FlightDataContext);
   const { heightFilterTo, setHeightFilterTo } = useContext(FlightDataContext);
+  
+  const { minDoseValue } = useContext(FlightDataContext);
+  const { maxDoseValue } = useContext(FlightDataContext);
+  const roundedMinDoseValue = parseFloat(minDoseValue.toFixed(3));
+  const roundedMaxDoseValue = parseFloat(maxDoseValue.toFixed(3));
 /*   const { localHeightFrom, setLocalHeightFrom } = useContext(FlightDataContext);
   const { localHeightTo, setLocalHeightTo } = useContext(FlightDataContext); */
 
@@ -207,7 +215,67 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   const handleSettingsMenuClose = () => {
     setSettingsMenuAnchorEl(null);
   };
+
+  // Function to open the dialog
+const handleColorLegendFilterClickOpen = () => {
+  setColorLegendFilterDialogOpen(true);
+  // Additional logic if needed
+};
+
+// Function to close the dialog
+const handleColorLegendFilterClose = () => {
+  setColorLegendFilterDialogOpen(false);
+  // Additional logic if needed
+};
+
+// Function to apply the color legend filter
+const applyColorLegendFilter = () => {
+  // Implement the logic to apply the color legend filter
+};
+
+// Function to handle filter activation
+const onColorLegendFilterActive = (isActive) => {
+  // Implement logic to handle when the filter is active/inactive
+};
   
+
+const legendControlRef = useRef(null);
+
+
+const updateLegend = (minValue, maxValue) => {
+  if (legendControlRef.current) {
+    const gradientStyle = `background: linear-gradient(to top, ${createGradient(minValue, maxValue)});`;
+
+    legendControlRef.current.style.display = 'flex';
+    legendControlRef.current.style.flexDirection = 'column';
+    legendControlRef.current.style.alignItems = 'center';
+    legendControlRef.current.style.marginLeft = '10px';
+
+    legendControlRef.current.innerHTML = `
+      <div style="width: 20px; height: 200px; ${gradientStyle}"></div>
+    `;
+  }
+};
+
+
+/* useLayoutEffect(() => {
+  if (colorLegendFilterDialogOpen && minDoseValue != null && maxDoseValue != null) {
+    updateLegend(minDoseValue, maxDoseValue);
+  }
+}, [colorLegendFilterDialogOpen, minDoseValue, maxDoseValue]); */
+
+useEffect(() => {
+  if (colorLegendFilterDialogOpen && minDoseValue != null && maxDoseValue != null) {
+    const intervalId = setInterval(() => {
+      if (legendControlRef.current) {
+        updateLegend(minDoseValue, maxDoseValue);
+        clearInterval(intervalId);
+      }
+    }, 1);
+    return () => clearInterval(intervalId);
+  }
+}, [colorLegendFilterDialogOpen, minDoseValue, maxDoseValue]);
+
   return (
     <AppBar position="static" sx={{ height: '64px' }}>  {/*  '64px' */}
         <Toolbar >
@@ -375,17 +443,82 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
         </Dialog>
 
 
-        <div style={{
-          backgroundColor: colorOverrideActive ? "white" : "transparent",
-          borderRadius: '50%',
-          padding: '0px',  
-        }}>
-          <IconButton color="inherit">
-            <Tooltip title="Управление легендой покраски">
-              <PaintBrushIcon style={{ fill: colorOverrideActive ? theme.palette.primary.main : "white", width: 24, height: 24 }} />
-            </Tooltip>
-          </IconButton>
-        </div>
+<div style={{
+  backgroundColor: colorOverrideActive ? "white" : "transparent",
+  borderRadius: '50%',
+  padding: '0px',  
+}}>
+  <IconButton color="inherit" onClick={handleColorLegendFilterClickOpen}>
+    <Tooltip title="Управление легендой покраски">
+      <PaintBrushIcon style={{ fill: colorOverrideActive ? theme.palette.primary.main : "white", width: 24, height: 24 }} />
+    </Tooltip>
+  </IconButton>
+</div>
+
+{/* Диалоговое окно для управления легендой покраски */}
+<Dialog 
+  open={colorLegendFilterDialogOpen} 
+  onClose={handleColorLegendFilterClose}
+  PaperProps={{
+    style: {
+      height: 400, // Установите здесь желаемую фиксированную высоту
+    },
+  }}
+>
+  <DialogTitle>Управление легендой покраски</DialogTitle>
+  <DialogContent style={{ display: 'flex', height: 270, width: 470, justifyContent: 'center', alignItems: 'center' }}>
+  <div style={{ display: 'flex', alignItems: 'center' }}>
+  <Slider
+   sx={{ 
+    height: 170, // Установите высоту слайдера
+    marginTop: 'auto',
+    marginBottom: 'auto',
+    marginLeft: 6
+  }}  
+    orientation="vertical"
+    value={[minDoseValue, midDoseValue1, midDoseValue2, maxDoseValue]}
+    onChange={(event, newValue) => {
+      // Assuming minDoseValue and maxDoseValue are controlled outside
+      setMidDoseValue1(newValue[1]);
+      setMidDoseValue2(newValue[2]);
+    }}
+    valueLabelDisplay="on"
+    min={roundedMinDoseValue}
+    max={roundedMaxDoseValue}
+    marks={[
+      {
+        value: roundedMinDoseValue,
+        label: `${roundedMinDoseValue}`,
+      },
+      {
+        value: roundedMaxDoseValue,
+        label: `${roundedMaxDoseValue}`,
+      },
+    ]}
+    // Additional properties such as min, max, step, etc.
+  />
+      <div ref={legendControlRef} style={{ marginLeft: '10px' }} />
+    
+    </div>
+
+  </DialogContent>
+  <DialogActions>
+    <Button onClick={handleColorLegendFilterClose} color="primary">
+      Закрыть
+    </Button>
+    <Button onClick={applyColorLegendFilter} color="primary">
+      Применить
+    </Button>
+    <Button onClick={() => {
+        setColorLegendFilterDialogOpen(false); 
+        onColorLegendFilterActive(false);
+        // Reset any local state if needed
+        }} color="primary">
+      Сбросить фильтр
+    </Button>
+  </DialogActions>
+</Dialog>
+
 
         <IconButton
           color="inherit"

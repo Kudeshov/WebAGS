@@ -7,7 +7,7 @@
   import { FeatureGroup } from 'react-leaflet';
   import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
   import { HeatmapLayer } from 'react-leaflet-heatmap-layer-v3';
-  import { getColor } from './colorUtils';
+  import { getColor, createGradient } from './colorUtils';
   import RectangularSelection from './RectangularSelection';
   import { ReactComponent as RectangleIcon } from './icons/rectangle-landscape.svg';
   import { FlightDataContext } from './FlightDataContext';
@@ -468,7 +468,7 @@
       }
     }, [averageMeasurement]);
 
-    function createGradient(doseLow, doseHigh) {
+/*     function createGradient(doseLow, doseHigh) {
       const steps = 10; // Количество шагов в градиенте
       let gradient = '';
     
@@ -479,7 +479,7 @@
       }
     
       return gradient.slice(0, -1); // Удаляем последнюю запятую
-    }
+    } */
 
     const legendControlRef = useRef(null);
 
