@@ -2,10 +2,7 @@ import React, { useState, useEffect, useContext, useRef, useLayoutEffect} from '
 import { ReactComponent as PlaneIcon } from './icons/plane.svg';
 import { ReactComponent as AnalyticsIcon } from './icons/table.svg';
 import { ReactComponent as ChartIcon } from './icons/chart-bar.svg';
-import { ReactComponent as CogIcon } from './icons/cog.svg';
 import { ReactComponent as DatabaseIcon } from './icons/database.svg';
-import { ReactComponent as RulerIcon } from './icons/ruler.svg';
-import { ReactComponent as FilterIcon } from './icons/filter.svg';
 import { ReactComponent as CubeIcon } from './icons/cube.svg';
 import { ReactComponent as ArrowsVIcon } from './icons/arrows-v.svg';
 import { ReactComponent as PaintBrushIcon } from './icons/paint-brush.svg';
@@ -16,7 +13,12 @@ import { useTheme } from '@mui/material/styles';
 import { AppBar, Toolbar, IconButton, Menu, MenuItem, ListSubheader, Dialog, DialogTitle, DialogContent, DialogActions,  TextField, Button } from '@mui/material';
 import { FlightDataContext } from './FlightDataContext';
 import Slider from '@mui/material/Slider';
-import { getColor, getColorT, createGradient, createGradientT, calculateColorThresholds } from './colorUtils';
+import { createGradientT, calculateColorThresholds } from './colorUtils';
+
+/* import { ReactComponent as CogIcon } from './icons/cog.svg';
+import { ReactComponent as RulerIcon } from './icons/ruler.svg';
+import { ReactComponent as FilterIcon } from './icons/filter.svg';
+ */
 
 function convertDateTime(dateTimeString) {
   if (!dateTimeString) return '';
@@ -40,12 +42,10 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   const [filterMenuAnchorE2, setDatabaseMenuAnchorE2] = useState(null);
   const [filterMenuAnchorCollection, setDatabaseMenuAnchorCollection] = useState(null);
 
-
   const [flightOptions, setFlightOptions] = useState([]);
   const [collectionOptions, setCollectionOptions] = useState([]);
   const [heightFilterDialogOpen, setHeightFilterDialogOpen] = useState(false);
   const [colorLegendFilterDialogOpen, setColorLegendFilterDialogOpen] = useState(false);
-
 
   const { heightFrom } = useContext(FlightDataContext);
   const { heightTo } = useContext(FlightDataContext);
@@ -145,7 +145,6 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
 
   useEffect(() => {
     const newThresholds = calculateColorThresholds(minDoseValue, maxDoseValue);
-    
     setCurrentColorThresholds(newThresholds);
     setMinDoseValueR(parseFloat(newThresholds.v0));
     setMaxDoseValueR(parseFloat(newThresholds.v3));
@@ -153,16 +152,12 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
 
   useEffect(() => {
     if (!selectedFlight) return;
-    //setLoadingCollection(true);
     fetch(`http://localhost:3001/api/collection/${selectedFlight}`)
       .then(response => response.json())
       .then(data => {
-        //setDataCollection(data);
-        //setLoadingCollection(false);
       })
       .catch(error => {
         console.error('Ошибка при загрузке данных:', error);
-        //setLoadingCollection(false);
       });
   }, [selectedFlight]);
   
@@ -241,65 +236,37 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
     setSettingsMenuAnchorEl(null);
   };
 
-  // Function to open the dialog
-const handleColorLegendFilterClickOpen = () => {
-  setColorLegendFilterDialogOpen(true);
-  // Additional logic if needed
-};
+  const handleColorLegendFilterClickOpen = () => {
+    setColorLegendFilterDialogOpen(true);
+  };
 
-// Function to close the dialog
-const handleColorLegendFilterClose = () => {
-  setColorLegendFilterDialogOpen(false);
-  // Additional logic if needed
-};
+  const handleColorLegendFilterClose = () => {
+    setColorLegendFilterDialogOpen(false);
+  };
 
-// Function to apply the color legend filter
-const applyColorLegendFilter = () => {
-  // Implement the logic to apply the color legend filter
-  setColorThresholds( currentColorThresholds );
-  setColorLegendFilterDialogOpen(false);
-};
-
-// Function to handle filter activation
-const onColorLegendFilterActive = (isActive) => {
-  // Implement logic to handle when the filter is active/inactive
-};
+  const applyColorLegendFilter = () => {
+    setColorThresholds( currentColorThresholds );
+    setColorLegendFilterDialogOpen(false);
+    onColorOverrideActive(true);
+  };
   
+  const onColorLegendFilterActive = (isActive) => {
+  };
+  
+  const legendControlRef = useRef(null);
 
-const legendControlRef = useRef(null);
-
-const updateLegend = (thresholds, minValue, maxValue) => {
-  if (legendControlRef.current) {
-    const gradientStyle = `background: linear-gradient(to top, ${createGradientT(thresholds, minValue, maxValue)});`;
-
-    legendControlRef.current.style.display = 'flex';
-    legendControlRef.current.style.flexDirection = 'column';
-    legendControlRef.current.style.alignItems = 'center';
-    legendControlRef.current.style.marginLeft = '10px';
-
-    legendControlRef.current.innerHTML = `
-      <div style="width: 20px; height: 234px; ${gradientStyle}"></div>
-    `;
-  }
-};
-
-
-useEffect(() => {
-  if (colorLegendFilterDialogOpen && currentColorThresholds != null && minDoseValueR != null && maxDoseValueR != null) {
-    const intervalId = setInterval(() => {
-      if (legendControlRef.current) {
-        //updateLegend(minDoseValue, maxDoseValue);
-        //console.log('currentColorThresholds, minDoseValueR, maxDoseValueR', currentColorThresholds, minDoseValueR, maxDoseValueR);
-        updateLegend(currentColorThresholds, minDoseValueR, maxDoseValueR);
-        clearInterval(intervalId);
-      }
-    }, 1);
-    return () => clearInterval(intervalId);
-  }
-}, [colorLegendFilterDialogOpen, currentColorThresholds, minDoseValueR, maxDoseValueR]);
+  const GradientLegend = ({ thresholds, minValue, maxValue }) => {
+    const gradientStyle = {
+      background: `linear-gradient(to top, ${createGradientT(thresholds, minValue, maxValue)})`,
+      width: '20px',
+      height: '234px',
+      marginLeft: '10px',
+    };
+    return <div style={gradientStyle}></div>;
+  };
 
   return (
-    <AppBar position="static" sx={{ height: '64px' }}>  {/*  '64px' */}
+    <AppBar position="static" sx={{ height: '64px' }}>
         <Toolbar >
 
         <IconButton
@@ -459,7 +426,7 @@ useEffect(() => {
               setLocalHeightFrom(heightFrom);
               setLocalHeightTo(heightTo);
               }} color="primary">
-            Сбросить фильтр
+            Сбросить
           </Button>
         </DialogActions>
         </Dialog>
@@ -470,7 +437,7 @@ useEffect(() => {
           padding: '0px',  
         }}>
           <IconButton color="inherit" onClick={handleColorLegendFilterClickOpen}>
-            <Tooltip title="Управление легендой покраски">
+            <Tooltip title="Управление покраской">
               <PaintBrushIcon style={{ fill: colorOverrideActive ? theme.palette.primary.main : "white", width: 24, height: 24 }} />
             </Tooltip>
           </IconButton>
@@ -486,8 +453,8 @@ useEffect(() => {
             },
           }}
         >
-          <DialogTitle>Управление легендой покраски</DialogTitle>
-          <DialogContent style={{ display: 'flex', height: 350, width: 470, justifyContent: 'center', alignItems: 'center' }}>
+          <DialogTitle>Управление покраской</DialogTitle>
+          <DialogContent style={{ display: 'flex', height: 350, width: 400, justifyContent: 'center', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center' }}>
           <Slider
             sx={{ 
@@ -523,10 +490,9 @@ useEffect(() => {
                 label: `${maxDoseValueR}`,
               },
             ]} 
-            // Additional properties such as min, max, step, etc.
-          />
-              <div ref={legendControlRef} style={{ marginLeft: '10px' }} />
-            
+            />
+            {/*   <div ref={legendControlRef} style={{ marginLeft: '10px' }} /> */}
+              <GradientLegend thresholds = {currentColorThresholds} minValue={minDoseValue} maxValue={maxDoseValue} />
             </div>
 
           </DialogContent>
@@ -540,7 +506,7 @@ useEffect(() => {
             <Button onClick={() => {
                 setColorLegendFilterDialogOpen(false); 
                 onColorLegendFilterActive(false);
-
+                onColorOverrideActive(false);
                 const newThresholds = calculateColorThresholds(minDoseValue, maxDoseValue);
                 setCurrentColorThresholds(newThresholds);
                 setColorThresholds(newThresholds);
@@ -548,7 +514,7 @@ useEffect(() => {
                 setMaxDoseValueR(parseFloat(newThresholds.v3));
                 // Reset any local state if needed
                 }} color="primary">
-              Сбросить фильтр
+              Сбросить
             </Button>
           </DialogActions>
         </Dialog>

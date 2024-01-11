@@ -909,16 +909,6 @@
           active={selectMode} 
           onSelectionComplete={handleSelectionComplete}
       />
-
-{/*       <div style={{ position: 'absolute', top: '66px', right: '10px', zIndex: 600 }}>
-        <button 
-          className={`selection-toggle-button ${selectMode ? 'active' : ''}`} 
-          onClick={toggleSelectMode}
-          title="Выделить"
-        >
-          <RectangleIcon style={{ fill: selectMode ? 'blue' : 'gray', width: 27, height: 27 }} />
-        </button>
-      </div> */}
     </MapContainer>
 
     </div>    

@@ -40,7 +40,9 @@ function App() {
   };
 
   return (
-    <FlightDataProvider heightFilterActive={heightFilterActive} onHeightFilterActive={setHeightFilterActive}>
+    <FlightDataProvider heightFilterActive={heightFilterActive} onHeightFilterActive={setHeightFilterActive}
+      colorOverrideActive={colorOverrideActive} onColorOverrideActive={setColorOverrideActive}
+      >
       <Grid container spacing={0} sx={{...gridStyles, ...tallGrid}} >
       <CustomToolbar 
         onToggleDrawer={toggleDrawer} drawerOpen={drawerOpen} 

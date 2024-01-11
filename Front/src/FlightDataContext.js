@@ -8,10 +8,7 @@ const initialCenter = {
 
 export const FlightDataContext = createContext();
 
-/* = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, onHeightFilterActive, heightFilterActive,
-  handleThreeDToggle, threeDActive }) => 
- */
-export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilterActive }) => {
+export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilterActive, childrenolorOverrideActive, onColorOverrideActive }) => {
   const [selectedFlight, setSelectedFlight] = useState(null);
   const [selectedCollection, setSelectedCollection] = useState(null);
   const [measurements, setMeasurements] = useState([]);
@@ -70,6 +67,8 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
         .then(response => response.json())
         .then(data => {
           onHeightFilterActive(false);
+
+          onColorOverrideActive(false);
           let validData = data.filter(m => m.lat >= 0 && m.lon >= 0 && m.dose >= 0 && m.dosew >= 0 && m.countw<1000000);
           setValidMeasurements(validData);
 
