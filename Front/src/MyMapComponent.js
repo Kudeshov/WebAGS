@@ -475,18 +475,17 @@
     const updateLegend = (thresholds, minValue, maxValue) => {
       if (legendControlRef.current) {
         const div = legendControlRef.current.getContainer();
-        const gradientStyle = `background: linear-gradient(to right, ${createGradientT(thresholds, minValue, maxValue)});`;
+        const gradientStyle = `background: linear-gradient(to bottom, ${createGradientT(thresholds, minValue, maxValue)});`;
     
-        div.style.display = 'flex'; // Устанавливаем div как флекс контейнер
-        div.style.flexDirection = 'column'; // Элементы будут расположены в колонку (один за другим)
-        div.style.alignItems = 'center'; // Выравниваем элементы по центру по горизонтали
-        div.style.marginLeft = '10';
-  
+        div.style.display = 'flex';
+        div.style.flexDirection = 'row'; // Элементы будут расположены горизонтально (один за другим)
+        div.style.alignItems = 'center'; // Выравниваем элементы по центру по вертикали
+    
         div.innerHTML = `
-          <div style="width: 120px; height: 15px; ${gradientStyle}"></div>
-          <div style="width: 120px; display: flex; justify-content: space-between; margin-top: 3px;">
-            <span>${Math.floor(minValue * 100) / 100}</span>  
+          <div style="width: 15px; height: 120px; ${gradientStyle}"></div>
+          <div style="height: 120px; display: flex; flex-direction: column; justify-content: space-between; margin-left: 3px;">
             <span>${Math.ceil(maxValue * 100) / 100}</span>
+            <span>${Math.floor(minValue * 100) / 100}</span>
           </div>
         `;
       }
@@ -682,6 +681,7 @@
         legendControl.onAdd = function (map) {
           const div = L.DomUtil.create('div', 'info legend');
           legendControlRef.current = legendControl;
+          
           return div;
         };
     
