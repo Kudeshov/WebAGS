@@ -1,4 +1,5 @@
 import React, { createContext, useState, useEffect, useCallback } from 'react';
+import { calculateColorThresholds } from './colorUtils';
 
 const initialCenter = {
   lat: 55.704034038232834,
@@ -32,6 +33,12 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
 
   const [saveMapAsImage, setSaveMapAsImage] = useState(() => {});
 
+  const [colorThresholds, setColorThresholds ] = useState({
+    v0: 0,
+    v1: 0,
+    v2: 0,
+    v3: 0,
+  });
 
   const fetchCollections = useCallback(() => {
     //console.log('вызвана fetchCollections')
@@ -68,8 +75,13 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
 
           if (validData.length > 0) {
             const doses = validData.map(m => m.dose);
-            setMinDoseValue(Math.min(...doses));
-            setMaxDoseValue(Math.max(...doses));
+            const newMinDoseValue = Math.min(...doses);
+            const newMaxDoseValue = Math.max(...doses);
+            setMinDoseValue(newMinDoseValue);
+            setMaxDoseValue(newMaxDoseValue);
+
+            const newColorThresholds = calculateColorThresholds(newMinDoseValue, newMaxDoseValue);
+            setColorThresholds(newColorThresholds);
       
             const latitudes = validData.map(m => m.lat);
             const longitudes = validData.map(m => m.lon);
@@ -142,6 +154,8 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
       setLocalHeightTo,
       saveMapAsImage,
       setSaveMapAsImage,
+      colorThresholds,
+      setColorThresholds
     }}>
       {children}
     </FlightDataContext.Provider>

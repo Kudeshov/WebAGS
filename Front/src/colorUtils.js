@@ -38,6 +38,56 @@ export function createGradient(doseLow, doseHigh) {
     const color = getColor(value, doseLow, doseHigh);
     gradient += `${color} ${i * 10}%,`;
   }
+  return gradient.slice(0, -1); // Удаляем последнюю запятую
+}
+
+export function getColorT(value, thresholds, doseLow, doseHigh) {
+  let r = 0, g = 0, b = 255; // Стартуем с синего
+
+  if (value > doseLow && value <= thresholds.v0) {
+    // Значение между doseLow и v0: синий
+    r = 0; g = 0; b = 255;
+  } else if (value > thresholds.v0 && value <= thresholds.v1) {
+    // Переход от синего к зеленому
+    let diff = (value - thresholds.v0) / (thresholds.v1 - thresholds.v0);
+    r = 0; g = 255 * diff; b = 255 * (1 - diff);
+  } else if (value > thresholds.v1 && value <= thresholds.v2) {
+    // Переход от зеленого к желтому
+    let diff = (value - thresholds.v1) / (thresholds.v2 - thresholds.v1);
+    r = 255 * diff; g = 255; b = 0;
+  } else if (value > thresholds.v2 && value <= thresholds.v3) {
+    // Переход от желтого к красному
+    let diff = (value - thresholds.v2) / (thresholds.v3 - thresholds.v2);
+    r = 255; g = 255 * (1 - diff); b = 0;
+  } else if (value > thresholds.v3 && value <= doseHigh) {
+    // Значение больше v3: красный
+    r = 255; g = 0; b = 0;
+  }
+
+  return rgb(r, g, b).toString();
+}
+
+export function createGradientT(thresholds, doseLow, doseHigh) {
+  const steps = 100; // Большее количество шагов для плавного перехода
+  let gradient = '';
+
+  for (let i = 0; i <= steps; i++) {
+    const value = doseLow + (doseHigh - doseLow) * (i / steps);
+    const color = getColorT(value, thresholds, doseLow, doseHigh);
+    gradient += `${color} ${i * 100 / steps}%,`;
+  }
 
   return gradient.slice(0, -1); // Удаляем последнюю запятую
+}
+
+export function calculateColorThresholds(minDose, maxDose) {
+  const roundedDownMinDoseValue = Math.floor(minDose * 100) / 100;
+  const roundedUpMaxDoseValue = Math.ceil(maxDose * 100) / 100;
+
+  return {
+    v0: roundedDownMinDoseValue.toFixed(2),
+    v1: (minDose + (maxDose - minDose) * 0.33).toFixed(2),
+    v2: (minDose + (maxDose - minDose) * 0.66).toFixed(2),
+    v3: roundedUpMaxDoseValue.toFixed(2),
+  };
 }

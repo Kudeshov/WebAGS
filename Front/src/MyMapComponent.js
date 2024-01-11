@@ -7,9 +7,9 @@
   import { FeatureGroup } from 'react-leaflet';
   import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
   import { HeatmapLayer } from 'react-leaflet-heatmap-layer-v3';
-  import { getColor, createGradient } from './colorUtils';
+  import { getColor, createGradientT, getColorT } from './colorUtils';
   import RectangularSelection from './RectangularSelection';
-  import { ReactComponent as RectangleIcon } from './icons/rectangle-landscape.svg';
+/*   import { ReactComponent as RectangleIcon } from './icons/rectangle-landscape.svg'; */
   import { FlightDataContext } from './FlightDataContext';
   import { createRoot } from 'react-dom/client';
   import 'leaflet-easyprint';
@@ -107,8 +107,10 @@
     const panelRef = useRef(null); // Ссылка на DOM-элемент панели
     const spectrumPanelRef = useRef(null); 
     const [isCtrlPressed, setIsCtrlPressed] = useState(false);
-    const { heightFilterFrom } = useContext(FlightDataContext);
-    const { heightFilterTo } = useContext(FlightDataContext);
+/*     const { heightFilterFrom } = useContext(FlightDataContext);
+    const { heightFilterTo } = useContext(FlightDataContext); */
+    const { colorThresholds } = useContext(FlightDataContext);
+
     const [averageMeasurement, setAverageMeasurement] = useState(null);
     const [averageDiapasone, setAverageDiapasone] = useState(null);
     const [isIsolineLayerActive, setIsIsolineLayerActive] = useState(false);
@@ -440,8 +442,8 @@
           Долгота: ${averageDiapasone.longRange[0].toFixed(6)} - ${averageDiapasone.longRange[1].toFixed(6)}<br>
           Широта: ${averageDiapasone.latRange[0].toFixed(6)} - ${averageDiapasone.latRange[1].toFixed(6)}<br>
           Высота GPS.: ${averageDiapasone.altRange[0].toFixed(2)} - ${averageDiapasone.altRange[1].toFixed(2)} м<br>
-          Мощность дозы (полином): ${parseFloat(averageMeasurement.dose).toFixed(3)} мкЗв/час<br>
-          Мощность дозы (по окну): ${parseFloat(averageMeasurement.dosew).toFixed(3)} мкЗв/час<br>
+          Мощность дозы (полином): ${parseFloat(averageMeasurement.dose).toFixed(2)} мкЗв/час<br>
+          Мощность дозы (по окну): ${parseFloat(averageMeasurement.dosew).toFixed(2)} мкЗв/час<br>
           
           Счётчик ГМ1: ${averageMeasurement.geiger1.toFixed(6)} имп/с<br>
           Счётчик ГМ2: ${averageMeasurement.geiger2.toFixed(6)} имп/с<br>
@@ -458,8 +460,8 @@
           Долгота: ${averageDiapasone.longRange[0].toFixed(6)}<br>
           Широта: ${averageDiapasone.latRange[0].toFixed(6)} <br>
           Высота GPS.: ${averageDiapasone.altRange[0].toFixed(2)} м<br>
-          Мощность дозы (полином): ${parseFloat(averageMeasurement.dose).toFixed(3)} мкЗв/час<br>
-          Мощность дозы (по окну): ${parseFloat(averageMeasurement.dosew).toFixed(3)} мкЗв/час<br>
+          Мощность дозы (полином): ${parseFloat(averageMeasurement.dose).toFixed(2)} мкЗв/час<br>
+          Мощность дозы (по окну): ${parseFloat(averageMeasurement.dosew).toFixed(2)} мкЗв/час<br>
           
           Счётчик ГМ1: ${averageMeasurement.geiger1} имп/с<br>
           Счётчик ГМ2: ${averageMeasurement.geiger2} имп/с<br>
@@ -468,25 +470,12 @@
       }
     }, [averageMeasurement]);
 
-/*     function createGradient(doseLow, doseHigh) {
-      const steps = 10; // Количество шагов в градиенте
-      let gradient = '';
-    
-      for (let i = 0; i <= steps; i++) {
-        const value = doseLow + (doseHigh - doseLow) * (i / steps);
-        const color = getColor(value, doseLow, doseHigh);
-        gradient += `${color} ${i * 10}%,`;
-      }
-    
-      return gradient.slice(0, -1); // Удаляем последнюю запятую
-    } */
-
     const legendControlRef = useRef(null);
 
-    const updateLegend = (minValue, maxValue) => {
+    const updateLegend = (thresholds, minValue, maxValue) => {
       if (legendControlRef.current) {
         const div = legendControlRef.current.getContainer();
-        const gradientStyle = `background: linear-gradient(to right, ${createGradient(minValue, maxValue)});`;
+        const gradientStyle = `background: linear-gradient(to right, ${createGradientT(thresholds, minValue, maxValue)});`;
     
         div.style.display = 'flex'; // Устанавливаем div как флекс контейнер
         div.style.flexDirection = 'column'; // Элементы будут расположены в колонку (один за другим)
@@ -496,8 +485,8 @@
         div.innerHTML = `
           <div style="width: 120px; height: 15px; ${gradientStyle}"></div>
           <div style="width: 120px; display: flex; justify-content: space-between; margin-top: 3px;">
-            <span>${minValue.toFixed(3)}</span>
-            <span>${maxValue.toFixed(3)}</span>
+            <span>${Math.floor(minValue * 100) / 100}</span>  
+            <span>${Math.ceil(maxValue * 100) / 100}</span>
           </div>
         `;
       }
@@ -616,7 +605,6 @@
                 fillOpacity: 0.5
               };
             }
-            
           }).addTo(mapInstance);
 
           if (measurementsLayerRef.current) {
@@ -701,9 +689,9 @@
       }
 
       // Обновляем легенду
-      updateLegend(minDoseValue, maxDoseValue);
+      updateLegend(colorThresholds, minDoseValue, maxDoseValue);
     }
-  }, [mapInstance, minDoseValue, maxDoseValue]);
+  }, [mapInstance, minDoseValue, maxDoseValue, colorThresholds]);
 
   const measurementsLayerRef = useRef(null);
 
@@ -780,6 +768,32 @@
     map.selectionModeControl = selectionModeControl;
   }
 
+  useEffect(() => {
+    if (!measurementsLayerRef.current || !colorThresholds) {
+      return;
+    }
+  
+    measurementsLayerRef.current.clearLayers(); // Очищаем текущие слои
+  
+    // Пересоздаем маркеры с новым стилем
+    validMeasurements.forEach(measurement => {
+      const color = getColorT(measurement.dose, colorThresholds, minDoseValue, maxDoseValue);
+      const isSelected = selectedPoints.some(p => p.id === measurement.id);
+      const markerStyle = {
+        color: isSelected ? 'purple' : color, // Фиолетовая обводка для выбранного маркера
+        fillColor: color,
+        fillOpacity: 1,
+        radius: isSelected ? 7 : 5, // Больший радиус для выбранного маркера
+      };
+  
+      L.circleMarker([measurement.lat, measurement.lon], markerStyle)
+        .addTo(measurementsLayerRef.current)
+        .on('click', () => handlePointClick(measurement));
+    });
+  
+  }, [validMeasurements, colorThresholds, selectedPoints, minDoseValue, maxDoseValue]);
+  
+
     return (
       <div>
       <MapContainer 
@@ -829,7 +843,7 @@
           validMeasurements
             .map((measurement) => {
                 if (minDoseValue === null || maxDoseValue === null) return null;
-                const color = getColor(measurement.dose, minDoseValue, maxDoseValue);
+                const color = getColorT(measurement.dose, colorThresholds, minDoseValue, maxDoseValue);
                 const isSelected = selectedPoints.some(p => p.id === measurement.id);
                 const markerStyle = {
                   color: isSelected ? 'purple' : color, // Фиолетовая обводка для выбранного маркера
