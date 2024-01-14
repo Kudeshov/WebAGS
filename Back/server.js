@@ -28,6 +28,21 @@ app.use(cors());
 
 const flightSimulations = {};
 
+const WebSocket = require('ws');
+//const wss = new WebSocket.Server({ noServer: true });
+
+const wss = new WebSocket.Server({ port: 3002 });
+
+app.on('upgrade', (request, socket, head) => {
+  wss.handleUpgrade(request, socket, head, socket => {
+    wss.emit('connection', socket, request);
+  });
+});
+
+wss.on('connection', (ws) => {
+  // Здесь можно обрабатывать сообщения, отправленные через WebSocket
+});
+
 function calculateConversionFactor(E) {
   if (E <= 550) {
     return coeffs_below_550[0] * E**4 + coeffs_below_550[1] * E**3 +
@@ -300,44 +315,6 @@ function createFlightRecord(db, callback) {
   });
 }
 
-/* function createFlightRecord() {
-  db.serialize(() => {
-    const dateTime = new Date().toISOString();
-    const description = `Полет`;
-    const insertSql = `INSERT INTO online_collection (dateTime, winLow, winHigh, description) VALUES (?, 20, 200, ?)`;
-
-    db.run(insertSql, [dateTime, description], function(err) {
-      if (err) {
-        console.error(err.message);
-      } else {
-        console.log(`Новый полет создан`);
-        const newFlightId = this.lastID; // Получаем ID только что созданного полета
-        startGeneratingMeasurements(newFlightId);
-      }
-    });
-  });
-} */
-
-/* 
-function createFlightRecord() {
-    db.serialize(() => {
-      const dateTime = new Date().toISOString();
-      const description = `Полет`;
-      const insertSql = `INSERT INTO online_collection (dateTime, winLow, winHigh, description) VALUES (?, 20, 200, ?)`;
-  
-      db.run(insertSql, [dateTime, description], function(err) {
-        if (err) {
-          console.error(err.message);
-        } else {
-          console.log(`Новый полет создан`);
-          const newFlightId = this.lastID; // Получаем ID только что созданного полета
-          startGeneratingMeasurements(newFlightId);
-        }
-      });
-    });
-  }
- */
-
 function startGeneratingMeasurements(db, flightId) {
   setInterval(() => {
     generateMeasurementData(db, flightId);
@@ -381,7 +358,6 @@ function toECEF(lat, lon, alt) {
     });
   }
 
-  
   function generateMeasurementData(db, flightId) {
     // Генерация изменений координат
     lat += (Math.random() - 0.5) * 0.0001; // Случайное изменение широты
@@ -396,7 +372,21 @@ function toECEF(lat, lon, alt) {
   
     // Вставка данных измерения в базу данных
     insertMeasurementData(db, flightId, ecefCoords, alt, winCount);
+    // Пример данных, которые можно отправить
+    const flightData = {
+      flightId: flightId,
+      datetime: new Date().toISOString(),
+      lat: lat, // текущая широта
+      lon: lon, // текущая долгота
+      alt: alt  // текущая высота
+    };
 
+    // Отправка данных всем подключенным клиентам WebSocket
+    wss.clients.forEach(client => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(JSON.stringify(flightData));
+      }
+    });
   }
 
 app.get('/api/collection/:dbname', (req, res) => {

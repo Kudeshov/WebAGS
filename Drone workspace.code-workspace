@@ -5,6 +5,9 @@
 		},
 		{
 			"path": "Back"
+		},
+		{
+			"path": "Sim"
 		}
 	],
 	"settings": {}
