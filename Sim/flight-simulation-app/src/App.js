@@ -21,7 +21,7 @@ function App() {
       if (data && data.flightId) {
         console.log('data.flightId', data.flightId);
         setFlightId(data.flightId); // Сохраняем ID полета
-        const ws = new WebSocket('ws://localhost:3002');
+        const ws = new WebSocket('ws://localhost:3001');
         setWebsocket(ws);
         ws.onmessage = (event) => {
           const data = JSON.parse(event.data);

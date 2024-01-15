@@ -1,5 +1,7 @@
 import React, { createContext, useState, useEffect, useCallback } from 'react';
 import { calculateColorThresholds } from './colorUtils';
+import { ExportToCsv } from 'export-to-csv-fix-source-map';
+import { convertDateTime } from './dateUtils';
 
 const initialCenter = {
   lat: 55.704034038232834,
@@ -29,6 +31,7 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
   const [localHeightTo, setLocalHeightTo] = useState(1000);
 
   const [saveMapAsImage, setSaveMapAsImage] = useState(() => {});
+/*   const [saveDataToFile, setSaveDataToFile] = useState(() => {}); */
 
   const [colorThresholds, setColorThresholds ] = useState({
     v0: 0,
@@ -36,6 +39,35 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
     v2: 0,
     v3: 0,
   });
+
+  const optionsCSV = {
+    filename: 'exported_data',
+    fieldSeparator: ';',
+    quoteStrings: '"',
+    decimalSeparator: '.',
+    showLabels: true, 
+    useTextFile: false,
+    useBom: true,
+/*     useKeysAsHeaders: true, */
+    headers: ['Дата и время', 'Широта', 'Долгота', 'Высота GPS', 'Барометрическая высота', 'Мощность дозы по окну', 'Доза']
+  };
+
+  // Функция для сохранения данных в файл
+  const saveDataToFile = useCallback(() => {
+    const formattedData = validMeasurements.map(item => ({
+      datetime: convertDateTime(item.datetime),
+      lat: item.lat,
+      lon: item.lon,
+      alt: item.alt, // Высота GPS
+      height: item.height, // Барометрическая высота
+      dosew: item.dosew, // Мощность дозы по окну
+      dose: item.dose
+    }));
+
+    const csvExporter = new ExportToCsv(optionsCSV);
+    csvExporter.generateCsv(formattedData);
+  }, [validMeasurements]);
+
 
   const fetchCollections = useCallback(() => {
     //console.log('вызвана fetchCollections')
@@ -154,7 +186,8 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
       saveMapAsImage,
       setSaveMapAsImage,
       colorThresholds,
-      setColorThresholds
+      setColorThresholds,
+      saveDataToFile
     }}>
       {children}
     </FlightDataContext.Provider>

@@ -1,4 +1,5 @@
 const express = require('express');
+const WebSocket = require('ws');
 const sqlite3 = require('sqlite3').verbose();
 const cors = require('cors');
 const app = express();
@@ -28,20 +29,35 @@ app.use(cors());
 
 const flightSimulations = {};
 
-const WebSocket = require('ws');
-//const wss = new WebSocket.Server({ noServer: true });
+// Запуск HTTP сервера
+const server = app.listen(port, () => {
+  console.log(`HTTP server listening at http://localhost:${port}`);
+});
 
-const wss = new WebSocket.Server({ port: 3002 });
+// Настройка WebSocket сервера
+const wss = new WebSocket.Server({ noServer: true });
 
-app.on('upgrade', (request, socket, head) => {
-  wss.handleUpgrade(request, socket, head, socket => {
-    wss.emit('connection', socket, request);
+server.on('upgrade', (request, socket, head) => {
+  console.log('Получен запрос на установление WebSocket соединения');
+
+  wss.handleUpgrade(request, socket, head, (ws) => {
+  wss.emit('connection', ws, request);
+  console.log('WebSocket соединение успешно установлено');
   });
 });
 
 wss.on('connection', (ws) => {
-  // Здесь можно обрабатывать сообщения, отправленные через WebSocket
+  ws.on('message', (message) => {
+  console.log('Received message:', message);
 });
+
+ws.on('error', (error) => {
+  console.error('Ошибка WebSocket:', error);
+});
+
+ws.send(JSON.stringify({ message: 'Connection established' }));
+});
+
 
 function calculateConversionFactor(E) {
   if (E <= 550) {
@@ -548,7 +564,3 @@ app.get('/api/data/:dbname', (req, res) => {
     res.json(results);
   });
 });
-
-app.listen(port, () => {
-  console.log(`Server listening at http://localhost:${port}`);
-}); 

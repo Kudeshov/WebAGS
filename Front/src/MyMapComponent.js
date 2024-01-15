@@ -13,6 +13,7 @@
   import { FlightDataContext } from './FlightDataContext';
   import { createRoot } from 'react-dom/client';
   import 'leaflet-easyprint';
+  import { convertDateTime } from './dateUtils';
 
   delete L.Icon.Default.prototype._getIconUrl;
 
@@ -413,21 +414,7 @@
       }
     }, [mapInstance]);
 
-    function convertDateTime(dateTimeString) {
 
-      if (!dateTimeString)
-        return;
-      const date = new Date(dateTimeString);
-    
-      const day = date.getDate().toString().padStart(2, '0');
-      const month = (date.getMonth() + 1).toString().padStart(2, '0'); // Месяцы начинаются с 0
-      const year = date.getFullYear();
-      const hours = date.getHours().toString().padStart(2, '0');
-      const minutes = date.getMinutes().toString().padStart(2, '0');
-      const seconds = date.getSeconds().toString().padStart(2, '0');
-    
-      return `${day}.${month}.${year} ${hours}:${minutes}:${seconds}`;
-    }
 
     useEffect(() => {
       // Обновляем содержимое панели при изменении selectedMeasurement
@@ -475,7 +462,7 @@
     const updateLegend = (thresholds, minValue, maxValue) => {
       if (legendControlRef.current) {
         const div = legendControlRef.current.getContainer();
-        const gradientStyle = `background: linear-gradient(to bottom, ${createGradientT(thresholds, minValue, maxValue)});`;
+        const gradientStyle = `background: linear-gradient(to top, ${createGradientT(thresholds, minValue, maxValue)});`;
     
         div.style.display = 'flex';
         div.style.flexDirection = 'row'; // Элементы будут расположены горизонтально (один за другим)

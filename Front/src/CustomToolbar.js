@@ -6,7 +6,12 @@ import { ReactComponent as DatabaseIcon } from './icons/database.svg';
 import { ReactComponent as CubeIcon } from './icons/cube.svg';
 import { ReactComponent as ArrowsVIcon } from './icons/arrows-v.svg';
 import { ReactComponent as PaintBrushIcon } from './icons/paint-brush.svg';
+/* import { ReactComponent as MapIcon } from './icons/map.svg';
+ */
+import { ReactComponent as CameraIcon } from './icons/camera.svg';
 import { ReactComponent as DownloadIcon } from './icons/download.svg';
+
+
 
 import Tooltip from '@mui/material/Tooltip';
 import { useTheme } from '@mui/material/styles';
@@ -74,13 +79,12 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
 
   const [minDoseValueR, setMinDoseValueR] = useState(0);
   const [maxDoseValueR, setMaxDoseValueR] = useState(0);
-/*   const { localHeightFrom, setLocalHeightFrom } = useContext(FlightDataContext);
-  const { localHeightTo, setLocalHeightTo } = useContext(FlightDataContext); */
 
   const [localHeightFrom, setLocalHeightFrom] = useState(-1000);
   const [localHeightTo, setLocalHeightTo] = useState(1000);
 
   const { saveMapAsImage } = useContext(FlightDataContext);
+  const { saveDataToFile } = useContext(FlightDataContext);
 
   useEffect(() => {
     setLocalHeightFrom(heightFrom);
@@ -362,7 +366,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
           padding: '0px',  
         }}>
           <IconButton color="inherit" onClick={handleHeightFilterClickOpen}>
-            <Tooltip title="Фильтр по высоте">
+            <Tooltip title="Настройка фильтра по высоте">
               <ArrowsVIcon style={{ fill: heightFilterActive ? theme.palette.primary.main : "white", width: 24, height: 24 }} />
             </Tooltip>
           </IconButton>
@@ -380,7 +384,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
           
         >
           
-        <DialogTitle>Фильтр по высоте</DialogTitle>
+        <DialogTitle>Настройка фильтра по высоте</DialogTitle>
         <DialogContent style={{ display: 'flex', height: 220, justifyContent: 'center', alignItems: 'center' }}>
           <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
             <Slider
@@ -437,7 +441,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
           padding: '0px',  
         }}>
           <IconButton color="inherit" onClick={handleColorLegendFilterClickOpen}>
-            <Tooltip title="Управление покраской">
+            <Tooltip title="Настройка цветовой шкалы">
               <PaintBrushIcon style={{ fill: colorOverrideActive ? theme.palette.primary.main : "white", width: 24, height: 24 }} />
             </Tooltip>
           </IconButton>
@@ -453,7 +457,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
             },
           }}
         >
-          <DialogTitle>Управление покраской</DialogTitle>
+          <DialogTitle>Настройка цветовой шкалы</DialogTitle>
           <DialogContent style={{ display: 'flex', height: 350, width: 400, justifyContent: 'center', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center' }}>
           <Slider
@@ -519,16 +523,24 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
           </DialogActions>
         </Dialog>
 
-
         <IconButton
           color="inherit"
           onClick={saveMapAsImage}
-         /*  onClick={handleCollectionMenuClick} */
         >
-          <Tooltip title="Сохранить отчет">
+          <Tooltip title="Сохранить экран карты">
+            <CameraIcon style={{ fill: "white", width: 24, height: 24 }} />
+          </Tooltip>
+        </IconButton>
+
+        <IconButton
+          color="inherit"
+          onClick={saveDataToFile}
+        >
+          <Tooltip title="Сохранить данные">
             <DownloadIcon style={{ fill: "white", width: 24, height: 24 }} />
           </Tooltip>
         </IconButton>
+
 
 {/*         <IconButton
           color="inherit"
