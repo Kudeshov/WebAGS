@@ -13,7 +13,7 @@ const MyTabsComponent = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch(`http://localhost:3001/api/collection/${selectedFlight}`);
+        const response = await fetch(`/api/collection/${selectedFlight}`);
         if (!response.ok) {
           throw new Error(`Ошибка HTTP: статус ${response.status}`);
         }
