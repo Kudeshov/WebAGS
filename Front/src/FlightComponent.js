@@ -17,7 +17,7 @@ const FlightComponent = () => {
   useEffect(() => {
     if (!selectedFlight) return;
     setLoading(true);
-    fetch(`http://localhost:3001/api/collection/${selectedFlight}`)
+    fetch(`/api/collection/${selectedFlight}`)
       .then(response => response.json())
       .then(data => {
         setData(data);

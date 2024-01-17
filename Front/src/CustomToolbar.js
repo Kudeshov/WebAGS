@@ -137,7 +137,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
 
   useEffect(() => {
     // Загрузка списка полетов из API
-    fetch('http://localhost:3001/api/flights')
+    fetch('/api/flights')
       .then((response) => response.json())
       .then((data) => {
         setFlightOptions(data); // Сохраняем полученный массив полетов в состоянии
@@ -156,7 +156,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
 
   useEffect(() => {
     if (!selectedFlight) return;
-    fetch(`http://localhost:3001/api/collection/${selectedFlight}`)
+    fetch(`/api/collection/${selectedFlight}`)
       .then(response => response.json())
       .then(data => {
       })
@@ -168,7 +168,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
 
   const fetchData = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/flights');
+      const response = await fetch('/api/flights');
       const data = await response.json();
       setFlightOptions(data);
     } catch (error) {
@@ -178,7 +178,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
 
   const fetchDataCollection = async () => {
     try {
-      const response = await fetch(`http://localhost:3001/api/collection/${selectedFlight}`)
+      const response = await fetch(`/api/collection/${selectedFlight}`)
       const data = await response.json();
       setCollectionOptions(data);
     } catch (error) {

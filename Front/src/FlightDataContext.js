@@ -73,7 +73,7 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
     //console.log('вызвана fetchCollections')
     if (selectedFlight) {
 
-      fetch(`http://localhost:3001/api/collection/${selectedFlight}`)
+      fetch(`/api/collection/${selectedFlight}`)
         .then(response => response.json())
         .then(collections => {
           // Автоматически выбираем первую коллекцию из списка
