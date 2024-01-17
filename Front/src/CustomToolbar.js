@@ -583,16 +583,24 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
           <MenuItem onClick={handleSettingsMenuClose}>Option 1</MenuItem>
           <MenuItem onClick={handleSettingsMenuClose}>Option 2</MenuItem>
      
+
+
         </Menu>*/}
         <div style={{ flexGrow: 1, display: 'flex', justifyContent: 'flex-end' }}>
-          <div style={{ color: 'white', fontSize: 'small' }}>
-            <span>{selectedFlight ? selectedFlight : ''} | </span>
-            <span>{selectedCollection ? selectedCollection.description : ''} | </span>
-            <span>{selectedCollection ? convertDateTime(selectedCollection.dateTime) : ''} | </span>
-            <span>P0: {selectedCollection ? selectedCollection.P0 : ''} | </span>
-            <span>P1: {selectedCollection ? selectedCollection.P1 : ''}</span>        
-          </div>
-        </div> 
+  {selectedCollection ? (
+    <div style={{ color: 'white', fontSize: 'small' }}>
+      <span>{selectedFlight ? selectedFlight : ''} | </span>
+      <span>{selectedCollection.description} | </span>
+      <span>{convertDateTime(selectedCollection.dateTime)} | </span>
+      <span>P0: {selectedCollection.P0} | </span>
+      <span>P1: {selectedCollection.P1}</span>        
+    </div>
+  ) : (
+    <div style={{ color: 'white', fontSize: 'small' }}>
+      Выберите базу данных
+    </div>
+  )}
+</div>
 
 
      </Toolbar>
