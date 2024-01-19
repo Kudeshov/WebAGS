@@ -75,7 +75,7 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
     //console.log('вызвана fetchCollections')
     if (selectedFlight) {
 
-      fetch(`http://localhost:3001/api/collection/${selectedFlight}`)
+      fetch(`/api/collection/${selectedFlight}`)
         .then(response => response.json())
         .then(collections => {
           // Автоматически выбираем первую коллекцию из списка
@@ -96,7 +96,7 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
 
   const fetchMeasurements = useCallback(() => {
     if (selectedFlight && selectedCollection) {
-      const apiUrl = `http://localhost:3001/api/data/${selectedFlight}/${selectedCollection?._id || null}`;
+      const apiUrl = `/api/data/${selectedFlight}/${selectedCollection?._id || null}`;
       fetch(apiUrl)
         .then(response => response.json())
         .then(data => {

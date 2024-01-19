@@ -7,7 +7,7 @@ function MyChartComponent() {
   const svgRef = useRef();
 
   useEffect(() => {
-    fetch("http://localhost:3001/api/data")
+    fetch("/api/data")
       .then(response => response.json())
       .then(fetchedData => {
         // Преобразование формата даты и времени для удобства

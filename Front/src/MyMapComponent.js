@@ -366,6 +366,8 @@
       control.onAdd = function() {
         if (!panelRef.current) {
           panelRef.current = L.DomUtil.create('div', 'simple-panel');
+          L.DomEvent.disableClickPropagation(panelRef.current);
+
           panelRef.current.innerHTML = '<strong>Выберите точку на карте</strong>';
         }
         return panelRef.current;
@@ -393,6 +395,7 @@
     
       spectrumControl.onAdd = function () {
         spectrumPanelRef.current = L.DomUtil.create('div', 'spectrum-panel');
+        L.DomEvent.disableClickPropagation(spectrumPanelRef.current);
         // Создаем корень для рендеринга компонента
         const root = createRoot(spectrumPanelRef.current);
         spectrumPanelRef.current._root = root; // Сохраняем корень в свойстве для последующего доступа
@@ -795,14 +798,14 @@
 
       <LayersControl position="topright">
         <LayersControl.Overlay name="Marker with popup">
-          <LayersControl.BaseLayer checked name="OpenStreetMap">
+          <LayersControl.BaseLayer name="OpenStreetMap">
             <TileLayer
-              //attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              maxZoom={21}
+              maxZoom={19}
             />
           </LayersControl.BaseLayer>
-          <LayersControl.BaseLayer name="Google Карта">
+          <LayersControl.BaseLayer checked name="Google Карта">
             <TileLayer
               url={googleMapsUrl}
               subdomains={['mt0', 'mt1', 'mt2', 'mt3']}
@@ -819,7 +822,7 @@
           <LayersControl.BaseLayer name='Esri World Imagery'>
                       <TileLayer
                           url='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
-                          maxZoom={21}
+                          maxZoom={18}
                       />
           </LayersControl.BaseLayer>        
         </LayersControl.Overlay>
