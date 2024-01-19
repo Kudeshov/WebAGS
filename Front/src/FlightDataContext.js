@@ -15,6 +15,7 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
   const [selectedCollection, setSelectedCollection] = useState(null);
   const [measurements, setMeasurements] = useState([]);
   const [validMeasurements, setValidMeasurements] = useState([]);
+  const [selectedPoints, setSelectedPoints] = useState([]);
 
   const [minDoseValue, setMinDoseValue] = useState(null);
   const [maxDoseValue, setMaxDoseValue] = useState(null);
@@ -39,6 +40,7 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
     v2: 0,
     v3: 0,
   });
+
 
   const optionsCSV = {
     filename: 'exported_data',
@@ -186,8 +188,11 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
       saveMapAsImage,
       setSaveMapAsImage,
       colorThresholds,
+      children,
       setColorThresholds,
-      saveDataToFile
+      saveDataToFile,
+      selectedPoints,
+      setSelectedPoints,
     }}>
       {children}
     </FlightDataContext.Provider>

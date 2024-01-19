@@ -4,7 +4,33 @@ import { FlightDataContext } from './FlightDataContext';
 
 const MyDataGrid = ({ heightFilterActive }) => {
   const { measurements, heightFrom, heightTo } = useContext(FlightDataContext);
+  const { selectedPoints, setSelectedPoints } = useContext(FlightDataContext);
+  
+  const handleRowSelection = (selectionModel) => {
+    console.log('handleRowSelection', selectionModel);
+    if (selectionModel.length > 0) {
+      // Находим выбранный элемент в данных измерений
+      const selectedRowData = measurements.find(measurement => measurement.id === selectionModel[0]);
+      if (selectedRowData) {
+        setSelectedPoints([selectedRowData]);
+      }
+    }
+  };
 
+
+  const handleRowClick = (params) => {
+    // Проверяем, выбрана ли строка уже
+    const isCurrentlySelected = selectedPoints.some(point => point.id === params.row.id);
+
+    if (isCurrentlySelected) {
+      // Если уже выбрана, убираем из выбранных
+      setSelectedPoints(selectedPoints.filter(point => point.id !== params.row.id));
+    } else {
+      // Если не выбрана, добавляем в выбранные
+      setSelectedPoints([...selectedPoints, params.row]);
+    }
+  };
+  
   // Фильтрация данных измерений по высоте
   const filteredMeasurements = heightFilterActive 
     ? measurements.filter(measurement => 
@@ -79,6 +105,10 @@ const MyDataGrid = ({ heightFilterActive }) => {
           },
         }}     
         hideFooter // Скрытие нижней панели
+        //onSelectionModelChange={handleRowSelection} // Добавление обработчика выбора строки
+        onRowClick={handleRowClick}
+        selectionModel={selectedPoints.map(point => point.id)} // Использование id выбранных точек для selectionModel
+
       />
     </div>
   );

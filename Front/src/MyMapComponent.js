@@ -144,7 +144,7 @@
       };
     }, []);  
 
-    const [selectedPoints, setSelectedPoints] = useState([]);
+    const { selectedPoints, setSelectedPoints } = useContext(FlightDataContext);
 
     const handlePointClick = (measurement) => {
       if (isCtrlPressed) {
