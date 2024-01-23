@@ -56,7 +56,7 @@ const MyDataGrid = ({ heightFilterActive }) => {
   ];
 
   return (
-    <div style={{ height: window.innerHeight - 70, width: '100%' }}>
+    <div style={{ height: 'calc(100vh - 64px)', width: '100%' }}>
       <DataGrid
         rows={filteredMeasurements}
         columns={columns}

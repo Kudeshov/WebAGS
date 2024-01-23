@@ -49,13 +49,12 @@
   cursor: crosshair;
 }
 
-.spectrum-panel, .simple-panel {
+.spectrum-panel, .simple-panel, .height-filter-panel {
   background-color: rgba(255, 255, 255, 0.91);  
   font-family: 'Roboto', 'Helvetica', 'Arial', sans-serif;
   box-shadow: 0 1px 5px rgba(0, 0, 0, 0.2);
   padding: 10px;
   border: 1px solid #ccc;
   border-radius: 4px;
-  /* другие стили, если необходимо */
 }
 

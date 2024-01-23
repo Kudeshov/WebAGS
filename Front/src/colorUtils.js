@@ -83,11 +83,27 @@ export function createGradientT(thresholds, doseLow, doseHigh) {
 export function calculateColorThresholds(minDose, maxDose) {
   const roundedDownMinDoseValue = Math.floor(minDose * 100) / 100;
   const roundedUpMaxDoseValue = Math.ceil(maxDose * 100) / 100;
-
+  console.log('calculateColorThresholds', minDose, maxDose, roundedDownMinDoseValue, roundedUpMaxDoseValue);
   return {
     v0: roundedDownMinDoseValue.toFixed(2),
-    v1: (minDose + (maxDose - minDose) * 0.33).toFixed(2),
-    v2: (minDose + (maxDose - minDose) * 0.66).toFixed(2),
+    v1: (minDose + (maxDose - minDose) * 0.333333).toFixed(2),
+    v2: (minDose + (maxDose - minDose) * 0.666666).toFixed(2),
     v3: roundedUpMaxDoseValue.toFixed(2),
   };
 }
+
+// Функция для расчета масштабированных пороговых значений цвета
+export function calculateScaledThresholds(originalThresholds, originalMinDose, originalMaxDose, newMinDose, newMaxDose) {
+  const originalRange = originalMaxDose - originalMinDose;
+  const newRange = newMaxDose - newMinDose;
+
+  // Масштабирование каждого порога
+  const scaledThresholds = {
+    v0: ((originalThresholds.v0 - originalMinDose) / originalRange) * newRange + newMinDose,
+    v1: ((originalThresholds.v1 - originalMinDose) / originalRange) * newRange + newMinDose,
+    v2: ((originalThresholds.v2 - originalMinDose) / originalRange) * newRange + newMinDose,
+    v3: ((originalThresholds.v3 - originalMinDose) / originalRange) * newRange + newMinDose,
+  };
+
+  return scaledThresholds;
+};

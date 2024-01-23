@@ -16,28 +16,31 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
   const [measurements, setMeasurements] = useState([]);
   const [validMeasurements, setValidMeasurements] = useState([]);
 
-  const [minDoseValue, setMinDoseValue] = useState(null);
-  const [maxDoseValue, setMaxDoseValue] = useState(null);
+  const [minDoseValue, setMinDoseValue] = useState(0);
+  const [maxDoseValue, setMaxDoseValue] = useState(3);
 
   const [geoCenter, setGeoCenter] = useState(initialCenter);
   // Глобальные состояния для хранения значений высот полета
-  const [heightFrom, setHeightFrom] = useState(-1000);
+  const [heightFrom, setHeightFrom] = useState(0);
   const [heightTo, setHeightTo] = useState(1000);
 
-  const [heightFilterFrom, setHeightFilterFrom] = useState(-1000);
+  const [heightFilterFrom, setHeightFilterFrom] = useState(0);
   const [heightFilterTo, setHeightFilterTo] = useState(1000);
 
-  const [localHeightFrom, setLocalHeightFrom] = useState(-1000);
+  const [localHeightFrom, setLocalHeightFrom] = useState(0);
   const [localHeightTo, setLocalHeightTo] = useState(1000);
 
   const [saveMapAsImage, setSaveMapAsImage] = useState(() => {});
+
+  const [minDoseValueR, setMinDoseValueR] = useState(0); //округленные до 2 знаков значения доз для отображения в слайдере
+  const [maxDoseValueR, setMaxDoseValueR] = useState(0);
 /*   const [saveDataToFile, setSaveDataToFile] = useState(() => {}); */
 
   const [colorThresholds, setColorThresholds ] = useState({
     v0: 0,
-    v1: 0,
-    v2: 0,
-    v3: 0,
+    v1: 1,
+    v2: 2,
+    v3: 3,
   });
 
   const optionsCSV = {
@@ -98,9 +101,9 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
       fetch(apiUrl)
         .then(response => response.json())
         .then(data => {
-          onHeightFilterActive(false);
+          onHeightFilterActive(true);
 
-          onColorOverrideActive(false);
+          onColorOverrideActive(true);
           let validData = data.filter(m => m.lat >= 0 && m.lon >= 0 && m.dose >= 0 && m.dosew >= 0 && m.countw<1000000);
           setValidMeasurements(validData);
 
@@ -159,6 +162,14 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
     filterMeasurementsByHeight()
   }, [heightFilterFrom, heightFilterTo, filterMeasurementsByHeight]); 
 
+  useEffect(() => {
+    const newThresholds = calculateColorThresholds(minDoseValue, maxDoseValue);
+    /* setCurrentColorThresholds(newThresholds); */
+    console.log('useEffect color', newThresholds);
+    setMinDoseValueR(parseFloat(newThresholds.v0));
+    setMaxDoseValueR(parseFloat(newThresholds.v3));
+  }, [minDoseValue, maxDoseValue]);
+
   return (
     <FlightDataContext.Provider value={{
       selectedFlight,
@@ -187,7 +198,9 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
       setSaveMapAsImage,
       colorThresholds,
       setColorThresholds,
-      saveDataToFile
+      saveDataToFile,
+      minDoseValueR, //округленные до 2 знаков значения доз для отображения в слайдере
+      maxDoseValueR, 
     }}>
       {children}
     </FlightDataContext.Provider>

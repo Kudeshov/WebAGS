@@ -6,24 +6,14 @@ import { ReactComponent as DatabaseIcon } from './icons/database.svg';
 import { ReactComponent as CubeIcon } from './icons/cube.svg';
 import { ReactComponent as ArrowsVIcon } from './icons/arrows-v.svg';
 import { ReactComponent as PaintBrushIcon } from './icons/paint-brush.svg';
-/* import { ReactComponent as MapIcon } from './icons/map.svg';
- */
 import { ReactComponent as CameraIcon } from './icons/camera.svg';
 import { ReactComponent as DownloadIcon } from './icons/download.svg';
-
-
-
 import Tooltip from '@mui/material/Tooltip';
 import { useTheme } from '@mui/material/styles';
 import { AppBar, Toolbar, IconButton, Menu, MenuItem, ListSubheader, Dialog, DialogTitle, DialogContent, DialogActions,  TextField, Button } from '@mui/material';
 import { FlightDataContext } from './FlightDataContext';
 import Slider from '@mui/material/Slider';
 import { createGradientT, calculateColorThresholds } from './colorUtils';
-
-/* import { ReactComponent as CogIcon } from './icons/cog.svg';
-import { ReactComponent as RulerIcon } from './icons/ruler.svg';
-import { ReactComponent as FilterIcon } from './icons/filter.svg';
- */
 
 function convertDateTime(dateTimeString) {
   if (!dateTimeString) return '';
@@ -59,8 +49,6 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   const { colorThresholds, setColorThresholds } = useContext(FlightDataContext);  
   const { minDoseValue } = useContext(FlightDataContext);
   const { maxDoseValue } = useContext(FlightDataContext);
- // const roundedMinDoseValue = minDoseValue;//.toFixed(3);
- // const roundedMaxDoseValue = maxDoseValue;//.toFixed(3);
 
   const { roundedMinDoseValue } = useState(minDoseValue);
   const { roundedMaxDoseValue } = useState(maxDoseValue);
@@ -360,7 +348,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
           </IconButton>
         </div>        
 
-        <div style={{
+{/*         <div style={{
           backgroundColor: heightFilterActive ? "white" : "transparent",
           borderRadius: '50%',
           padding: '0px',  
@@ -371,7 +359,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
             </Tooltip>
           </IconButton>
         </div>
-
+ */}
         {/* Диалоговое окно для фильтрации по высоте */}
         <Dialog 
           open={heightFilterDialogOpen} 
@@ -435,7 +423,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
         </DialogActions>
         </Dialog>
 
-        <div style={{
+{/*         <div style={{
           backgroundColor: colorOverrideActive ? "white" : "transparent",
           borderRadius: '50%',
           padding: '0px',  
@@ -445,7 +433,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
               <PaintBrushIcon style={{ fill: colorOverrideActive ? theme.palette.primary.main : "white", width: 24, height: 24 }} />
             </Tooltip>
           </IconButton>
-        </div>
+        </div> */}
 
         {/* Диалоговое окно для управления легендой покраски */}
         <Dialog 
