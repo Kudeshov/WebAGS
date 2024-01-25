@@ -35,7 +35,6 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
 
   const [minDoseValueR, setMinDoseValueR] = useState(0); //округленные до 2 знаков значения доз для отображения в слайдере
   const [maxDoseValueR, setMaxDoseValueR] = useState(0);
-/*   const [saveDataToFile, setSaveDataToFile] = useState(() => {}); */
 
   const [colorThresholds, setColorThresholds ] = useState({
     v0: 0,
