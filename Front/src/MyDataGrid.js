@@ -17,7 +17,6 @@ const MyDataGrid = ({ heightFilterActive }) => {
     }
   };
 
-
   const handleRowClick = (params) => {
     // Проверяем, выбрана ли строка уже
     const isCurrentlySelected = selectedPoints.some(point => point.id === params.row.id);
@@ -91,7 +90,14 @@ const MyDataGrid = ({ heightFilterActive }) => {
           '& .MuiDataGrid-cell': {
             fontSize: '12px', // Мелкий шрифт
           },
+          "& .MuiDataGrid-row.Mui-selected": {
+            backgroundColor: "red !important", // Красный цвет для выбранных строк
+          },
+          "& .MuiDataGrid-cell:focus-within": {
+            outline: "none !important",
+          },
         }}
+
         paginationMode="server"
         initialState={{
           sorting: {

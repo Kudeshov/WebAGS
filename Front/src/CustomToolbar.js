@@ -12,7 +12,8 @@ import Tooltip from '@mui/material/Tooltip';
 import { useTheme } from '@mui/material/styles';
 import { AppBar, Toolbar, IconButton, Menu, MenuItem, ListSubheader, Dialog, DialogTitle, DialogContent, DialogActions,  TextField, Button } from '@mui/material';
 import { FlightDataContext } from './FlightDataContext';
-import Slider from '@mui/material/Slider';
+import Snackbar from '@mui/material/Snackbar';
+/* import Slider from '@mui/material/Slider'; */
 import { createGradientT, calculateColorThresholds } from './colorUtils';
 
 function convertDateTime(dateTimeString) {
@@ -50,13 +51,13 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   const { minDoseValue } = useContext(FlightDataContext);
   const { maxDoseValue } = useContext(FlightDataContext);
 
-  const { roundedMinDoseValue } = useState(minDoseValue);
+/*   const { roundedMinDoseValue } = useState(minDoseValue);
   const { roundedMaxDoseValue } = useState(maxDoseValue);
 
   const [midDoseValue0, setMidDoseValue0] = useState(0);
   const [midDoseValue1, setMidDoseValue1] = useState(0);
   const [midDoseValue2, setMidDoseValue2] = useState(0);
-  const [midDoseValue3, setMidDoseValue3] = useState(0);
+  const [midDoseValue3, setMidDoseValue3] = useState(0); */
 
   const [currentColorThresholds, setCurrentColorThresholds ] = useState({
     v0: 0,
@@ -73,6 +74,62 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
 
   const { saveMapAsImage } = useContext(FlightDataContext);
   const { saveDataToFile } = useContext(FlightDataContext);
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+
+  const handleSnackbarOpen = (message) => {
+    setSnackbarMessage(message);
+    setSnackbarOpen(true);
+  };
+  
+  const handleSnackbarClose = (event, reason) => {
+    if (reason === 'clickaway') {
+      return;
+    }
+    setSnackbarOpen(false);
+  };
+
+
+/*   const [databaseMenuAnchorEl, setDatabaseMenuAnchorEl] = useState(null);
+ */
+  const handleDatabaseFileChange = async (event) => {
+    const file = event.target.files[0];
+    if (!file) {
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('databaseFile', file);
+
+    console.log('Выбран файл:', file.name); // Выводим имя файла в лог
+
+    // Отправляем файл на сервер через API
+    try {
+      const response = await fetch('/api/uploadDatabase', {
+        method: 'POST',
+        body: formData,
+      });
+  
+      const textResponse = await response.text(); // Получение текста ответа
+  
+      if (response.ok) {
+        handleSnackbarOpen('Файл базы данных загружен');
+      } else {
+        // Отображение сообщения об ошибке от сервера
+        handleSnackbarOpen(textResponse);
+      }
+    } catch (error) {
+      handleSnackbarOpen('Ошибка при отправке файла');
+      console.error('Ошибка при отправке файла:', error);
+    } finally {
+      setDatabaseMenuAnchorE2(null); // Закрыть меню после отправки файла
+    }
+  };
+
+  // Функция для открытия диалога выбора файла
+  const openDatabaseFileDialog = () => {
+    document.getElementById('fileInput').click();
+  };
 
   useEffect(() => {
     setLocalHeightFrom(heightFrom);
@@ -193,11 +250,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   const handleCollectionMenuClose = () => {
     setDatabaseMenuAnchorCollection(null);
   };
-
-/*   const handleFilterMenuClose = () => {
-    setFilterMenuAnchorEl(null);
-  }; */
-
+ 
   const handleFlightSelect = (flightName) => {
     setSelectedCollection(null); // Установите в null перед получением новых коллекций
     setSelectedFlight(flightName);
@@ -270,7 +323,6 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
             <DatabaseIcon style={{ fill: "white", width: 24, height: 24 }} />
           </Tooltip>
         </IconButton>
-
         <Menu
           anchorEl={filterMenuAnchorE2}
           open={Boolean(filterMenuAnchorE2)}
@@ -285,6 +337,17 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
             {flight}
           </MenuItem>
         ))}
+
+          <MenuItem onClick={openDatabaseFileDialog}>
+            Загрузить другую базу данных
+          </MenuItem>
+          <input
+            type="file"
+            id="fileInput"
+            style={{ display: 'none' }}
+            onChange={handleDatabaseFileChange}
+            accept=".sqlite,.db"
+          />
         </Menu>
 
         <IconButton
@@ -297,7 +360,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
         </IconButton>
 
         <Menu
-          anchorEl={filterMenuAnchorCollection} // Используйте anchorEl вместо anchorCollection
+          anchorEl={filterMenuAnchorCollection} 
           open={Boolean(filterMenuAnchorCollection)}
           onClose={handleCollectionMenuClose}
           MenuListProps={{
@@ -348,169 +411,6 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
           </IconButton>
         </div>        
 
-{/*         <div style={{
-          backgroundColor: heightFilterActive ? "white" : "transparent",
-          borderRadius: '50%',
-          padding: '0px',  
-        }}>
-          <IconButton color="inherit" onClick={handleHeightFilterClickOpen}>
-            <Tooltip title="Настройка фильтра по высоте">
-              <ArrowsVIcon style={{ fill: heightFilterActive ? theme.palette.primary.main : "white", width: 24, height: 24 }} />
-            </Tooltip>
-          </IconButton>
-        </div>
- */}
-        {/* Диалоговое окно для фильтрации по высоте */}
-        <Dialog 
-          open={heightFilterDialogOpen} 
-          onClose={handleHeightFilterClose}
-          PaperProps={{
-            style: {
-              height: 400, // Установите желаемую фиксированную высоту здесь
-            },
-          }}
-          
-        >
-          
-        <DialogTitle>Настройка фильтра по высоте</DialogTitle>
-        <DialogContent style={{ display: 'flex', height: 220, justifyContent: 'center', alignItems: 'center' }}>
-          <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
-            <Slider
-              sx={{ 
-                height: 220, // Установите высоту слайдера
-                marginTop: 'auto',
-                marginBottom: 'auto',
-                marginLeft: 6
-              }}
-              orientation="vertical"
-              getAriaLabel={() => 'Диапазон высот'}
-              value={[localHeightFrom, localHeightTo]}
-              onChange={(event, newValue) => {
-                setLocalHeightFrom(newValue[0]);
-                setLocalHeightTo(newValue[1]);
-              }}
-              valueLabelDisplay="on"
-              min={heightFrom}
-              max={heightTo}
-              marks={[
-                {
-                  value: heightFrom,
-                  label: `${heightFrom}`,
-                },
-                {
-                  value: heightTo,
-                  label: `${heightTo}`,
-                },
-              ]}
-            />
-          </div>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleHeightFilterClose} color="primary">
-            Закрыть
-          </Button>
-          <Button onClick={applyHeightFilter} color="primary">
-            Применить
-          </Button>
-          <Button onClick={() => {
-              setHeightFilterDialogOpen(false); 
-              onHeightFilterActive(false);
-              setLocalHeightFrom(heightFrom);
-              setLocalHeightTo(heightTo);
-              }} color="primary">
-            Сбросить
-          </Button>
-        </DialogActions>
-        </Dialog>
-
-{/*         <div style={{
-          backgroundColor: colorOverrideActive ? "white" : "transparent",
-          borderRadius: '50%',
-          padding: '0px',  
-        }}>
-          <IconButton color="inherit" onClick={handleColorLegendFilterClickOpen}>
-            <Tooltip title="Настройка цветовой шкалы">
-              <PaintBrushIcon style={{ fill: colorOverrideActive ? theme.palette.primary.main : "white", width: 24, height: 24 }} />
-            </Tooltip>
-          </IconButton>
-        </div> */}
-
-        {/* Диалоговое окно для управления легендой покраски */}
-        <Dialog 
-          open={colorLegendFilterDialogOpen} 
-          onClose={handleColorLegendFilterClose}
-          PaperProps={{
-            style: {
-              height: 400, // Установите здесь желаемую фиксированную высоту
-            },
-          }}
-        >
-          <DialogTitle>Настройка цветовой шкалы</DialogTitle>
-          <DialogContent style={{ display: 'flex', height: 350, width: 400, justifyContent: 'center', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-          <Slider
-            sx={{ 
-              height: 230, // Установите высоту слайдера
-              marginTop: 'auto',
-              marginBottom: 'auto',
-              marginLeft: 6
-            }}  
-            step={0.01}
-            orientation="vertical"
-            value={[currentColorThresholds.v0, currentColorThresholds.v1, currentColorThresholds.v2, currentColorThresholds.v3]}
-
-            onChange={(event, newValue) => {
-              setCurrentColorThresholds({
-                ...currentColorThresholds,
-                v0: newValue[0],
-                v1: newValue[1],
-                v2: newValue[2],
-                v3: newValue[3],
-              });
-            }}
-
-            valueLabelDisplay="on"
-            min={minDoseValueR}
-            max={maxDoseValueR}
-            marks={[
-              {
-                value: minDoseValueR,
-                label: `${minDoseValueR}`,
-              },
-              {
-                value: maxDoseValueR,
-                label: `${maxDoseValueR}`,
-              },
-            ]} 
-            />
-            {/*   <div ref={legendControlRef} style={{ marginLeft: '10px' }} /> */}
-              <GradientLegend thresholds = {currentColorThresholds} minValue={minDoseValue} maxValue={maxDoseValue} />
-            </div>
-
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleColorLegendFilterClose} color="primary">
-              Закрыть
-            </Button>
-            <Button onClick={applyColorLegendFilter} color="primary">
-              Применить
-            </Button>
-            <Button onClick={() => {
-                setColorLegendFilterDialogOpen(false); 
-                onColorLegendFilterActive(false);
-                onColorOverrideActive(false);
-                const newThresholds = calculateColorThresholds(minDoseValue, maxDoseValue);
-                setCurrentColorThresholds(newThresholds);
-                setColorThresholds(newThresholds);
-                setMinDoseValueR(parseFloat(newThresholds.v0));
-                setMaxDoseValueR(parseFloat(newThresholds.v3));
-                // Reset any local state if needed
-                }} color="primary">
-              Сбросить
-            </Button>
-          </DialogActions>
-        </Dialog>
-
         <IconButton
           color="inherit"
           onClick={saveMapAsImage}
@@ -529,51 +429,6 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
           </Tooltip>
         </IconButton>
 
-
-{/*         <IconButton
-          color="inherit"
-          onClick={handleUnitMenuClick}
-        >
-          <Tooltip title="Единицы измерения">
-          <RulerIcon style={{ fill: "white", width: 24, height: 24 }} />
-          </Tooltip>
-        </IconButton>
-        <Menu
-          anchorEl={unitMenuAnchorEl}
-          open={Boolean(unitMenuAnchorEl)}
-          onClose={handleUnitMenuClose}
-          MenuListProps={{
-            subheader: <ListSubheader>Единицы измерения</ListSubheader>,
-          }}
-        >
-  
-          <MenuItem onClick={handleUnitMenuClose}>Option 1</MenuItem>
-          <MenuItem onClick={handleUnitMenuClose}>Option 2</MenuItem>
-     
-        </Menu>
-        <IconButton
-          color="inherit"
-          onClick={handleSettingsMenuClick}
-        >
-          <Tooltip title="Настройки">
-          <CogIcon style={{ fill: "white", width: 24, height: 24 }} />
-          </Tooltip>
-        </IconButton>
-        <Menu
-          anchorEl={settingsMenuAnchorEl}
-          open={Boolean(settingsMenuAnchorEl)}
-          onClose={handleSettingsMenuClose}
-          MenuListProps={{
-            subheader: <ListSubheader>Настройки</ListSubheader>,
-          }}
-        >
-    
-          <MenuItem onClick={handleSettingsMenuClose}>Option 1</MenuItem>
-          <MenuItem onClick={handleSettingsMenuClose}>Option 2</MenuItem>
-     
-
-
-        </Menu>*/}
         <div style={{ flexGrow: 1, display: 'flex', justifyContent: 'flex-end' }}>
   {selectedCollection ? (
     <div style={{ color: 'white', fontSize: 'small' }}>
@@ -590,10 +445,15 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   )}
 </div>
 
-
-     </Toolbar>
-          
-         </AppBar>
+    </Toolbar>
+    <Snackbar
+      open={snackbarOpen}
+      autoHideDuration={6000}
+      onClose={handleSnackbarClose}
+      message={snackbarMessage}
+    /> 
+    </AppBar>
+         
   );
 }
 

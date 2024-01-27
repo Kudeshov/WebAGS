@@ -1,7 +1,10 @@
 const express = require('express');
+const multer = require('multer');
 const WebSocket = require('ws');
 const sqlite3 = require('sqlite3').verbose();
 const cors = require('cors');
+//const iconv = require('iconv-lite');
+//const encodeUrl = require('encodeurl');
 const app = express();
 const port = 3001;
 const fs = require('fs');
@@ -18,7 +21,6 @@ const flightsDirectory = './flights'; // Укажите путь к папке �
 let lat = 55.704034038232834; // Начальная широта
 let lon = 37.62119540524117;  // Начальная долгота
 let alt = 100;                // Начальная высота, например 100 метров
-
 
 // Коэффициенты полинома и калибровочные данные
 
@@ -168,11 +170,42 @@ function getDose(value, height, gm = false, gmNum = 1, gm1Coeff, gm2Coeff, winCo
       result = (result - 0.15) / Kh + 0.15; // перевод в мкЗв/час
     }
   }
-  //console.log(value, result);
   // Предполагаем, что результат уже в мкЗв/час
   return result;
 }
 
+const upload = multer({
+  dest: 'uploads/' // временная папка для сохранения файлов
+});
+
+// Проверяем, существует ли папка для загрузки файлов. Если нет, создаем ее.
+if (!fs.existsSync(flightsDirectory)){
+  fs.mkdirSync(flightsDirectory, { recursive: true });
+}
+
+app.post('/api/uploadDatabase', upload.single('databaseFile'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).send('Файл не загружен.');
+  }
+
+  const tempPath = req.file.path;
+  const name_dec = Buffer.from(req.file.originalname, 'latin1').toString('utf8');
+  const targetPath = path.join(flightsDirectory, name_dec);
+
+  // Проверяем, существует ли уже такой файл
+  if (fs.existsSync(targetPath)) {
+    fs.unlinkSync(tempPath); // Удаляем временный файл
+    return res.status(400).send('Файл с таким именем уже существует.');
+  }
+
+  // Перемещаем файл из временной папки в целевую
+  fs.rename(tempPath, targetPath, err => {
+    if (err) {
+      return res.status(500).send('Ошибка при сохранении файла.');
+    }
+    res.send('Файл успешно загружен.');
+  });
+});
 
 app.get('/api/data/:dbname/:collectionId', (req, res) => {
   const dbname = req.params.dbname;

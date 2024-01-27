@@ -1,7 +1,7 @@
-import React, { useContext } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { FlightDataContext } from './FlightDataContext';
 import Slider from '@mui/material/Slider';
-import { createGradientT, calculateColorThresholds } from './colorUtils';
+import { calculateColorThresholds } from './colorUtils';
 import './VerticalSlidersPanel.css'; // Импорт стилей
 import Button from '@mui/material/Button'; // Импорт компонента кнопки MUI
 
@@ -10,14 +10,46 @@ const VerticalSlidersPanel = () => {
           setHeightFilterTo, colorThresholds, setColorThresholds, minDoseValue, maxDoseValue,
           minDoseValueR, maxDoseValueR } = useContext(FlightDataContext);
 
+  // Локальные состояния для управления ползунками
+  const [localHeightFrom, setLocalHeightFrom] = useState(heightFilterFrom);
+  const [localHeightTo, setLocalHeightTo] = useState(heightFilterTo);
+
+  // Обработчик изменения положения ползунков
   const handleHeightChange = (event, newValue) => {
+    setLocalHeightFrom(newValue[0]);
+    setLocalHeightTo(newValue[1]);
+  };
+
+  // Обработчик завершения изменения положения ползунков
+  const handleHeightChangeCommitted = (event, newValue) => {
     setHeightFilterFrom(newValue[0]);
     setHeightFilterTo(newValue[1]);
   };
 
+  // Обновление локальных состояний при изменении глобальных
+  useEffect(() => {
+    setLocalHeightFrom(heightFilterFrom);
+    setLocalHeightTo(heightFilterTo);
+  }, [heightFilterFrom, heightFilterTo]);
+
+  // Локальные состояния для управления ползунками цвета
+  const [localColorThresholds, setLocalColorThresholds] = useState(colorThresholds);
+
+  // Обработчик изменения положения ползунков цвета
   const handleColorChange = (event, newValue) => {
+    setLocalColorThresholds({ ...localColorThresholds, v0: newValue[0], v1: newValue[1], v2: newValue[2], v3: newValue[3] });
+  };
+
+  // Обработчик завершения изменения положения ползунков цвета
+  const handleColorChangeCommitted = (event, newValue) => {
     setColorThresholds({ ...colorThresholds, v0: newValue[0], v1: newValue[1], v2: newValue[2], v3: newValue[3] });
   };
+
+  // Обновление локальных состояний при изменении глобальных
+  useEffect(() => {
+    setLocalColorThresholds(colorThresholds);
+  }, [colorThresholds]);
+  
 
 /*   const gradientPanelStyle = {
     marginLeft: '10px',
@@ -62,8 +94,9 @@ const VerticalSlidersPanel = () => {
               height: 150, marginLeft: 7, marginRight: 0
             }}
             orientation="vertical"
-            value={[heightFilterFrom, heightFilterTo]}
+            value={[localHeightFrom, localHeightTo]}
             onChange={handleHeightChange}
+            onChangeCommitted={handleHeightChangeCommitted}
             min={heightFrom}
             max={heightTo}
             valueLabelDisplay="on"
@@ -106,8 +139,9 @@ const VerticalSlidersPanel = () => {
               height: 150, marginLeft: 7, marginRight: 0
             }}
             orientation="vertical"
-            value={[colorThresholds.v0, colorThresholds.v1, colorThresholds.v2, colorThresholds.v3]}
+            value={[localColorThresholds.v0, localColorThresholds.v1, localColorThresholds.v2, localColorThresholds.v3]}
             onChange={handleColorChange}
+            onChangeCommitted={handleColorChangeCommitted}
             min={minDoseValueR}
             max={maxDoseValueR}
             step={0.01}
