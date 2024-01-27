@@ -4,17 +4,19 @@ import { ReactComponent as AnalyticsIcon } from './icons/table.svg';
 import { ReactComponent as ChartIcon } from './icons/chart-bar.svg';
 import { ReactComponent as DatabaseIcon } from './icons/database.svg';
 import { ReactComponent as CubeIcon } from './icons/cube.svg';
-import { ReactComponent as ArrowsVIcon } from './icons/arrows-v.svg';
+/* import { ReactComponent as ArrowsVIcon } from './icons/arrows-v.svg';
 import { ReactComponent as PaintBrushIcon } from './icons/paint-brush.svg';
+ */
 import { ReactComponent as CameraIcon } from './icons/camera.svg';
 import { ReactComponent as DownloadIcon } from './icons/download.svg';
-import { ReactComponent as EraserIcon } from './icons/eraser.svg';
+import { ReactComponent as EraserIcon } from './icons/trash.svg';
 
 import Tooltip from '@mui/material/Tooltip';
 import { useTheme } from '@mui/material/styles';
 import { AppBar, Toolbar, IconButton, Menu, MenuItem, ListSubheader, Dialog, DialogTitle, DialogContent, DialogActions,  TextField, Button } from '@mui/material';
 import { FlightDataContext } from './FlightDataContext';
 import Snackbar from '@mui/material/Snackbar';
+import Divider from '@mui/material/Divider';
 /* import Slider from '@mui/material/Slider'; */
 import { createGradientT, calculateColorThresholds } from './colorUtils';
 
@@ -325,13 +327,15 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
     const downloadUrl = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = downloadUrl;
-    link.download = `${databaseName}.db`; // или другой формат, если необходим
+    link.download = `${databaseName}.sqlite`; // или другой формат, если необходим
     document.body.appendChild(link);
     link.click();
     link.remove();
     window.URL.revokeObjectURL(downloadUrl);
+    handleSnackbarOpen('База данных успешно скачана:', databaseName);
     console.log('База данных успешно скачана:', databaseName);
   } catch (error) {
+    handleSnackbarOpen('Ошибка при скачивании базы данных:', databaseName, error);
     console.error('Ошибка при скачивании базы данных:', databaseName, error);
     // Обработка ошибки (например, отображение уведомления пользователю)
   }
@@ -370,7 +374,7 @@ const handleDeleteDatabase = async (databaseName) => {
         >
           <Tooltip title="База данных">
             {/* Маппинг массива полетов в элементы меню */}
-            <DatabaseIcon style={{fill: "white", width: 20, height: 20 }} />
+            <DatabaseIcon style={{fill: "white", width: 24, height: 24 }} />
           </Tooltip>
         </IconButton>
         <Menu
@@ -390,17 +394,18 @@ const handleDeleteDatabase = async (databaseName) => {
          <div>
            <IconButton size="small" onClick={() => handleSaveDatabase(flight)}>
              <Tooltip title="Сохранить базу данных">
-               <DownloadIcon style={{  fill: theme.palette.primary.main, width: 20, height: 20 }} />
+               <DownloadIcon style={{ fill: theme.palette.primary.main, width: 20, height: 20 }} />
              </Tooltip>
            </IconButton>
            <IconButton size="small" onClick={() => handleDeleteDatabase(flight)}>
              <Tooltip title="Удалить базу данных">
-               <EraserIcon style={{  fill: theme.palette.primary.main, width: 20, height: 20 }} />
+               <EraserIcon style={{ fill: theme.palette.primary.main, width: 20, height: 20 }} />
              </Tooltip>
            </IconButton>
          </div>
        </MenuItem>
         ))}
+          <Divider />
 
           <MenuItem onClick={openDatabaseFileDialog}>
             Загрузить другую базу данных

@@ -6,19 +6,27 @@ const MyDataGrid = ({ heightFilterActive }) => {
   const { measurements, heightFrom, heightTo } = useContext(FlightDataContext);
   const { selectedPoints, setSelectedPoints } = useContext(FlightDataContext);
   
-  const handleRowSelection = (selectionModel) => {
-    console.log('handleRowSelection', selectionModel);
-    if (selectionModel.length > 0) {
-      // Находим выбранный элемент в данных измерений
-      const selectedRowData = measurements.find(measurement => measurement.id === selectionModel[0]);
-      if (selectedRowData) {
-        setSelectedPoints([selectedRowData]);
-      }
-    }
+/*   const handleSelectionChange = (newSelectionModel) => {
+    console.log('handleSelectionChange');
+    // Получить данные измерений для выбранных ID
+    const selectedMeasurements = newSelectionModel.map(id => 
+      measurements.find(measurement => measurement.id === id)
+    );
+  
+    setSelectedPoints(selectedMeasurements);
+  }; */
+  
+  const handleRowSelection = (newSelectionModel) => {
+    console.log('handleRowSelection');
+    const selectedMeasurements = newSelectionModel.map(id => 
+      measurements.find(measurement => measurement.id === id)
+    );
+    setSelectedPoints(selectedMeasurements);
   };
 
   const handleRowClick = (params) => {
     // Проверяем, выбрана ли строка уже
+    console.log('handleRowClick');
     const isCurrentlySelected = selectedPoints.some(point => point.id === params.row.id);
 
     if (isCurrentlySelected) {
@@ -111,10 +119,12 @@ const MyDataGrid = ({ heightFilterActive }) => {
           },
         }}     
         hideFooter // Скрытие нижней панели
-        //onSelectionModelChange={handleRowSelection} // Добавление обработчика выбора строки
-        onRowClick={handleRowClick}
-        selectionModel={selectedPoints.map(point => point.id)} // Использование id выбранных точек для selectionModel
-
+        onSelectionModelChange={handleRowSelection}
+        //onRowClick={handleRowClick}
+        //selectionModel={selectedPoints.map(point => point.id)} // Использование id выбранных точек для selectionModel
+        checkboxSelection // Добавьте это, если вы хотите использовать чекбоксы для выбора
+        disableSelectionOnClick // Добавьте это, чтобы предотвратить снятие выделения при клике на строку
+      
       />
     </div>
   );

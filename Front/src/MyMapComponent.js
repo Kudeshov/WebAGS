@@ -157,6 +157,8 @@
     };
 
     useEffect(() => {
+
+      console.log('selected points: ', selectedPoints);
       // This assumes there's an array of selected points
       if (selectedPoints.length > 0) {
         // Calculate sums and ranges
@@ -459,7 +461,7 @@
         }
       }
     }, [averageMeasurement]);
-
+/* 
     const legendControlRef = useRef(null);
 
     const updateLegend = (thresholds, minValue, maxValue) => {
@@ -479,7 +481,7 @@
           </div>
         `;
       }
-    };
+    }; */
 
     const [previousValidMeasurements, setPreviousValidMeasurements] = useState();
     const [previousValidMeasurementsBand, setPreviousValidMeasurementsBand] = useState();
@@ -663,7 +665,7 @@
     
     }, [validMeasurements, previousValidMeasurementsBand, isIsobandLayerActive]);
     
-    useEffect(() => {
+/*   useEffect(() => {
     if (mapInstance && minDoseValue != null && maxDoseValue != null) {
       if (!legendControlRef.current) {
         const legendControl = L.control({ position: 'bottomleft' });
@@ -681,7 +683,7 @@
       // Обновляем легенду
       updateLegend(colorThresholds, minDoseValue, maxDoseValue);
     }
-  }, [mapInstance, minDoseValue, maxDoseValue, colorThresholds]);
+  }, [mapInstance, minDoseValue, maxDoseValue, colorThresholds]); */
 
   const measurementsLayerRef = useRef(null);
 
@@ -713,7 +715,6 @@
       : '<svg width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!-- Font Awesome Pro 5.15.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) --><path d="M464 64H48C21.5 64 0 85.5 0 112v288c0 26.5 21.5 48 48 48h416c26.5 0 48-21.5 48-48V112c0-26.5-21.5-48-48-48zm16 336c0 8.8-7.2 16-16 16H48c-8.8 0-16-7.2-16-16V112c0-8.8 7.2-16 16-16h416c8.8 0 16 7.2 16 16v288z"/></svg>';
   };
 
-
   // Функция для обновления хинта
   const updateTitle = ( selectMode ) => {
     return selectMode
@@ -732,7 +733,6 @@
         container.style.alignItems = 'center'; // Центрирование по вертикали
         container.style.justifyContent = 'center'; // Центрирование по горизонтали
         container.title = updateTitle(selectMode);
-        //updateTitle(container, selectMode);
         container.innerHTML = getSvgContent(selectMode); // Инициализация с текущим состоянием selectMode
         // Стили для эффекта затемнения при наведении
         container.onmouseover = function() {
