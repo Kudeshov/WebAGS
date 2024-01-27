@@ -207,6 +207,39 @@ app.post('/api/uploadDatabase', upload.single('databaseFile'), (req, res) => {
   });
 });
 
+app.get('/api/downloadDatabase/:dbname', (req, res) => {
+  const dbname = req.params.dbname;
+  const filePath = path.join(flightsDirectory, `${dbname}.sqlite`);
+
+  // Проверяем, существует ли файл
+  if (fs.existsSync(filePath)) {
+    res.download(filePath); // Set disposition and send it.
+  } else {
+    res.status(404).send('Файл не найден');
+  }
+});
+
+
+app.delete('/api/deleteDatabase/:dbname', (req, res) => {
+  const dbname = req.params.dbname;
+  const filePath = path.join(flightsDirectory, `${dbname}.sqlite`);
+
+  // Проверяем, существует ли файл
+  if (fs.existsSync(filePath)) {
+    fs.unlink(filePath, (err) => {
+      if (err) {
+        console.error('Ошибка при удалении файла:', err);
+        res.status(500).send('Ошибка при удалении файла');
+      } else {
+        console.log('Файл успешно удален');
+        res.send('Файл успешно удален');
+      }
+    });
+  } else {
+    res.status(404).send('Файл не найден');
+  }
+});
+
 app.get('/api/data/:dbname/:collectionId', (req, res) => {
   const dbname = req.params.dbname;
   const collectionId = req.params.collectionId;

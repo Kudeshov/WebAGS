@@ -1,5 +1,5 @@
   import React, { useEffect, useState, useRef, useContext } from 'react';
-  import { MapContainer, TileLayer, CircleMarker, LayersControl, useMap } from 'react-leaflet';
+  import { MapContainer, TileLayer, CircleMarker, LayersControl, useMap, GeoJSON } from 'react-leaflet';
   import * as turf from '@turf/turf';  
   import 'leaflet/dist/leaflet.css';
   import L from 'leaflet';
@@ -7,14 +7,13 @@
   import { FeatureGroup } from 'react-leaflet';
   import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
   import { HeatmapLayer } from 'react-leaflet-heatmap-layer-v3';
-  import { getColor, createGradientT, getColorT, calculateScaledThresholds } from './colorUtils';
+  import { getColor, createGradientT, getColorT } from './colorUtils';
   import RectangularSelection from './RectangularSelection';
 /*   import { ReactComponent as RectangleIcon } from './icons/rectangle-landscape.svg'; */
   import { FlightDataContext } from './FlightDataContext';
   import { createRoot } from 'react-dom/client';
   import 'leaflet-easyprint';
   import { convertDateTime } from './dateUtils';
-/*   import Slider from '@mui/material/Slider'; */
 
   delete L.Icon.Default.prototype._getIconUrl;
 
@@ -29,47 +28,7 @@
     lng: 37.62119540524117
   };
 
-  // Компонент со слайдером
- /*  function HeightFilterPanel({ heightFrom, heightTo, onApply }) {
-    const [localHeightFrom, setLocalHeightFrom] = useState(heightFrom);
-    const [localHeightTo, setLocalHeightTo] = useState(heightTo);
-
-    return (
-      <div style={{ padding: 10 }}>
-        <div style={{ marginBottom: 20 }}>Высоты</div>
-        <Slider
-          sx={{ 
-            height: 220, // Установите высоту слайдера
-            marginTop: 'auto',
-            marginBottom: 'auto',
-            marginLeft: 6
-          }}
-          orientation="vertical"
-          value={[localHeightFrom, localHeightTo]}
-          onChange={(event, newValue) => {
-            setLocalHeightFrom(newValue[0]);
-            setLocalHeightTo(newValue[1]);
-          }}
-          valueLabelDisplay="on"
-          min={heightFrom}
-          max={heightTo}
-        />
-        <button onClick={() => onApply(localHeightFrom, localHeightTo)}>
-          Применить
-        </button> 
-      </div>
-    );
-  } */
-
-  // Компонент со слайдером
-
-
-
-
-
-  
-
-  function SpectrumChartWithLabel({ data }) {
+  function SpectrumChartWithLabel({ data, isLoading }) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', width: '293px', height: '200px' }}>
         <div style={{
@@ -138,20 +97,19 @@
     const googleMapsUrl = 'http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}&hl=ru';
     const googleSatelliteUrl = 'http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}&hl=ru';
     const { selectedCollection } = useContext(FlightDataContext);
- /*   const { selectedFlight } = useContext(FlightDataContext);
-     const { measurements } = useContext(FlightDataContext); */
+    const { selectedFlight } = useContext(FlightDataContext);
+/*     const { measurements } = useContext(FlightDataContext); */
     const { validMeasurements } = useContext(FlightDataContext);
     const { geoCenter } = useContext(FlightDataContext);
     const { minDoseValue, maxDoseValue } = useContext(FlightDataContext);
     const { setSaveMapAsImage } = useContext(FlightDataContext);
     const [spectrumData, setSpectrumData] = useState(null);
-/*     const [isLoading, setIsLoading] = useState(true); */
-    const infoPanelRef = useRef(null); // Ссылка на DOM-элемент панели
+    const [isLoading, setIsLoading] = useState(true);
+    const panelRef = useRef(null); // Ссылка на DOM-элемент панели
     const spectrumPanelRef = useRef(null); 
-    const filterPanelRef = useRef(null); 
     const [isCtrlPressed, setIsCtrlPressed] = useState(false);
-    const { heightFilterFrom, setHeightFilterFrom } = useContext(FlightDataContext);
-    const { heightFilterTo, setHeightFilterTo } = useContext(FlightDataContext);
+/*     const { heightFilterFrom } = useContext(FlightDataContext);
+    const { heightFilterTo } = useContext(FlightDataContext); */
     const { colorThresholds } = useContext(FlightDataContext);
 
     const [averageMeasurement, setAverageMeasurement] = useState(null);
@@ -163,48 +121,7 @@
     const [cachedIsobands, setCachedIsobands] = useState(null);
     const isobandLayerRef = useRef(null);
     const [selectMode, setSelectMode] = useState(false);    
-    const { heightFrom, setHeightFrom } = useContext(FlightDataContext);
-    const { heightTo, setHeightTo } = useContext(FlightDataContext);
 
-    const [localHeightFrom, setLocalHeightFrom] = useState(heightFrom);
-    const [localHeightTo, setLocalHeightTo] = useState(heightTo);
-
-/*     function HeightFilterPanel({   onApply }) {
- 
-     
-      return (
-        <div style={{ padding: '5px', fontSize: '14px' }}>
-          <div style={{ marginBottom: '16px' }}>Высота</div>
-          <Slider
-            sx={{
-              height: '120px', // Уменьшенная высота слайдера
-              '& .MuiSlider-thumb': {
-                height: '16px', // Уменьшенный размер ползунка
-                width: '16px',  // Уменьшенный размер ползунка
-              },
-              marginTop: 'auto',
-              marginBottom: 1,
-              marginLeft: 6,
-              marginRight: -0.3,
-            }}
-            orientation="vertical"
-            value={[localHeightFrom, localHeightTo]}
-            onChange={(event, newValue) => {
-              setLocalHeightFrom(newValue[0]);
-              setLocalHeightTo(newValue[1]);
-            }}
-            valueLabelDisplay="on"
-            min={heightFrom}
-            max={heightTo}
-          />        
-          <button onClick={() => onApply(localHeightFrom, localHeightTo)}>
-            Применить
-          </button> 
-        </div>
-      );
-    } */
-    
-    
     useEffect(() => {
       const handleKeyDown = (e) => {
         if (e.ctrlKey) {
@@ -313,7 +230,7 @@
       });
     
       // Вычисление среднего значения спектра
-      /* const avgSpectrumGood = sumSpectrum.map(value => value / selectedPoints.length); */
+      const avgSpectrumGood = sumSpectrum.map(value => value / selectedPoints.length);
       const avgSpectrum = sumSpectrum.map((value, index) => ({
         energy: P0 + P1 * index, // Преобразование номера канала в энергию
         value: value / selectedPoints.length
@@ -443,13 +360,14 @@
     }, [chartOpen]);
 
     
-    function createInfoControl(map, panelRef) {
+    function createSimpleControl(map, panelRef) {
       var control = L.control({ position: 'bottomright' });
     
       control.onAdd = function() {
         if (!panelRef.current) {
           panelRef.current = L.DomUtil.create('div', 'simple-panel');
           L.DomEvent.disableClickPropagation(panelRef.current);
+
           panelRef.current.innerHTML = '<strong>Выберите точку на карте</strong>';
         }
         return panelRef.current;
@@ -472,33 +390,6 @@
       setSaveMapAsImage(() => () => printPlugin.printMap('CurrentSize', 'myMap'));
     }
 
-    
-    const applyHeightFilter = () => {
-      // Обновление глобального состояния или контекста с новыми значениями
-      //setHeightFilterFrom(localHeightFrom);
-      //setHeightFilterTo(localHeightTo);
-      //onHeightFilterActive(true);
-      // Закрытие диалогового окна
-      //setHeightFilterDialogOpen(false);
-    };
-    
-/*     const createHeightFilterControl = (map) => {
-      const heightFilterControl = L.control({ position: 'topleft' });
-  
-      heightFilterControl.onAdd = function () {
-        if (!filterPanelRef.current) {
-          filterPanelRef.current = L.DomUtil.create('div', 'height-filter-panel');
-          L.DomEvent.disableClickPropagation(filterPanelRef.current);
-          let root = createRoot(filterPanelRef.current);
-          root.render(<HeightFilterPanel   onApply={applyHeightFilter}  />);
-        }
-        return filterPanelRef.current;
-      };
-  
-      heightFilterControl.addTo(map);
-    };
- */
-
     function createSpectrumControl(map) {
       const spectrumControl = L.control({ position: 'bottomright' });
     
@@ -508,7 +399,7 @@
         // Создаем корень для рендеринга компонента
         const root = createRoot(spectrumPanelRef.current);
         spectrumPanelRef.current._root = root; // Сохраняем корень в свойстве для последующего доступа
-        root.render(<SpectrumChartWithLabel data={spectrumData}/*  isLoading={isLoading} */ />);
+        root.render(<SpectrumChartWithLabel data={spectrumData} isLoading={isLoading} />);
         return spectrumPanelRef.current;
       };
     
@@ -522,9 +413,7 @@
     useEffect(() => {
       if (mapInstance) {
         createSpectrumControl(mapInstance);
-        createInfoControl(mapInstance, infoPanelRef);
-        /* console.log("add filter height")
-        createHeightFilterControl(mapInstance); */
+        createSimpleControl(mapInstance, panelRef);
       }
     }, [mapInstance]);
 
@@ -532,9 +421,9 @@
 
     useEffect(() => {
       // Обновляем содержимое панели при изменении selectedMeasurement
-      if (infoPanelRef.current && averageMeasurement && averageDiapasone) {
+      if (panelRef.current && averageMeasurement && averageDiapasone) {
         if (selectedPoints.length>1) {
-        infoPanelRef.current.innerHTML = `
+        panelRef.current.innerHTML = `
           Количество измерений: ${selectedPoints.length}<br>
           Дата: ${convertDateTime(averageDiapasone.timeRange[0])} -  ${convertDateTime(averageDiapasone.timeRange[1])}<br>
           Время измерения: ${(averageDiapasone.timeRange[1].getTime() - averageDiapasone.timeRange[0].getTime()) / 1000} сек<br>
@@ -553,7 +442,7 @@
         }
         else
         {
-          infoPanelRef.current.innerHTML = `
+          panelRef.current.innerHTML = `
           Дата: ${convertDateTime(averageDiapasone.timeRange[0])}<br>
           Время измерения: 1 сек<br>
           Счёт в окне: ${averageDiapasone.countwRange[0]} имп/с<br>
@@ -659,14 +548,12 @@
 
         // Создать новый слой изолиний из кешированных данных
         if (cachedIsolines)  {
-          const colorThresholdsIsolines = calculateScaledThresholds(colorThresholds, minDoseValue, maxDoseValue, cachedIsolines.minDose, cachedIsolines.maxDose);
           isolineLayerRef.current = L.geoJSON(cachedIsolines.lines, {
             style: feature => {
               // Применение цвета к изолиниям на основе значения дозы 
               const doseValue = feature.properties.dose;
               return {
-                //color: getColor(doseValue, cachedIsolines.minDose, cachedIsolines.maxDose),
-                color: getColorT(doseValue, colorThresholdsIsolines, cachedIsolines.minDose, cachedIsolines.maxDose),
+                color: getColor(doseValue, cachedIsolines.minDose, cachedIsolines.maxDose),
                 weight: 2,
                 opacity: 0.6
               };
@@ -684,7 +571,7 @@
           isolineLayerRef.current = null;
         }
       }
-    }, [isIsolineLayerActive, cachedIsolines, mapInstance, colorThresholds]);    
+    }, [isIsolineLayerActive, cachedIsolines, mapInstance]);    
 
     useEffect(() => {
       if (isIsobandLayerActive && mapInstance) {
@@ -695,18 +582,11 @@
     
         // Создать новый слой изобендов из кешированных данных
         if (cachedIsobands) {
-          
           isobandLayerRef.current = L.geoJSON(cachedIsobands.bands, {
             style: feature => {
               const doseRange = feature.properties.dose.split('-').map(Number);
               const doseValue = (doseRange[0] + doseRange[1]) / 2;
-              console.log('colorThresholdsIsobands values ', doseValue, colorThresholds, cachedIsobands.minDose, cachedIsobands.maxDose);
-              const colorThresholdsIsobands = calculateScaledThresholds(colorThresholds, minDoseValue, maxDoseValue, cachedIsobands.minDose, cachedIsobands.maxDose);
-              console.log('colorThresholdsIsobands ',colorThresholdsIsobands);
-              const fillColor = getColorT(doseValue, colorThresholdsIsobands, cachedIsobands.minDose, cachedIsobands.maxDose);
-
-              console.log('fillColor ',fillColor);
-              //const fillColor = getColor(doseValue, cachedIsobands.minDose, cachedIsobands.maxDose);
+              const fillColor = getColor(doseValue, cachedIsobands.minDose, cachedIsobands.maxDose);
               return {
                 color: fillColor,
                 weight: 0,
@@ -728,7 +608,7 @@
           isobandLayerRef.current = null;
         }
       }
-    }, [isIsobandLayerActive, cachedIsobands, mapInstance, colorThresholds]);
+    }, [isIsobandLayerActive, cachedIsobands, mapInstance]);
   
 
     useEffect(() => {
@@ -795,11 +675,11 @@
           return div;
         };
     
-        //legendControl.addTo(mapInstance);
+        legendControl.addTo(mapInstance);
       }
 
       // Обновляем легенду
-      //updateLegend(colorThresholds, minDoseValue, maxDoseValue);
+      updateLegend(colorThresholds, minDoseValue, maxDoseValue);
     }
   }, [mapInstance, minDoseValue, maxDoseValue, colorThresholds]);
 
@@ -871,7 +751,7 @@
       }
     });
   
-    // Создание и добавление нового контролаcolorThresholds 
+    // Создание и добавление нового контрола
     const selectionModeControl = new SelectionModeControl({ position: 'topleft' });
     selectionModeControl.addTo(map);
     // Сохранение ссылки на контрол в свойство карты
@@ -904,43 +784,16 @@
   }, [validMeasurements, colorThresholds, selectedPoints, minDoseValue, maxDoseValue]);
   
 
-  const [windowSize, setWindowSize] = useState({
-    width: window.innerWidth,
-    height: window.innerHeight,
-  });
-
-  useEffect(() => {
-    const handleResize = () => {
-      setWindowSize({
-        width: window.innerWidth,
-        height: window.innerHeight,
-      });
-    };
-
-    window.addEventListener('resize', handleResize);
-
-    return () => {
-      window.removeEventListener('resize', handleResize);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (mapInstance) {
-      mapInstance.invalidateSize();
-    }
-  }, [windowSize, mapInstance]);
-
     return (
       <div>
-      <MapContainer
+      <MapContainer 
         whenCreated={(mapInstance) => {
           mapRef.current = mapInstance;
         }}
         id="map" 
         center={initialCenter} 
         zoom={18} 
-        style={{ width: '100%', height: 'calc(100vh - 64px)' }}> {/* Убедитесь, что высота вычисляется правильно */}
-
+        style={{ width: '100%', height:  window.innerHeight - 64   }}>
       <MapEffect setMapInstance={setMapInstance} />
 
       <LayersControl position="topright">

@@ -8,6 +8,8 @@ import { ReactComponent as ArrowsVIcon } from './icons/arrows-v.svg';
 import { ReactComponent as PaintBrushIcon } from './icons/paint-brush.svg';
 import { ReactComponent as CameraIcon } from './icons/camera.svg';
 import { ReactComponent as DownloadIcon } from './icons/download.svg';
+import { ReactComponent as EraserIcon } from './icons/eraser.svg';
+
 import Tooltip from '@mui/material/Tooltip';
 import { useTheme } from '@mui/material/styles';
 import { AppBar, Toolbar, IconButton, Menu, MenuItem, ListSubheader, Dialog, DialogTitle, DialogContent, DialogActions,  TextField, Button } from '@mui/material';
@@ -310,6 +312,54 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
     return <div style={gradientStyle}></div>;
   };
 
+
+  const handleSaveDatabase = async (databaseName) => {
+  try {
+    const response = await fetch(`/api/downloadDatabase/${databaseName}`, {
+      method: 'GET',
+    });
+    if (!response.ok) {
+      throw new Error('Произошла ошибка при скачивании базы данных');
+    }
+    const blob = await response.blob();
+    const downloadUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = `${databaseName}.db`; // или другой формат, если необходим
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(downloadUrl);
+    console.log('База данных успешно скачана:', databaseName);
+  } catch (error) {
+    console.error('Ошибка при скачивании базы данных:', databaseName, error);
+    // Обработка ошибки (например, отображение уведомления пользователю)
+  }
+};
+
+const handleDeleteDatabase = async (databaseName) => {
+  try {
+      const response = await fetch(`/api/deleteDatabase/${databaseName}`, {
+          method: 'DELETE',
+      });
+      const textResponse = await response.text(); // Получение текста ответа
+
+      if (response.ok) {
+          handleSnackbarOpen(`База данных '${databaseName}' успешно удалена.`);
+      } else {
+          // Отображение сообщения об ошибке от сервера
+          handleSnackbarOpen(textResponse);
+      }
+  } catch (error) {
+      handleSnackbarOpen('Ошибка при удалении файла');
+      console.error('Ошибка при удалении файла:', error);
+  } finally {
+      setDatabaseMenuAnchorE2(null); // Закрыть меню после отправки файла
+  }
+};
+
+
+
   return (
     <AppBar position="static" sx={{ height: '64px' }}>
         <Toolbar >
@@ -320,7 +370,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
         >
           <Tooltip title="База данных">
             {/* Маппинг массива полетов в элементы меню */}
-            <DatabaseIcon style={{ fill: "white", width: 24, height: 24 }} />
+            <DatabaseIcon style={{fill: "white", width: 20, height: 20 }} />
           </Tooltip>
         </IconButton>
         <Menu
@@ -333,9 +383,23 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
         >
           {/* Маппинг массива полетов в элементы меню */}
           {flightOptions.map((flight, index) => (
-          <MenuItem key={index} onClick={() => handleFlightSelect(flight)}>
-            {flight}
-          </MenuItem>
+         <MenuItem key={index} style={{ justifyContent: 'space-between' }}>
+         <span onClick={() => handleFlightSelect(flight)}>
+           {flight}
+         </span>
+         <div>
+           <IconButton size="small" onClick={() => handleSaveDatabase(flight)}>
+             <Tooltip title="Сохранить базу данных">
+               <DownloadIcon style={{  fill: theme.palette.primary.main, width: 20, height: 20 }} />
+             </Tooltip>
+           </IconButton>
+           <IconButton size="small" onClick={() => handleDeleteDatabase(flight)}>
+             <Tooltip title="Удалить базу данных">
+               <EraserIcon style={{  fill: theme.palette.primary.main, width: 20, height: 20 }} />
+             </Tooltip>
+           </IconButton>
+         </div>
+       </MenuItem>
         ))}
 
           <MenuItem onClick={openDatabaseFileDialog}>
