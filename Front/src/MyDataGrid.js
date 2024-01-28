@@ -1,42 +1,26 @@
-import React, { useContext } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { DataGrid } from '@mui/x-data-grid';
 import { FlightDataContext } from './FlightDataContext';
 
 const MyDataGrid = ({ heightFilterActive }) => {
   const { measurements, heightFrom, heightTo } = useContext(FlightDataContext);
   const { selectedPoints, setSelectedPoints } = useContext(FlightDataContext);
-  
-/*   const handleSelectionChange = (newSelectionModel) => {
-    console.log('handleSelectionChange');
-    // Получить данные измерений для выбранных ID
-    const selectedMeasurements = newSelectionModel.map(id => 
-      measurements.find(measurement => measurement.id === id)
-    );
-  
-    setSelectedPoints(selectedMeasurements);
-  }; */
-  
+
+  const [rowSelectionModel, setRowSelectionModel] = useState([]);
+
   const handleRowSelection = (newSelectionModel) => {
-    console.log('handleRowSelection');
     const selectedMeasurements = newSelectionModel.map(id => 
       measurements.find(measurement => measurement.id === id)
     );
+    //console.log('handleRowSelection selectedMeasurements:', selectedMeasurements);
     setSelectedPoints(selectedMeasurements);
   };
 
-  const handleRowClick = (params) => {
-    // Проверяем, выбрана ли строка уже
-    console.log('handleRowClick');
-    const isCurrentlySelected = selectedPoints.some(point => point.id === params.row.id);
-
-    if (isCurrentlySelected) {
-      // Если уже выбрана, убираем из выбранных
-      setSelectedPoints(selectedPoints.filter(point => point.id !== params.row.id));
-    } else {
-      // Если не выбрана, добавляем в выбранные
-      setSelectedPoints([...selectedPoints, params.row]);
-    }
-  };
+  useEffect(() => {
+    // Получаем ID из selectedPoints
+    const newSelectionModel = selectedPoints.map((point) => point.id);
+    setRowSelectionModel(newSelectionModel);
+  }, [selectedPoints]);
   
   // Фильтрация данных измерений по высоте
   const filteredMeasurements = heightFilterActive 
@@ -105,7 +89,7 @@ const MyDataGrid = ({ heightFilterActive }) => {
             outline: "none !important",
           },
         }}
-
+ 
         paginationMode="server"
         initialState={{
           sorting: {
@@ -117,14 +101,15 @@ const MyDataGrid = ({ heightFilterActive }) => {
               spectrumValue: false,
             },
           },
-        }}     
+        }}    
         hideFooter // Скрытие нижней панели
-        onSelectionModelChange={handleRowSelection}
-        //onRowClick={handleRowClick}
-        //selectionModel={selectedPoints.map(point => point.id)} // Использование id выбранных точек для selectionModel
+        onRowSelectionModelChange={(ids) => {
+          handleRowSelection(ids);
+          console.log(rowSelectionModel)
+        }}
+        rowSelectionModel={rowSelectionModel}
+        disableSelectionOnClick //={false}
         checkboxSelection // Добавьте это, если вы хотите использовать чекбоксы для выбора
-        disableSelectionOnClick // Добавьте это, чтобы предотвратить снятие выделения при клике на строку
-      
       />
     </div>
   );
