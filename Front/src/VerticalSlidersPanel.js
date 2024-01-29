@@ -130,12 +130,6 @@ const VerticalSlidersPanel = () => {
               },
               '& .MuiSlider-track': gradientStyle,
               '& .MuiSlider-rail': gradientStyle,              
-/*               '& .MuiSlider-track': {
-                background: 'linear-gradient(to top, blue, green, yellow, red)', // Градиент для трека
-              },
-              '& .MuiSlider-rail': {
-                background: 'linear-gradient(to top, blue, green, yellow, red)', // Тот же градиент для рельса
-              }, */
               height: 150, marginLeft: 7, marginRight: 0
             }}
             orientation="vertical"

@@ -527,10 +527,10 @@ const handleDeleteDatabase = async (databaseName) => {
           {selectedCollection ? (
             <div style={{ color: 'white', fontSize: 'small' }}>
               <span>{selectedFlight ? selectedFlight : ''} | </span>
-              <span>{selectedCollection.description} | </span>
-              <span>{convertDateTime(selectedCollection.dateTime)} | </span>
-              <span>P0: {selectedCollection.P0} | </span>
-              <span>P1: {selectedCollection.P1}</span>        
+              <span>{selectedCollection?.description} | </span>
+              <span>{convertDateTime(selectedCollection?.dateTime)} | </span>
+              <span>P0: {selectedCollection?.P0} | </span>
+              <span>P1: {selectedCollection?.P1}</span>        
             </div>
           ) : (
             <div style={{ color: 'white', fontSize: 'small' }}>

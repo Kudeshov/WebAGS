@@ -191,11 +191,13 @@
     }, [selectedPoints]); // This useEffect should depend on selectedPoints array
 
     const calculateAverageSpectrum = (selectedPoints) => {
-      if (selectedPoints.length === 0) {
+      if (selectedPoints.length === 0 || !selectedCollection) {
         return [];
       }
     
-      const { P0, P1 } = selectedCollection; // Получение параметров P0 и P1
+      // Используем значения по умолчанию, если P0 или P1 отсутствуют
+      const { P0 = 70, P1 = 11 } = selectedCollection || {};
+    
       // Инициализация массива для суммы спектра
       const sumSpectrum = Array(selectedPoints[0].spectrum.channels.length).fill(0);
     
@@ -207,7 +209,6 @@
       });
     
       // Вычисление среднего значения спектра
-      /* const avgSpectrumGood = sumSpectrum.map(value => value / selectedPoints.length); */
       const avgSpectrum = sumSpectrum.map((value, index) => ({
         energy: P0 + P1 * index, // Преобразование номера канала в энергию
         value: value / selectedPoints.length
@@ -217,15 +218,15 @@
     
     useEffect(() => {
       // Вызывается каждый раз при изменении selectedPoints
-      const avgSpectrumData = calculateAverageSpectrum(selectedPoints);
-    
-      setSpectrumData(avgSpectrumData); // Прямое присвоение обработанных данных
-    
-      // Обновление панели спектра
-      if (spectrumPanelRef.current && spectrumPanelRef.current._root) {
-        spectrumPanelRef.current._root.render(
-          <SpectrumChartWithLabel data={avgSpectrumData} isLoading={false} />
-        );
+      if (selectedCollection) {
+        const avgSpectrumData = calculateAverageSpectrum(selectedPoints);
+        setSpectrumData(avgSpectrumData); // Прямое присвоение обработанных данных
+        // Обновление панели спектра
+        if (spectrumPanelRef.current && spectrumPanelRef.current._root) {
+          spectrumPanelRef.current._root.render(
+            <SpectrumChartWithLabel data={avgSpectrumData} isLoading={false} />
+          );
+        }
       }
     }, [selectedPoints]);
     
