@@ -22,31 +22,6 @@ const MyDataGrid = ({ heightFilterActive }) => {
     setSelectionSource('table'); // Установка источника выбора в 'table'
   };
 
-/*  const scrollToRow = (id) => {
-    console.log('scrollToRow1');
-    const gridElement = dataGridRef.current;
-    if (gridElement) {
-      console.log('scrollToRow2');
-      const rowElement = gridElement.querySelector(`[data-id='${id}']`);
-      if (rowElement) {
-        console.log('scrollToRow3');
-
-        rowElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    }
-  };
-
-   useEffect(() => {
-    if (selectedPoints.length > 0 && selectionSource === 'map') {
-      const targetPoint = selectedPoints[0];
-      console.log('scroll targetPoint.id!', targetPoint.id);
-      scrollToRow(targetPoint.id);
-    }
-  }, [selectedPoints, selectionSource]); // Добавьте selectionSource в список зависимостей
-   */
-
-
-
   useEffect(() => {
     if (selectedPoints.length > 0 && selectionSource === 'map') {
       const targetPointId = selectedPoints[0].id;
@@ -67,7 +42,6 @@ const MyDataGrid = ({ heightFilterActive }) => {
         measurement.height >= heightFrom && measurement.height <= heightTo)
     : measurements;
     
-
   const {
     paginationModel,
     setPaginationModel,

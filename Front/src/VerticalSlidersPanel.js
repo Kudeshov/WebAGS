@@ -107,7 +107,7 @@ const VerticalSlidersPanel = () => {
       </div>
       
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <div className="sliderTitle">Цвет</div>
+        <div className="sliderTitle">МЭД, мкЗв/ч</div>
         <div className="sliderValue">{`${maxDoseValueR}`}</div>
         <div style={{ marginTop: '15px', marginBottom: '15px', display: 'flex', alignItems: 'center' }}>
           <Slider

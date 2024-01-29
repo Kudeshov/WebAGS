@@ -487,7 +487,7 @@ const handleDeleteDatabase = async (databaseName) => {
           padding: '0px',  
         }}>
           <IconButton color="inherit" onClick={handleChartToggle}>
-            <Tooltip title="График">
+            <Tooltip title="Спектр">
               <ChartIcon style={{ fill: chartOpen ? theme.palette.primary.main : "white", width: 24, height: 24 }} />
             </Tooltip>
           </IconButton>

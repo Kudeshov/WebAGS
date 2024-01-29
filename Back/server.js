@@ -3,8 +3,6 @@ const multer = require('multer');
 const WebSocket = require('ws');
 const sqlite3 = require('sqlite3').verbose();
 const cors = require('cors');
-//const iconv = require('iconv-lite');
-//const encodeUrl = require('encodeurl');
 const app = express();
 const port = 3001;
 const fs = require('fs');
@@ -14,6 +12,8 @@ const NSPCHANNELS = 238;
 const SPECDEFTIME = 1;
 const winLow = 20;
 const winHigh = 200;
+const MAX_ALLOWED_HEIGHT = 5000; // максимально допустимая высота в метрах
+
 
 const flightsDirectory = './flights'; // Укажите путь к папке с файлами
 
@@ -110,7 +110,6 @@ class Spectrum {
     // Перевод из Зв/с в мкЗв/ч
     return totalDose * 1e6 * 3600;
   }
-
 }
 
 const WGS84A = 6378137.0000;
@@ -321,6 +320,7 @@ app.get('/api/data/:dbname/:collectionId', (req, res) => {
           const windose = getDose(countInWindow, row.rHeight, false, 1, 0.0024, 0.0024, 0.0073); 
           const gmDose1 = getDose(row.geiger1, row.rHeight, true, 1, 0.0024, 0.0024, 0.0073);
           const gmDose2 = getDose(row.geiger2, row.rHeight, true, 2, 0.0024, 0.0024, 0.0073);
+          const height = row.rHeight > MAX_ALLOWED_HEIGHT ? 0 : row.rHeight; // Задаем высоту равную 0, если она превышает MAX_ALLOWED_HEIGHT
 
           return {
             id: row._id,
@@ -328,7 +328,7 @@ app.get('/api/data/:dbname/:collectionId', (req, res) => {
             lat: coords.lat,
             lon: coords.lon,
             alt: coords.alt,
-            height: row.rHeight,
+            height: height,
             countw: countInWindow,
             dosew: windose,
             dose: spectrum.calculateTotalDose(eP0, eP1, doseRateConversionFactors),
@@ -351,13 +351,8 @@ app.use(express.json());
 app.post('/start-flight-simulation', (req, res) => {
   console.log(req.body);
   console.log(flightsDirectory);
-  
   const dbName = req.body.dbName;
-  //const dbPath = './flights/sarov_4источника_22.5м.sqlite';
   const db = new sqlite3.Database(`${flightsDirectory}/${dbName}.sqlite`);
-  //const db = new sqlite3.Database(dbPath);
-  
-
   createFlightRecord(db, (flightId) => {
     flightSimulations[flightId] = setInterval(() => {
       generateMeasurementData(db, flightId);

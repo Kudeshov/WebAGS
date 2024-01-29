@@ -221,7 +221,7 @@
     
       setSpectrumData(avgSpectrumData); // Прямое присвоение обработанных данных
     
-      // Обновление панели графика
+      // Обновление панели спектра
       if (spectrumPanelRef.current && spectrumPanelRef.current._root) {
         spectrumPanelRef.current._root.render(
           <SpectrumChartWithLabel data={avgSpectrumData} isLoading={false} />
