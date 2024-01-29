@@ -1,11 +1,16 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import { DataGrid } from '@mui/x-data-grid';
 import { FlightDataContext } from './FlightDataContext';
+import { getColorT } from './colorUtils';
+import { useGridScrollPagination } from './gridScrollHelper';
 
 const MyDataGrid = ({ heightFilterActive }) => {
   const { measurements, heightFrom, heightTo } = useContext(FlightDataContext);
   const { selectedPoints, setSelectedPoints } = useContext(FlightDataContext);
-
+  const { selectionSource, setSelectionSource } = useContext(FlightDataContext);
+  const { colorThresholds, minDoseValue, maxDoseValue } = useContext(FlightDataContext);
+  const dataGridRef = useRef(null);
+  const apiRef = useRef(null);
   const [rowSelectionModel, setRowSelectionModel] = useState([]);
 
   const handleRowSelection = (newSelectionModel) => {
@@ -14,7 +19,41 @@ const MyDataGrid = ({ heightFilterActive }) => {
     );
     //console.log('handleRowSelection selectedMeasurements:', selectedMeasurements);
     setSelectedPoints(selectedMeasurements);
+    setSelectionSource('table'); // Установка источника выбора в 'table'
   };
+
+/*  const scrollToRow = (id) => {
+    console.log('scrollToRow1');
+    const gridElement = dataGridRef.current;
+    if (gridElement) {
+      console.log('scrollToRow2');
+      const rowElement = gridElement.querySelector(`[data-id='${id}']`);
+      if (rowElement) {
+        console.log('scrollToRow3');
+
+        rowElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  };
+
+   useEffect(() => {
+    if (selectedPoints.length > 0 && selectionSource === 'map') {
+      const targetPoint = selectedPoints[0];
+      console.log('scroll targetPoint.id!', targetPoint.id);
+      scrollToRow(targetPoint.id);
+    }
+  }, [selectedPoints, selectionSource]); // Добавьте selectionSource в список зависимостей
+   */
+
+
+
+  useEffect(() => {
+    if (selectedPoints.length > 0 && selectionSource === 'map') {
+      const targetPointId = selectedPoints[0].id;
+      console.log(targetPointId);
+      scrollToIndexRef.current = targetPointId;
+    }
+  }, [selectedPoints, selectionSource, setRowSelectionModel]);  
 
   useEffect(() => {
     // Получаем ID из selectedPoints
@@ -27,6 +66,15 @@ const MyDataGrid = ({ heightFilterActive }) => {
     ? measurements.filter(measurement => 
         measurement.height >= heightFrom && measurement.height <= heightTo)
     : measurements;
+    
+
+  const {
+    paginationModel,
+    setPaginationModel,
+    handleScrollToRow,
+    scrollToIndexRef
+  } = useGridScrollPagination(apiRef, measurements, setRowSelectionModel);
+
     
   const columns = [
     { field: 'id', headerName: 'ID', width: 60, hide: true },
@@ -63,30 +111,56 @@ const MyDataGrid = ({ heightFilterActive }) => {
       width: 70,
       valueFormatter: (params) => params.value.toFixed(2),
     },
-    {
+/*     {
       field: 'dose',
       headerName: 'МЭД',
       width: 70,
       valueFormatter: (params) => params.value.toFixed(2),
-    },
+    }, */
+    {
+      field: 'dose',
+      headerName: 'МЭД',
+      width: 80,
+      renderCell: (params) => {
+        const color = getColorT(params.value, colorThresholds, minDoseValue, maxDoseValue); // Получаем цвет для значения дозы
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+            <div style={{ 
+              height: '12px',
+              width: '12px',
+              backgroundColor: color,
+              borderRadius: '50%'
+            }} />
+            <div>{params.value.toFixed(2)}</div>
+          </div>
+        );
+      },
+    },    
     { field: 'spectrumValue', headerName: 'Значение спектра', width: 200, hide: true },
   ];
 
   return (
     <div style={{ height: 'calc(100vh - 64px)', width: '100%' }}>
       <DataGrid
+        ref={dataGridRef}
+        apiRef={apiRef}
         rows={filteredMeasurements}
         columns={columns}
-        rowHeight={24} // Уменьшенная высота строки
+        rowHeight={28} // Уменьшенная высота строки
         sx={{
           '& .MuiDataGrid-cell': {
             fontSize: '12px', // Мелкий шрифт
           },
           "& .MuiDataGrid-row.Mui-selected": {
-            backgroundColor: "red !important", // Красный цвет для выбранных строк
+            backgroundColor: "lightgray !important", // Красный цвет для выбранных строк
           },
           "& .MuiDataGrid-cell:focus-within": {
             outline: "none !important",
+          },
+          '& .MuiDataGrid-columnHeaderCheckbox, & .MuiDataGrid-cellCheckbox': {
+            width: '20px', // Уменьшенная ширина
+            minWidth: '20px', // Убедитесь, что ширина не станет больше этого значения
+            maxWidth: '20px', // Убедитесь, что ширина не станет больше этого значения
           },
         }}
  
@@ -107,6 +181,7 @@ const MyDataGrid = ({ heightFilterActive }) => {
           handleRowSelection(ids);
           console.log(rowSelectionModel)
         }}
+
         rowSelectionModel={rowSelectionModel}
         disableSelectionOnClick //={false}
         checkboxSelection // Добавьте это, если вы хотите использовать чекбоксы для выбора

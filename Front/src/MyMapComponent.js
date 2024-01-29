@@ -105,10 +105,6 @@
     const [spectrumData, setSpectrumData] = useState(null);
     const infoPanelRef = useRef(null); // Ссылка на DOM-элемент панели
     const spectrumPanelRef = useRef(null); 
-/*     const filterPanelRef = useRef(null);  */
-    const [isCtrlPressed, setIsCtrlPressed] = useState(false);
-/*     const { heightFilterFrom, setHeightFilterFrom } = useContext(FlightDataContext);
-    const { heightFilterTo, setHeightFilterTo } = useContext(FlightDataContext); */
     const { colorThresholds } = useContext(FlightDataContext);
 
     const [averageMeasurement, setAverageMeasurement] = useState(null);
@@ -120,52 +116,13 @@
     const [cachedIsobands, setCachedIsobands] = useState(null);
     const isobandLayerRef = useRef(null);
     const [selectMode, setSelectMode] = useState(false);    
-/*     const { heightFrom, setHeightFrom } = useContext(FlightDataContext);
-    const { heightTo, setHeightTo } = useContext(FlightDataContext); */
-
-/*     const [localHeightFrom, setLocalHeightFrom] = useState(heightFrom);
-    const [localHeightTo, setLocalHeightTo] = useState(heightTo); */
-
-/*     useEffect(() => {
-      const handleKeyDown = (e) => {
-        if (e.ctrlKey) {
-          setIsCtrlPressed(true);
-        }
-      };
-    
-      const handleKeyUp = (e) => {
-        if (e.key === "Control") {
-          setIsCtrlPressed(false);
-        }
-      };
-    
-      window.addEventListener('keydown', handleKeyDown);
-      window.addEventListener('keyup', handleKeyUp);
-    
-      return () => {
-        window.removeEventListener('keydown', handleKeyDown);
-        window.removeEventListener('keyup', handleKeyUp);
-      };
-    }, []);   */
-
     const { selectedPoints, setSelectedPoints } = useContext(FlightDataContext);
-
-/*     const handlePointClick = (measurement) => {
-      console.log('isCtrlPressed', isCtrlPressed);
-      if (isCtrlPressed) {
-        // Добавляем точку в массив, если Ctrl нажат
-        setSelectedPoints(prevPoints => [...prevPoints, measurement]);
-      } else {
-        // Заменяем массив одной точкой, если Ctrl не нажат
-        setSelectedPoints([measurement]);
-      }
-    };
- */
+    const { selectionSource, setSelectionSource } = useContext(FlightDataContext);
 
     const handlePointClick = (event, measurement) => {
       const nativeEvent = event.originalEvent || event;
       const isCtrlPressed = nativeEvent.ctrlKey; // Проверяем, нажата ли клавиша Ctrl
-      console.log('isCtrlPressed', isCtrlPressed);
+      //console.log('isCtrlPressed', isCtrlPressed);
     
       if (isCtrlPressed) {
         // Добавляем точку в массив, если Ctrl нажат
@@ -174,6 +131,7 @@
         // Заменяем массив одной точкой, если Ctrl не нажат
         setSelectedPoints([measurement]);
       }
+      setSelectionSource('map'); // Установка источника выбора в 'map'
     };
 
     useEffect(() => {
@@ -345,6 +303,7 @@
     
       // Обновляем состояние selectedPoints
       setSelectedPoints(selected);
+      setSelectionSource('map'); // Установка источника выбора в 'map'
     };
 
     const mapRef = useRef(null);

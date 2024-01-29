@@ -9,7 +9,7 @@ import { ReactComponent as DownloadIcon } from './icons/download.svg';
 import { ReactComponent as EraserIcon } from './icons/trash.svg';
 import Tooltip from '@mui/material/Tooltip';
 import { useTheme } from '@mui/material/styles';
-import { AppBar, Toolbar, IconButton, Menu, MenuItem, ListSubheader, Dialog, DialogTitle, DialogContent, DialogActions,  TextField, Button } from '@mui/material';
+import { AppBar, Toolbar, IconButton, Menu, MenuItem, ListSubheader, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions,  TextField, Button } from '@mui/material';
 import { FlightDataContext } from './FlightDataContext';
 import Snackbar from '@mui/material/Snackbar';
 import Divider from '@mui/material/Divider';
@@ -67,6 +67,27 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   const { saveDataToFile } = useContext(FlightDataContext);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
+
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [databaseToDelete, setDatabaseToDelete] = useState(null);
+ 
+  const handleOpenDeleteDialog = (databaseName) => {
+    setDatabaseToDelete(databaseName);
+    setDeleteDialogOpen(true);
+  };
+  
+  const handleCloseDeleteDialog = () => {
+    setDeleteDialogOpen(false);
+    setDatabaseToDelete(null);
+    handleDatabaseMenuClose();  // Закрыть меню базы данных
+  };
+  
+  const handleConfirmDelete = () => {
+    if (databaseToDelete) {
+      handleDeleteDatabase(databaseToDelete);
+    }
+    handleCloseDeleteDialog();
+  };  
 
   const handleSnackbarOpen = (message) => {
     setSnackbarMessage(message);
@@ -399,7 +420,7 @@ const handleDeleteDatabase = async (databaseName) => {
                     size="small"
                     onClick={(e) => {
                       e.stopPropagation(); // предотвращаем всплытие события клика к родительскому элементу
-                      handleDeleteDatabase(flight);
+                      handleOpenDeleteDialog(flight);
                     }}
                   >
                     <Tooltip title="Удалить базу данных">
@@ -503,20 +524,20 @@ const handleDeleteDatabase = async (databaseName) => {
         </IconButton>
 
         <div style={{ flexGrow: 1, display: 'flex', justifyContent: 'flex-end' }}>
-  {selectedCollection ? (
-    <div style={{ color: 'white', fontSize: 'small' }}>
-      <span>{selectedFlight ? selectedFlight : ''} | </span>
-      <span>{selectedCollection.description} | </span>
-      <span>{convertDateTime(selectedCollection.dateTime)} | </span>
-      <span>P0: {selectedCollection.P0} | </span>
-      <span>P1: {selectedCollection.P1}</span>        
-    </div>
-  ) : (
-    <div style={{ color: 'white', fontSize: 'small' }}>
-      Выберите базу данных
-    </div>
-  )}
-</div>
+          {selectedCollection ? (
+            <div style={{ color: 'white', fontSize: 'small' }}>
+              <span>{selectedFlight ? selectedFlight : ''} | </span>
+              <span>{selectedCollection.description} | </span>
+              <span>{convertDateTime(selectedCollection.dateTime)} | </span>
+              <span>P0: {selectedCollection.P0} | </span>
+              <span>P1: {selectedCollection.P1}</span>        
+            </div>
+          ) : (
+            <div style={{ color: 'white', fontSize: 'small' }}>
+              Выберите базу данных
+            </div>
+          )}
+        </div>
 
     </Toolbar>
     <Snackbar
@@ -524,7 +545,29 @@ const handleDeleteDatabase = async (databaseName) => {
       autoHideDuration={6000}
       onClose={handleSnackbarClose}
       message={snackbarMessage}
-    /> 
+    />
+    <Dialog
+      open={deleteDialogOpen}
+      onClose={handleCloseDeleteDialog}
+      aria-labelledby="alert-dialog-title"
+      aria-describedby="alert-dialog-description"
+    >
+      <DialogTitle id="alert-dialog-title">{"Удалить базу данных?"}</DialogTitle>
+      <DialogContent>
+        <DialogContentText id="alert-dialog-description">
+          Вы уверены, что хотите удалить базу данных "{databaseToDelete}" с сервера?
+        </DialogContentText>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={handleCloseDeleteDialog} color="primary">
+          Нет
+        </Button>
+        <Button onClick={handleConfirmDelete} color="primary" autoFocus>
+          Да
+        </Button>
+      </DialogActions>
+    </Dialog>
+ 
     </AppBar>
          
   );

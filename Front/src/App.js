@@ -7,21 +7,21 @@ import { FlightDataProvider } from './FlightDataContext';
 import DroneFlight3D from './DroneFlightVisualization';
 import VerticalSlidersPanel from './VerticalSlidersPanel';
 
-const tallGrid = {
+/* const tallGrid = {
   height: '100%'
-}
+} */
 
 const TOOLBAR_HEIGHT = 64; // Примерная высота тулбара, адаптируйте под ваш дизайн
-const DATA_GRID_WIDTH = 392; // Фиксированная ширина для MyDataGrid
+const DATA_GRID_WIDTH = 499; // Фиксированная ширина для MyDataGrid
 
 
-const gridStyles = {
+/* const gridStyles = {
   marginLeft: "auto",
   marginRight: "auto",
   maxWidth: '100%',
   paddingRight: 0,
   paddingBottom: 0
-};
+}; */
 
 function App() {
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -65,8 +65,6 @@ function App() {
   }, [drawerOpen]);
 
   return (
-
-
     <FlightDataProvider heightFilterActive={heightFilterActive} onHeightFilterActive={setHeightFilterActive}
       colorOverrideActive={colorOverrideActive} onColorOverrideActive={setColorOverrideActive}
       >
@@ -91,18 +89,6 @@ function App() {
             </div>
           )}
         </div>
-
-{/*         <div style={{ display: 'flex', height: `calc(${windowHeight}px - ${TOOLBAR_HEIGHT}px)` }}>
-          <div style={{ flexGrow: 1, position: 'relative', width: `${contentWidth}px` }}>
-            {threeDActive && <DroneFlight3D />}
-            {!threeDActive && <MyMapComponent chartOpen={chartOpen} heightFilterActive={heightFilterActive} />}
-          </div>
-          {drawerOpen && (
-            <div style={{ width: DATA_GRID_WIDTH, overflow: 'auto' }}>
-              <MyDataGrid heightFilterActive={heightFilterActive}/>
-            </div>
-          )}
-        </div> */}
       </div>
     </FlightDataProvider>
 

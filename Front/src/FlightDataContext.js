@@ -16,6 +16,7 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
   const [measurements, setMeasurements] = useState([]);
   const [validMeasurements, setValidMeasurements] = useState([]);
   const [selectedPoints, setSelectedPoints] = useState([]);
+  const [selectionSource, setSelectionSource] = useState('table'); // 'map' или 'table'
 
   const [minDoseValue, setMinDoseValue] = useState(0);
   const [maxDoseValue, setMaxDoseValue] = useState(3);
@@ -204,6 +205,8 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
       maxDoseValueR, 
       selectedPoints,
       setSelectedPoints,
+      selectionSource, 
+      setSelectionSource
     }}>
       {children}
     </FlightDataContext.Provider>
