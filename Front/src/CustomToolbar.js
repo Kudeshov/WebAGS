@@ -49,7 +49,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   const { colorThresholds, setColorThresholds } = useContext(FlightDataContext);  
   const { minDoseValue } = useContext(FlightDataContext);
   const { maxDoseValue } = useContext(FlightDataContext);
-
+  const [openConfirmDialog, setOpenConfirmDialog] = useState(false);
   const [currentColorThresholds, setCurrentColorThresholds ] = useState({
     v0: 0,
     v1: 0,
@@ -70,7 +70,13 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [databaseToDelete, setDatabaseToDelete] = useState(null);
- 
+
+  const handleOpenConfirmDialog = (databaseName) => {
+    setDatabaseToDelete(databaseName);
+    setOpenConfirmDialog(true);
+};
+
+  
   const handleOpenDeleteDialog = (databaseName) => {
     setDatabaseToDelete(databaseName);
     setDeleteDialogOpen(true);
@@ -351,17 +357,20 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
     console.error('Ошибка при скачивании базы данных:', databaseName, error);
     // Обработка ошибки (например, отображение уведомления пользователю)
   }
+}; 
+const handleCloseConfirmDialog = () => {
+  setOpenConfirmDialog(false);
 };
 
-const handleDeleteDatabase = async (databaseName) => {
+const handleDeleteDatabase = async () => {
   try {
-      const response = await fetch(`/api/deleteDatabase/${databaseName}`, {
+      const response = await fetch(`/api/deleteDatabase/${databaseToDelete}`, {
           method: 'DELETE',
       });
       const textResponse = await response.text(); // Получение текста ответа
 
       if (response.ok) {
-          handleSnackbarOpen(`База данных '${databaseName}' успешно удалена.`);
+          handleSnackbarOpen(`База данных '${databaseToDelete}' успешно удалена.`);
       } else {
           // Отображение сообщения об ошибке от сервера
           handleSnackbarOpen(textResponse);
@@ -371,6 +380,7 @@ const handleDeleteDatabase = async (databaseName) => {
       console.error('Ошибка при удалении файла:', error);
   } finally {
       setDatabaseMenuAnchorE2(null); // Закрыть меню после отправки файла
+      handleCloseConfirmDialog(); // Закрыть диалог подтверждения
   }
 };
 
