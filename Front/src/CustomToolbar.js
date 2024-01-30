@@ -4,18 +4,15 @@ import { ReactComponent as AnalyticsIcon } from './icons/table.svg';
 import { ReactComponent as ChartIcon } from './icons/chart-bar.svg';
 import { ReactComponent as DatabaseIcon } from './icons/database.svg';
 import { ReactComponent as CubeIcon } from './icons/cube.svg';
-import { ReactComponent as ArrowsVIcon } from './icons/arrows-v.svg';
-import { ReactComponent as PaintBrushIcon } from './icons/paint-brush.svg';
 import { ReactComponent as CameraIcon } from './icons/camera.svg';
 import { ReactComponent as DownloadIcon } from './icons/download.svg';
-import { ReactComponent as EraserIcon } from './icons/eraser.svg';
-
+import { ReactComponent as EraserIcon } from './icons/trash.svg';
 import Tooltip from '@mui/material/Tooltip';
 import { useTheme } from '@mui/material/styles';
-import { AppBar, Toolbar, IconButton, Menu, MenuItem, ListSubheader, Dialog, DialogTitle, DialogContent, DialogActions,  TextField, Button } from '@mui/material';
+import { AppBar, Toolbar, IconButton, Menu, MenuItem, ListSubheader, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions,  TextField, Button } from '@mui/material';
 import { FlightDataContext } from './FlightDataContext';
 import Snackbar from '@mui/material/Snackbar';
-/* import Slider from '@mui/material/Slider'; */
+import Divider from '@mui/material/Divider';
 import { createGradientT, calculateColorThresholds } from './colorUtils';
 
 function convertDateTime(dateTimeString) {
@@ -53,14 +50,6 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   const { minDoseValue } = useContext(FlightDataContext);
   const { maxDoseValue } = useContext(FlightDataContext);
 
-/*   const { roundedMinDoseValue } = useState(minDoseValue);
-  const { roundedMaxDoseValue } = useState(maxDoseValue);
-
-  const [midDoseValue0, setMidDoseValue0] = useState(0);
-  const [midDoseValue1, setMidDoseValue1] = useState(0);
-  const [midDoseValue2, setMidDoseValue2] = useState(0);
-  const [midDoseValue3, setMidDoseValue3] = useState(0); */
-
   const [currentColorThresholds, setCurrentColorThresholds ] = useState({
     v0: 0,
     v1: 0,
@@ -79,6 +68,27 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
 
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [databaseToDelete, setDatabaseToDelete] = useState(null);
+ 
+  const handleOpenDeleteDialog = (databaseName) => {
+    setDatabaseToDelete(databaseName);
+    setDeleteDialogOpen(true);
+  };
+  
+  const handleCloseDeleteDialog = () => {
+    setDeleteDialogOpen(false);
+    setDatabaseToDelete(null);
+    handleDatabaseMenuClose();  // Закрыть меню базы данных
+  };
+  
+  const handleConfirmDelete = () => {
+    if (databaseToDelete) {
+      handleDeleteDatabase(databaseToDelete);
+    }
+    handleCloseDeleteDialog();
+  };  
+
   const handleSnackbarOpen = (message) => {
     setSnackbarMessage(message);
     setSnackbarOpen(true);
@@ -91,20 +101,20 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
     setSnackbarOpen(false);
   };
 
-
-/*   const [databaseMenuAnchorEl, setDatabaseMenuAnchorEl] = useState(null);
- */
   const handleDatabaseFileChange = async (event) => {
     const file = event.target.files[0];
     if (!file) {
       return;
     }
-
+  
     const formData = new FormData();
     formData.append('databaseFile', file);
-
+  
+    // Извлекаем имя файла без расширения
+    const fileNameWithoutExtension = file.name.replace(/\.[^/.]+$/, "");
+  
     console.log('Выбран файл:', file.name); // Выводим имя файла в лог
-
+  
     // Отправляем файл на сервер через API
     try {
       const response = await fetch('/api/uploadDatabase', {
@@ -115,7 +125,11 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
       const textResponse = await response.text(); // Получение текста ответа
   
       if (response.ok) {
-        handleSnackbarOpen('Файл базы данных загружен');
+        handleSnackbarOpen(`Файл базы данных ${file.name} загружен`);
+  
+        // Вызываем setSelectedFlight с именем файла без расширения
+        setSelectedFlight(fileNameWithoutExtension);
+  
       } else {
         // Отображение сообщения об ошибке от сервера
         handleSnackbarOpen(textResponse);
@@ -127,7 +141,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
       setDatabaseMenuAnchorE2(null); // Закрыть меню после отправки файла
     }
   };
-
+  
   // Функция для открытия диалога выбора файла
   const openDatabaseFileDialog = () => {
     document.getElementById('fileInput').click();
@@ -325,13 +339,15 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
     const downloadUrl = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = downloadUrl;
-    link.download = `${databaseName}.db`; // или другой формат, если необходим
+    link.download = `${databaseName}.sqlite`; // или другой формат, если необходим
     document.body.appendChild(link);
     link.click();
     link.remove();
     window.URL.revokeObjectURL(downloadUrl);
+    handleSnackbarOpen('База данных успешно скачана:', databaseName);
     console.log('База данных успешно скачана:', databaseName);
   } catch (error) {
+    handleSnackbarOpen('Ошибка при скачивании базы данных:', databaseName, error);
     console.error('Ошибка при скачивании базы данных:', databaseName, error);
     // Обработка ошибки (например, отображение уведомления пользователю)
   }
@@ -358,8 +374,6 @@ const handleDeleteDatabase = async (databaseName) => {
   }
 };
 
-
-
   return (
     <AppBar position="static" sx={{ height: '64px' }}>
         <Toolbar >
@@ -370,7 +384,7 @@ const handleDeleteDatabase = async (databaseName) => {
         >
           <Tooltip title="База данных">
             {/* Маппинг массива полетов в элементы меню */}
-            <DatabaseIcon style={{fill: "white", width: 20, height: 20 }} />
+            <DatabaseIcon style={{fill: "white", width: 24, height: 24 }} />
           </Tooltip>
         </IconButton>
         <Menu
@@ -381,27 +395,43 @@ const handleDeleteDatabase = async (databaseName) => {
             subheader: <ListSubheader>База данных</ListSubheader>,
           }}
         >
-          {/* Маппинг массива полетов в элементы меню */}
           {flightOptions.map((flight, index) => (
-         <MenuItem key={index} style={{ justifyContent: 'space-between' }}>
-         <span onClick={() => handleFlightSelect(flight)}>
-           {flight}
-         </span>
-         <div>
-           <IconButton size="small" onClick={() => handleSaveDatabase(flight)}>
-             <Tooltip title="Сохранить базу данных">
-               <DownloadIcon style={{  fill: theme.palette.primary.main, width: 20, height: 20 }} />
-             </Tooltip>
-           </IconButton>
-           <IconButton size="small" onClick={() => handleDeleteDatabase(flight)}>
-             <Tooltip title="Удалить базу данных">
-               <EraserIcon style={{  fill: theme.palette.primary.main, width: 20, height: 20 }} />
-             </Tooltip>
-           </IconButton>
-         </div>
-       </MenuItem>
-        ))}
-
+            <MenuItem key={index} style={{ padding: 0 }}>
+              {/* Обертка для контента пункта меню */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '3px 16px' }} onClick={() => handleFlightSelect(flight)}>
+                {/* Название полета */}
+                <span style={{ flexGrow: 1, cursor: 'pointer', display: 'flex', alignItems: 'center' }}> {/* добавлено display: 'flex', alignItems: 'center' для центрирования текста */}
+                  {flight}
+                </span>
+                {/* Контейнер для иконок */}
+                <div style={{ display: 'flex', alignItems: 'center', marginLeft: '8px' }}> {/* добавлено marginRight: '8px' для отступа справа */}
+                  <IconButton
+                    size="small"
+                    onClick={(e) => {
+                      e.stopPropagation(); // предотвращаем всплытие события клика к родительскому элементу
+                      handleSaveDatabase(flight);
+                    }}
+                  >
+                    <Tooltip title="Сохранить базу данных">
+                      <DownloadIcon style={{ fill: theme.palette.primary.main, width: 20, height: 20 }} />
+                    </Tooltip>
+                  </IconButton>
+                  <IconButton
+                    size="small"
+                    onClick={(e) => {
+                      e.stopPropagation(); // предотвращаем всплытие события клика к родительскому элементу
+                      handleOpenDeleteDialog(flight);
+                    }}
+                  >
+                    <Tooltip title="Удалить базу данных">
+                      <EraserIcon style={{ fill: theme.palette.primary.main, width: 20, height: 20 }} />
+                    </Tooltip>
+                  </IconButton>
+                </div>
+              </div>
+            </MenuItem>
+          ))}
+          <Divider />
           <MenuItem onClick={openDatabaseFileDialog}>
             Загрузить другую базу данных
           </MenuItem>
@@ -457,7 +487,7 @@ const handleDeleteDatabase = async (databaseName) => {
           padding: '0px',  
         }}>
           <IconButton color="inherit" onClick={handleChartToggle}>
-            <Tooltip title="График">
+            <Tooltip title="Спектр">
               <ChartIcon style={{ fill: chartOpen ? theme.palette.primary.main : "white", width: 24, height: 24 }} />
             </Tooltip>
           </IconButton>
@@ -494,20 +524,20 @@ const handleDeleteDatabase = async (databaseName) => {
         </IconButton>
 
         <div style={{ flexGrow: 1, display: 'flex', justifyContent: 'flex-end' }}>
-  {selectedCollection ? (
-    <div style={{ color: 'white', fontSize: 'small' }}>
-      <span>{selectedFlight ? selectedFlight : ''} | </span>
-      <span>{selectedCollection.description} | </span>
-      <span>{convertDateTime(selectedCollection.dateTime)} | </span>
-      <span>P0: {selectedCollection.P0} | </span>
-      <span>P1: {selectedCollection.P1}</span>        
-    </div>
-  ) : (
-    <div style={{ color: 'white', fontSize: 'small' }}>
-      Выберите базу данных
-    </div>
-  )}
-</div>
+          {selectedCollection ? (
+            <div style={{ color: 'white', fontSize: 'small' }}>
+              <span>{selectedFlight ? selectedFlight : ''} | </span>
+              <span>{selectedCollection?.description} | </span>
+              <span>{convertDateTime(selectedCollection?.dateTime)} | </span>
+              <span>P0: {selectedCollection?.P0} | </span>
+              <span>P1: {selectedCollection?.P1}</span>        
+            </div>
+          ) : (
+            <div style={{ color: 'white', fontSize: 'small' }}>
+              Выберите базу данных
+            </div>
+          )}
+        </div>
 
     </Toolbar>
     <Snackbar
@@ -515,7 +545,29 @@ const handleDeleteDatabase = async (databaseName) => {
       autoHideDuration={6000}
       onClose={handleSnackbarClose}
       message={snackbarMessage}
-    /> 
+    />
+    <Dialog
+      open={deleteDialogOpen}
+      onClose={handleCloseDeleteDialog}
+      aria-labelledby="alert-dialog-title"
+      aria-describedby="alert-dialog-description"
+    >
+      <DialogTitle id="alert-dialog-title">{"Удалить базу данных?"}</DialogTitle>
+      <DialogContent>
+        <DialogContentText id="alert-dialog-description">
+          Вы уверены, что хотите удалить базу данных "{databaseToDelete}" с сервера?
+        </DialogContentText>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={handleCloseDeleteDialog} color="primary">
+          Нет
+        </Button>
+        <Button onClick={handleConfirmDelete} color="primary" autoFocus>
+          Да
+        </Button>
+      </DialogActions>
+    </Dialog>
+ 
     </AppBar>
          
   );

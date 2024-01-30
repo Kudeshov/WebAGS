@@ -107,7 +107,7 @@ const VerticalSlidersPanel = () => {
       </div>
       
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <div className="sliderTitle">Цвет</div>
+        <div className="sliderTitle">МЭД, мкЗв/ч</div>
         <div className="sliderValue">{`${maxDoseValueR}`}</div>
         <div style={{ marginTop: '15px', marginBottom: '15px', display: 'flex', alignItems: 'center' }}>
           <Slider
@@ -130,12 +130,6 @@ const VerticalSlidersPanel = () => {
               },
               '& .MuiSlider-track': gradientStyle,
               '& .MuiSlider-rail': gradientStyle,              
-/*               '& .MuiSlider-track': {
-                background: 'linear-gradient(to top, blue, green, yellow, red)', // Градиент для трека
-              },
-              '& .MuiSlider-rail': {
-                background: 'linear-gradient(to top, blue, green, yellow, red)', // Тот же градиент для рельса
-              }, */
               height: 150, marginLeft: 7, marginRight: 0
             }}
             orientation="vertical"

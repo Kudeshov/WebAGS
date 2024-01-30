@@ -1,18 +1,19 @@
 .sliderTitle {
     color: gray;
+    font-size: 12px; 
     font-weight: bold;
     margin-bottom: 3px;
   }
   
-  .sliderValue {
-    color: gray;
-    margin-top: 0px;
-  }
-  
-  .sliderContainer {
-    margin-bottom: 30px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
+.sliderValue {
+  color: gray;
+  margin-top: 0px;
+}
+
+.sliderContainer {
+  margin-bottom: 30px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
   

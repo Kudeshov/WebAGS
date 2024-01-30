@@ -1,40 +1,54 @@
-import React, { useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import { DataGrid } from '@mui/x-data-grid';
 import { FlightDataContext } from './FlightDataContext';
+import { getColorT } from './colorUtils';
+import { useGridScrollPagination } from './gridScrollHelper';
 
 const MyDataGrid = ({ heightFilterActive }) => {
   const { measurements, heightFrom, heightTo } = useContext(FlightDataContext);
   const { selectedPoints, setSelectedPoints } = useContext(FlightDataContext);
-  
-  const handleRowSelection = (selectionModel) => {
-    console.log('handleRowSelection', selectionModel);
-    if (selectionModel.length > 0) {
-      // Находим выбранный элемент в данных измерений
-      const selectedRowData = measurements.find(measurement => measurement.id === selectionModel[0]);
-      if (selectedRowData) {
-        setSelectedPoints([selectedRowData]);
-      }
-    }
+  const { selectionSource, setSelectionSource } = useContext(FlightDataContext);
+  const { colorThresholds, minDoseValue, maxDoseValue } = useContext(FlightDataContext);
+  const dataGridRef = useRef(null);
+  const apiRef = useRef(null);
+  const [rowSelectionModel, setRowSelectionModel] = useState([]);
+
+  const handleRowSelection = (newSelectionModel) => {
+    const selectedMeasurements = newSelectionModel.map(id => 
+      measurements.find(measurement => measurement.id === id)
+    );
+    //console.log('handleRowSelection selectedMeasurements:', selectedMeasurements);
+    setSelectedPoints(selectedMeasurements);
+    setSelectionSource('table'); // Установка источника выбора в 'table'
   };
 
-  const handleRowClick = (params) => {
-    // Проверяем, выбрана ли строка уже
-    const isCurrentlySelected = selectedPoints.some(point => point.id === params.row.id);
-
-    if (isCurrentlySelected) {
-      // Если уже выбрана, убираем из выбранных
-      setSelectedPoints(selectedPoints.filter(point => point.id !== params.row.id));
-    } else {
-      // Если не выбрана, добавляем в выбранные
-      setSelectedPoints([...selectedPoints, params.row]);
+  useEffect(() => {
+    if (selectedPoints.length > 0 && selectionSource === 'map') {
+      const targetPointId = selectedPoints[0].id;
+      console.log(targetPointId);
+      scrollToIndexRef.current = targetPointId;
     }
-  };
+  }, [selectedPoints, selectionSource, setRowSelectionModel]);  
+
+  useEffect(() => {
+    // Получаем ID из selectedPoints
+    const newSelectionModel = selectedPoints.map((point) => point.id);
+    setRowSelectionModel(newSelectionModel);
+  }, [selectedPoints]);
   
   // Фильтрация данных измерений по высоте
   const filteredMeasurements = heightFilterActive 
     ? measurements.filter(measurement => 
         measurement.height >= heightFrom && measurement.height <= heightTo)
     : measurements;
+    
+  const {
+    paginationModel,
+    setPaginationModel,
+    handleScrollToRow,
+    scrollToIndexRef
+  } = useGridScrollPagination(apiRef, measurements, setRowSelectionModel);
+
     
   const columns = [
     { field: 'id', headerName: 'ID', width: 60, hide: true },
@@ -71,33 +85,59 @@ const MyDataGrid = ({ heightFilterActive }) => {
       width: 70,
       valueFormatter: (params) => params.value.toFixed(2),
     },
-    {
+/*     {
       field: 'dose',
       headerName: 'МЭД',
       width: 70,
       valueFormatter: (params) => params.value.toFixed(2),
-    },
+    }, */
+    {
+      field: 'dose',
+      headerName: 'МЭД',
+      width: 80,
+      renderCell: (params) => {
+        const color = getColorT(params.value, colorThresholds, minDoseValue, maxDoseValue); // Получаем цвет для значения дозы
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+            <div style={{ 
+              height: '12px',
+              width: '12px',
+              backgroundColor: color,
+              borderRadius: '50%'
+            }} />
+            <div>{params.value.toFixed(2)}</div>
+          </div>
+        );
+      },
+    },    
     { field: 'spectrumValue', headerName: 'Значение спектра', width: 200, hide: true },
   ];
 
   return (
     <div style={{ height: 'calc(100vh - 64px)', width: '100%' }}>
       <DataGrid
+        ref={dataGridRef}
+        apiRef={apiRef}
         rows={filteredMeasurements}
         columns={columns}
-        rowHeight={24} // Уменьшенная высота строки
+        rowHeight={28} // Уменьшенная высота строки
         sx={{
           '& .MuiDataGrid-cell': {
             fontSize: '12px', // Мелкий шрифт
           },
           "& .MuiDataGrid-row.Mui-selected": {
-            backgroundColor: "red !important", // Красный цвет для выбранных строк
+            backgroundColor: "lightgray !important", // Красный цвет для выбранных строк
           },
           "& .MuiDataGrid-cell:focus-within": {
             outline: "none !important",
           },
+          '& .MuiDataGrid-columnHeaderCheckbox, & .MuiDataGrid-cellCheckbox': {
+            width: '20px', // Уменьшенная ширина
+            minWidth: '20px', // Убедитесь, что ширина не станет больше этого значения
+            maxWidth: '20px', // Убедитесь, что ширина не станет больше этого значения
+          },
         }}
-
+ 
         paginationMode="server"
         initialState={{
           sorting: {
@@ -109,12 +149,16 @@ const MyDataGrid = ({ heightFilterActive }) => {
               spectrumValue: false,
             },
           },
-        }}     
+        }}    
         hideFooter // Скрытие нижней панели
-        //onSelectionModelChange={handleRowSelection} // Добавление обработчика выбора строки
-        onRowClick={handleRowClick}
-        selectionModel={selectedPoints.map(point => point.id)} // Использование id выбранных точек для selectionModel
+        onRowSelectionModelChange={(ids) => {
+          handleRowSelection(ids);
+          console.log(rowSelectionModel)
+        }}
 
+        rowSelectionModel={rowSelectionModel}
+        disableSelectionOnClick //={false}
+        checkboxSelection // Добавьте это, если вы хотите использовать чекбоксы для выбора
       />
     </div>
   );
