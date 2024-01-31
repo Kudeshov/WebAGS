@@ -14,6 +14,8 @@ import { FlightDataContext } from './FlightDataContext';
 import Snackbar from '@mui/material/Snackbar';
 import Divider from '@mui/material/Divider';
 import { createGradientT, calculateColorThresholds } from './colorUtils';
+import CircularProgress from '@mui/material/CircularProgress';
+import Backdrop from '@mui/material/Backdrop';
 
 function convertDateTime(dateTimeString) {
   if (!dateTimeString) return '';
@@ -65,11 +67,14 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
 
   const { saveMapAsImage } = useContext(FlightDataContext);
   const { saveDataToFile } = useContext(FlightDataContext);
+  const { isLoadingFlight } = useContext(FlightDataContext);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [databaseToDelete, setDatabaseToDelete] = useState(null);
+
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleOpenConfirmDialog = (databaseName) => {
     setDatabaseToDelete(databaseName);
@@ -123,9 +128,11 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   
     // Отправляем файл на сервер через API
     try {
-      const response = await fetch('/api/uploadDatabase', {
+      setIsLoading(true);
+        const response = await fetch('/api/uploadDatabase', {
         method: 'POST',
         body: formData,
+        
       });
   
       const textResponse = await response.text(); // Получение текста ответа
@@ -145,6 +152,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
       console.error('Ошибка при отправке файла:', error);
     } finally {
       setDatabaseMenuAnchorE2(null); // Закрыть меню после отправки файла
+      setIsLoading(false);
     }
   };
   
@@ -231,7 +239,13 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
         console.error('Ошибка при загрузке данных:', error);
       });
   }, [selectedFlight]);
-  
+
+/*   useEffect(() => {
+    console.log('useEffect selectedCollection value = ', selectedCollection);
+    if (!selectedCollection) return;
+    setIsLoading(false);
+  }, [selectedCollection]);
+   */
 
   const fetchData = async () => {
     try {
@@ -275,13 +289,17 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
  
   const handleFlightSelect = (flightName) => {
     setSelectedCollection(null); // Установите в null перед получением новых коллекций
+    //setIsLoading(true);
     setSelectedFlight(flightName);
     // Закрыть меню после выбора
     setDatabaseMenuAnchorE2(null);
   };
 
   const handleCollectionSelect = (value) => {
-    console.log('value = ', value);
+    //setSelectedCollection(null);
+    //setIsLoading(true);
+    //console.log('handleCollectionSelect value = ', value);
+
     setSelectedCollection(value);
     // Закрыть меню после выбора
     setDatabaseMenuAnchorCollection(null);
@@ -332,32 +350,41 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
     return <div style={gradientStyle}></div>;
   };
 
-
   const handleSaveDatabase = async (databaseName) => {
-  try {
-    const response = await fetch(`/api/downloadDatabase/${databaseName}`, {
-      method: 'GET',
-    });
-    if (!response.ok) {
-      throw new Error('Произошла ошибка при скачивании базы данных');
+    try {
+      // Перед началом загрузки, установите isLoading в true
+      setIsLoading(true);
+  
+      const response = await fetch(`/api/downloadDatabase/${databaseName}`, {
+        method: 'GET',
+      });
+      if (!response.ok) {
+        throw new Error('Произошла ошибка при скачивании базы данных');
+      }
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = `${databaseName}.sqlite`; // или другой формат, если необходим
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+  
+      // После завершения загрузки, установите isLoading в false
+      setIsLoading(false);
+  
+      handleSnackbarOpen('База данных успешно скачана:', databaseName);
+      console.log('База данных успешно скачана:', databaseName);
+    } catch (error) {
+      // При ошибке также установите isLoading в false
+      setIsLoading(false);
+  
+      handleSnackbarOpen('Ошибка при скачивании базы данных:', databaseName, error);
+      console.error('Ошибка при скачивании базы данных:', databaseName, error);
+      // Обработка ошибки (например, отображение уведомления пользователю)
     }
-    const blob = await response.blob();
-    const downloadUrl = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = downloadUrl;
-    link.download = `${databaseName}.sqlite`; // или другой формат, если необходим
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.URL.revokeObjectURL(downloadUrl);
-    handleSnackbarOpen('База данных успешно скачана:', databaseName);
-    console.log('База данных успешно скачана:', databaseName);
-  } catch (error) {
-    handleSnackbarOpen('Ошибка при скачивании базы данных:', databaseName, error);
-    console.error('Ошибка при скачивании базы данных:', databaseName, error);
-    // Обработка ошибки (например, отображение уведомления пользователю)
-  }
-}; 
+  };
 const handleCloseConfirmDialog = () => {
   setOpenConfirmDialog(false);
 };
@@ -547,6 +574,13 @@ const handleDeleteDatabase = async () => {
               Выберите базу данных
             </div>
           )}
+          
+           {isLoading && (
+        <Backdrop sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1 }} open={isLoading || isLoadingFlight  }>
+          <CircularProgress color="inherit" />
+        </Backdrop>
+      )}
+
         </div>
 
     </Toolbar>

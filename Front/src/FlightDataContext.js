@@ -73,11 +73,11 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
     csvExporter.generateCsv(formattedData);
   }, [validMeasurements]);
 
+  const [isLoadingFlight, setIsLoadingFlight] = useState(false);
 
   const fetchCollections = useCallback(() => {
     //console.log('вызвана fetchCollections')
     if (selectedFlight) {
-
       fetch(`/api/collection/${selectedFlight}`)
         .then(response => response.json())
         .then(collections => {
@@ -99,6 +99,8 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
 
   const fetchMeasurements = useCallback(() => {
     if (selectedFlight && selectedCollection) {
+      setIsLoadingFlight(true); // Начинаем загрузку
+      console.log('!!!! fetch');
       const apiUrl = `/api/data/${selectedFlight}/${selectedCollection?._id || null}`;
       fetch(apiUrl)
         .then(response => response.json())
@@ -139,8 +141,9 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
             setLocalHeightFrom(minHeight);
             setLocalHeightTo(maxHeight);
           }
-      
           setMeasurements(data);
+        }).finally(() => {
+          setIsLoadingFlight(false); // Заканчиваем загрузку
         });
     }
   }, [selectedFlight, selectedCollection]);
@@ -206,7 +209,8 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
       selectedPoints,
       setSelectedPoints,
       selectionSource, 
-      setSelectionSource
+      setSelectionSource,
+      isLoadingFlight
     }}>
       {children}
     </FlightDataContext.Provider>
