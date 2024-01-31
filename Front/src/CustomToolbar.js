@@ -240,12 +240,12 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
       });
   }, [selectedFlight]);
 
-/*   useEffect(() => {
-    console.log('useEffect selectedCollection value = ', selectedCollection);
-    if (!selectedCollection) return;
-    setIsLoading(false);
-  }, [selectedCollection]);
-   */
+  useEffect(() => {
+    //console.log('isLoadingFlight changed = ', isLoadingFlight);
+   // if (!selectedCollection) return;
+    setIsLoading(isLoadingFlight);
+  }, [isLoadingFlight]);
+ 
 
   const fetchData = async () => {
     try {
@@ -576,7 +576,7 @@ const handleDeleteDatabase = async () => {
           )}
           
            {isLoading && (
-        <Backdrop sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1 }} open={isLoading || isLoadingFlight  }>
+        <Backdrop sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1 }} open={isLoading}>
           <CircularProgress color="inherit" />
         </Backdrop>
       )}

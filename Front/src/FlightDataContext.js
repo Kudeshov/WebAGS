@@ -143,6 +143,7 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
           }
           setMeasurements(data);
         }).finally(() => {
+          console.log('----------------- fetch');
           setIsLoadingFlight(false); // Заканчиваем загрузку
         });
     }
