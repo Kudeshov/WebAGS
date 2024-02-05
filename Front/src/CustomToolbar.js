@@ -9,7 +9,7 @@ import { ReactComponent as DownloadIcon } from './icons/download.svg';
 import { ReactComponent as EraserIcon } from './icons/trash.svg';
 import Tooltip from '@mui/material/Tooltip';
 import { useTheme } from '@mui/material/styles';
-import { AppBar, Toolbar, IconButton, Menu, MenuItem, ListSubheader, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions,  TextField, Button } from '@mui/material';
+import { AppBar, Grid, Toolbar, IconButton, Menu, MenuItem, ListSubheader, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, FormControlLabel, TextField, Button, Checkbox } from '@mui/material';
 import { FlightDataContext } from './FlightDataContext';
 import Snackbar from '@mui/material/Snackbar';
 import Divider from '@mui/material/Divider';
@@ -76,10 +76,49 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
 
   const [isLoading, setIsLoading] = useState(false);
 
+  const [startFlightDialogOpen, setStartFlightDialogOpen] = useState(false);
+  const [onlineFlightName, setOnlineFlightName] = useState('');
+  const [winLowValue, setWinLowValue] = useState('');
+  const [winHighValue, setWinHighValue] = useState('');
+  const [isDemoMode, setIsDemoMode] = useState(true);
+
+  const handleStartFlightDialogOpen = () => {
+    setStartFlightDialogOpen(true);
+    handleCollectionMenuClose();
+  };
+  
+  const handleStartFlightDialogClose = () => {
+    setStartFlightDialogOpen(false);
+  };
+  
+  const handleStartFlight = () => {
+    console.log(`Starting online flight with name: ${onlineFlightName}, Window Low: ${winLowValue}, Window High: ${winHighValue}, Demo Mode: ${isDemoMode}`);
+    // Здесь вызвать функцию, которая отправляет эти данные на сервер
+    // ...
+    setStartFlightDialogOpen(false);
+  };
+  
+  const handleWinLowChange = (event) => {
+    setWinLowValue(event.target.value);
+  };
+  
+  const handleWinHighChange = (event) => {
+    setWinHighValue(event.target.value);
+  };
+  
+  const handleOnlineFlightNameChange = (event) => {
+    setOnlineFlightName(event.target.value);
+  };
+  
+  const handleDemoModeChange = (event) => {
+    setIsDemoMode(event.target.checked);
+  };
+  
+
   const handleOpenConfirmDialog = (databaseName) => {
     setDatabaseToDelete(databaseName);
     setOpenConfirmDialog(true);
-};
+  };
 
   
   const handleOpenDeleteDialog = (databaseName) => {
@@ -129,10 +168,11 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
     // Отправляем файл на сервер через API
     try {
       setIsLoading(true);
-        const response = await fetch('/api/uploadDatabase', {
-        method: 'POST',
-        body: formData,
-        
+      handleDatabaseMenuClose(); // Закрыть меню базы данных при начале загрузки
+
+      const response = await fetch('/api/uploadDatabase', {
+      method: 'POST',
+      body: formData,
       });
   
       const textResponse = await response.text(); // Получение текста ответа
@@ -151,7 +191,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
       handleSnackbarOpen('Ошибка при отправке файла');
       console.error('Ошибка при отправке файла:', error);
     } finally {
-      setDatabaseMenuAnchorE2(null); // Закрыть меню после отправки файла
+      //setDatabaseMenuAnchorE2(null); // Закрыть меню после отправки файла
       setIsLoading(false);
     }
   };
@@ -354,6 +394,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
     try {
       // Перед началом загрузки, установите isLoading в true
       setIsLoading(true);
+      handleDatabaseMenuClose(); // Закрыть меню базы данных при начале скачивания
   
       const response = await fetch(`/api/downloadDatabase/${databaseName}`, {
         method: 'GET',
@@ -391,6 +432,7 @@ const handleCloseConfirmDialog = () => {
 
 const handleDeleteDatabase = async () => {
   try {
+      handleDatabaseMenuClose(); // Закрыть меню базы данных при начале удаления
       const response = await fetch(`/api/deleteDatabase/${databaseToDelete}`, {
           method: 'DELETE',
       });
@@ -406,7 +448,7 @@ const handleDeleteDatabase = async () => {
       handleSnackbarOpen('Ошибка при удалении файла');
       console.error('Ошибка при удалении файла:', error);
   } finally {
-      setDatabaseMenuAnchorE2(null); // Закрыть меню после отправки файла
+      //setDatabaseMenuAnchorE2(null); // Закрыть меню после отправки файла
       handleCloseConfirmDialog(); // Закрыть диалог подтверждения
   }
 };
@@ -504,6 +546,9 @@ const handleDeleteDatabase = async () => {
               {collection.description} 
             </MenuItem>
           ))}
+          <Divider />
+          <MenuItem onClick={handleStartFlightDialogOpen}>Начать онлайн-полет</MenuItem>
+          <MenuItem>Остановить онлайн-полет</MenuItem>
         </Menu>
  
         <div style={{
@@ -609,6 +654,54 @@ const handleDeleteDatabase = async () => {
         <Button onClick={handleConfirmDelete} color="primary" autoFocus>
           Да
         </Button>
+      </DialogActions>
+    </Dialog>
+
+    <Dialog open={startFlightDialogOpen} onClose={handleStartFlightDialogClose}>
+      <DialogTitle>Начать онлайн-полет</DialogTitle>
+      <DialogContent>
+        <TextField
+          autoFocus
+          margin="dense"
+          id="name"
+          label="Название полета"
+          fullWidth
+          variant="outlined"
+          value={onlineFlightName}
+          onChange={handleOnlineFlightNameChange}
+        />
+        <Grid container spacing={2}>
+          <Grid item xs={6}>
+            <TextField
+              margin="dense"
+              id="winLow"
+              label="Нижняя граница окна"
+              fullWidth
+              variant="outlined"
+              value={winLowValue}
+              onChange={handleWinLowChange}
+            />
+          </Grid>
+          <Grid item xs={6}>
+            <TextField
+              margin="dense"
+              id="winHigh"
+              label="Верхняя граница окна"
+              fullWidth
+              variant="outlined"
+              value={winHighValue}
+              onChange={handleWinHighChange}
+            />
+          </Grid>
+        </Grid>
+        <FormControlLabel
+          control={<Checkbox checked={isDemoMode} onChange={handleDemoModeChange} disabled />}
+          label="Демо-режим"
+        />
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={handleStartFlightDialogClose}>Отмена</Button>
+        <Button onClick={handleStartFlight}>Начать полет</Button>
       </DialogActions>
     </Dialog>
  

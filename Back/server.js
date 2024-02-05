@@ -494,7 +494,7 @@ app.get('/api/collection/:dbname', (req, res) => {
   });
 });
 
-app.get('/api/spectrum/:dbname/:id', (req, res) => {
+/* app.get('/api/spectrum/:dbname/:id', (req, res) => {
   const dbname = req.params.dbname;
  
   console.log('БД /api/spectrum/:dbname/:id', dbname);
@@ -555,7 +555,7 @@ app.get('/api/spectrum/:dbname/:id', (req, res) => {
     
     res.json(response);
   });
-});
+}); */
 
 app.get('/api/flights', (req, res) => {
   fs.readdir(flightsDirectory, (err, files) => {
@@ -572,7 +572,7 @@ app.get('/api/flights', (req, res) => {
   });
 });
 
-app.get('/api/data/:dbname', (req, res) => {
+/* app.get('/api/data/:dbname', (req, res) => {
   const dbname = req.params.dbname;
 
   console.log('БД ', dbname);
@@ -624,4 +624,4 @@ app.get('/api/data/:dbname', (req, res) => {
     }).filter(item => item !== null);
     res.json(results);
   });
-});
+}); */
