@@ -81,21 +81,98 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   const [winLowValue, setWinLowValue] = useState('');
   const [winHighValue, setWinHighValue] = useState('');
   const [isDemoMode, setIsDemoMode] = useState(true);
+  const [flightId, setFlightId] = useState(null); // Состояние для хранения ID полета
+  const [websocket, setWebsocket] = useState(null);
+  const [simulationData, setSimulationData] = useState('');
+
+
+  const dbName = selectedFlight;
 
   const handleStartFlightDialogOpen = () => {
     setStartFlightDialogOpen(true);
     handleCollectionMenuClose();
   };
   
+  
   const handleStartFlightDialogClose = () => {
     setStartFlightDialogOpen(false);
   };
   
   const handleStartFlight = () => {
+    fetch('/start-flight-simulation', {
+      
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ dbName: dbName })
+    })
+    
+    .then(response => response.json())
+    .then(data => {
+
+      if (data && data.flightId) {
+        console.log('data.flightId', data.flightId);
+        setFlightId(data.flightId); // Сохраняем ID полета
+        const ws = new WebSocket('ws://localhost:3001');
+        setWebsocket(ws);
+        ws.onmessage = (event) => {
+          const data = JSON.parse(event.data);
+          // Обработка данных, полученных через WebSocket
+          console.log(data)
+          setSimulationData(`Дата: ${data.datetime}, Координаты: широта ${data.lat}, долгота ${data.lon}, высота ${data.alt}`);
+        };
+  
+        ws.onopen = () => {
+          console.log('WebSocket соединение установлено');
+        };
+  
+        ws.onerror = (error) => {
+          console.error('Ошибка WebSocket:', error);
+        };
+      console.log('Ответ сервера:', data);
+    };
+      // Здесь вы можете обработать ответ сервера, например, сохранить flightId
+    })
+    .catch(error => {
+      console.error('Ошибка при запуске эмуляции полета:', error);
+    });
+
     console.log(`Starting online flight with name: ${onlineFlightName}, Window Low: ${winLowValue}, Window High: ${winHighValue}, Demo Mode: ${isDemoMode}`);
     // Здесь вызвать функцию, которая отправляет эти данные на сервер
     // ...
     setStartFlightDialogOpen(false);
+  };
+
+  const handleStopFlight = () => {
+    if (!flightId) {
+      console.error('Ошибка: ID симуляции отсутствует');
+      return;
+    }
+  
+    fetch('/stop-flight-simulation', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ flightId })
+    })
+    
+    .then(response => {
+      if(response.ok) {
+        // Действия после успешного останова симуляции
+        setFlightId(null); // Сброс ID симуляции
+        if (websocket) {
+          websocket.close();
+          setWebsocket(null);
+        }
+      } else {
+        console.error('Ошибка остановки эмуляции: HTTP-статус', response.status);
+      }
+    })
+    .catch(error => {
+      console.error('Ошибка остановки эмуляции:', error);
+    });
   };
   
   const handleWinLowChange = (event) => {
@@ -150,6 +227,8 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
     }
     setSnackbarOpen(false);
   };
+
+  
 
   const handleDatabaseFileChange = async (event) => {
     const file = event.target.files[0];
@@ -548,7 +627,8 @@ const handleDeleteDatabase = async () => {
           ))}
           <Divider />
           <MenuItem onClick={handleStartFlightDialogOpen}>Начать онлайн-полет</MenuItem>
-          <MenuItem>Остановить онлайн-полет</MenuItem>
+
+          <MenuItem onClick={handleStopFlight}> Остановить онлайн-полет</MenuItem>
         </Menu>
  
         <div style={{
@@ -608,6 +688,7 @@ const handleDeleteDatabase = async () => {
         <div style={{ flexGrow: 1, display: 'flex', justifyContent: 'flex-end' }}>
           {selectedCollection ? (
             <div style={{ color: 'white', fontSize: 'small' }}>
+              <span>{simulationData} | </span>
               <span>{selectedFlight ? selectedFlight : ''} | </span>
               <span>{selectedCollection?.description} | </span>
               <span>{convertDateTime(selectedCollection?.dateTime)} | </span>
@@ -670,7 +751,7 @@ const handleDeleteDatabase = async () => {
           value={onlineFlightName}
           onChange={handleOnlineFlightNameChange}
         />
-        <Grid container spacing={2}>
+        <Grid container spacing={2}>  
           <Grid item xs={6}>
             <TextField
               margin="dense"
@@ -704,6 +785,7 @@ const handleDeleteDatabase = async () => {
         <Button onClick={handleStartFlight}>Начать полет</Button>
       </DialogActions>
     </Dialog>
+
  
     </AppBar>
          
