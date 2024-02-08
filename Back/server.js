@@ -31,6 +31,14 @@ app.use(cors());
 
 const flightSimulations = {};
 
+// Добавляем объект для хранения текущего состояния онлайн-полета
+let onlineFlightStatus = {
+  active: false,
+  flightId: null,
+  dbName: null,
+  startTime: null
+};
+
 // Запуск HTTP сервера
 const server = app.listen(port, () => {
   console.log(`HTTP server listening at http://localhost:${port}`);
@@ -358,6 +366,13 @@ app.post('/start-flight-simulation', (req, res) => {
       generateMeasurementData(db, flightId);
     }, 1000);
 
+    // Обновляем статус онлайн-полета
+    onlineFlightStatus = {
+      active: true,
+      flightId,
+      dbName,
+      startTime: new Date().toISOString()
+    };
     res.json({ message: "Эмуляция полета запущена", flightId });
   });
 });
@@ -368,12 +383,24 @@ app.post('/stop-flight-simulation', (req, res) => {
   if (flightSimulations[flightId]) {
     clearInterval(flightSimulations[flightId]);
     delete flightSimulations[flightId];
+
+    onlineFlightStatus = {
+      active: false,
+      flightId: null,
+      dbName: null,
+      startTime: null
+    };
+
     console.log( "Эмуляция полета остановлена", flightId);
     res.json({ message: "Эмуляция полета остановлена", flightId });
   } else {
     console.log( "Эмуляция полета  не найдена", flightId);
     res.status(404).json({ message: "Эмуляция полета не найдена", flightId });
   }
+});
+
+app.get('/api/online-flight-status', (req, res) => {
+  res.json(onlineFlightStatus);
 });
 
 function createFlightRecord(db, callback) {
@@ -455,7 +482,8 @@ function toECEF(lat, lon, alt) {
       datetime: new Date().toISOString(),
       lat: lat, // текущая широта
       lon: lon, // текущая долгота
-      alt: alt  // текущая высота
+      alt: alt, // текущая высота
+      winCount: winCount //счет в окне
     };
 
     // Отправка данных всем подключенным клиентам WebSocket
@@ -494,69 +522,6 @@ app.get('/api/collection/:dbname', (req, res) => {
   });
 });
 
-/* app.get('/api/spectrum/:dbname/:id', (req, res) => {
-  const dbname = req.params.dbname;
- 
-  console.log('БД /api/spectrum/:dbname/:id', dbname);
-
-  if (!dbname) 
-    return;
-  if (dbname=='null') 
-    return;
-  const id = req.params.id;
-
-  console.log('id = ', id);
-
-  const db = new sqlite3.Database(flightsDirectory+'/'+dbname+'.sqlite', (err) => {
-    if (err) {
-      console.error(err.message);
-      res.status(500).json({ error: err.message });
-      return;
-    }
-    console.log('Connected to the database '+dbname);
-  });
-
-  const sql = 'SELECT * FROM measurement WHERE _id = ?';
-  db.get(sql, [id], (err, row) => {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
-    }
-    
-    if (!row) {
-      res.status(404).json({ error: 'Not found' });
-      return;
-    }
-    const coords = toLLA(row.gpsX, row.gpsY, row.gpsZ);
-
-    console.log('coords '+coords);
-    
-    if(row.spectrum === undefined) {
-      console.error("spectrum is undefined for row: ", row);
-      res.status(500).json({ error: 'Spectrum is undefined' });
-      return;
-    }
-    
-    const buffer = Buffer.from(row.spectrum, 'binary');
-    const spectrumData = [];
-    for (let i = 0; i < NSPCHANNELS; i++) {
-      spectrumData.push(buffer.readUInt16LE(i * 2));
-    }
-    
-    const spectrum = new Spectrum(spectrumData, SPECDEFTIME);
-    const response = {
-      id: row._id,
-      datetime: row.dateTime,
-      lat: coords.lat,
-      lon: coords.lon,
-      alt: coords.alt,
-      spectrum: spectrum.channelsNormalized()
-    };
-    
-    res.json(response);
-  });
-}); */
-
 app.get('/api/flights', (req, res) => {
   fs.readdir(flightsDirectory, (err, files) => {
     if (err) {
@@ -572,56 +537,3 @@ app.get('/api/flights', (req, res) => {
   });
 });
 
-/* app.get('/api/data/:dbname', (req, res) => {
-  const dbname = req.params.dbname;
-
-  console.log('БД ', dbname);
-
-  if (!dbname) 
-    return;
-
-  if (dbname=='null') 
-    return;
-
-  const db_current = new sqlite3.Database(flightsDirectory+'/'+dbname+'.sqlite', (err) => {
-    if (err) {
-      console.error(err.message);
-    }
-    console.log('Connected to the database '+dbname);
-  });
-
-  const sql = 'SELECT * FROM measurement limit 250000';
-  db_current.all(sql, [], (err, rows) => {
-    if (err) {
-      throw err;
-    }
-
-    const results = rows.map(row => {
-      let coords = { lat: 0, lon: 0, alt: 0 }; // Если вам нужен объект
-      if ((row.gpsX !==0) && (row.gpsY !==0))
-        coords = toLLA(row.gpsX, row.gpsY, row.gpsZ);
-    
-      if(row.spectrum === undefined) {
-        console.error("spectrum is undefined for row: ", row);
-        return null;
-      }
-    
-      const buffer = Buffer.from(row.spectrum, 'binary');
-      const spectrumData = [];
-      for (let i = 0; i < NSPCHANNELS; i++) {
-        spectrumData.push(buffer.readUInt16LE(i * 2));
-      }
-      const spectrum = new Spectrum(spectrumData, SPECDEFTIME);
-      return {
-        id: row._id,
-        datetime: row.dateTime,
-        lat: coords.lat,
-        lat: coords.lat,
-        lon: coords.lon,
-        alt: coords.alt,
-        spectrumValue: spectrum.valueInChannels(winLow, winHigh, true)
-      };
-    }).filter(item => item !== null);
-    res.json(results);
-  });
-}); */

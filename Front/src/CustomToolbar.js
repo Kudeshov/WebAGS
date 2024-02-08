@@ -16,17 +16,7 @@ import Divider from '@mui/material/Divider';
 import { createGradientT, calculateColorThresholds } from './colorUtils';
 import CircularProgress from '@mui/material/CircularProgress';
 import Backdrop from '@mui/material/Backdrop';
-
-function convertDateTime(dateTimeString) {
-  if (!dateTimeString) return '';
-  const date = new Date(dateTimeString);
-  const day = date.getDate().toString().padStart(2, '0');
-  const month = (date.getMonth() + 1).toString().padStart(2, '0');
-  const year = date.getFullYear();
-  const hours = date.getHours().toString().padStart(2, '0');
-  const minutes = date.getMinutes().toString().padStart(2, '0');
-  return `${day}.${month}.${year} ${hours}:${minutes}`;
-}
+import { convertDateTime } from './dateUtils';
 
 const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, onHeightFilterActive, heightFilterActive,
     handleThreeDToggle, threeDActive, onColorOverrideActive, colorOverrideActive }) => {
@@ -81,7 +71,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   const [winLowValue, setWinLowValue] = useState('');
   const [winHighValue, setWinHighValue] = useState('');
   const [isDemoMode, setIsDemoMode] = useState(true);
-  const [flightId, setFlightId] = useState(null); // Состояние для хранения ID полета
+  const [onlineFlightId, setOnlineFlightId] = useState(null); // Состояние для хранения ID онлайн полета
   const [websocket, setWebsocket] = useState(null);
   const [simulationData, setSimulationData] = useState('');
 
@@ -92,11 +82,35 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
     setStartFlightDialogOpen(true);
     handleCollectionMenuClose();
   };
-  
-  
+    
   const handleStartFlightDialogClose = () => {
     setStartFlightDialogOpen(false);
   };
+
+
+  const setupWebSocket = (onlineFlightId) => {
+    const ws = new WebSocket('ws://localhost:3001');
+    setWebsocket(ws);
+  
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      console.log(data);
+      setSimulationData(`Дата: ${convertDateTime(data.datetime)}, Широта: ${data.lat ? Number(data.lat).toFixed(6) : '0.000000'}, ` +
+                        `Долгота: ${data.lon ? Number(data.lon).toFixed(6) : '0.000000'}, ` +
+                        `Высота: ${data.alt ? Number(data.alt).toFixed(2) : '0.00'}, ` +
+                        `Счет в окне: ${data.winCount ? data.winCount : '0'}`);
+    };
+  
+    ws.onopen = () => {
+      console.log('WebSocket соединение установлено');
+      // Здесь можно отправить начальные данные, если это необходимо
+    };
+  
+    ws.onerror = (error) => {
+      console.error('Ошибка WebSocket:', error);
+    };
+  };
+  
   
   const handleStartFlight = () => {
     fetch('/start-flight-simulation', {
@@ -113,26 +127,10 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
 
       if (data && data.flightId) {
         console.log('data.flightId', data.flightId);
-        setFlightId(data.flightId); // Сохраняем ID полета
-        const ws = new WebSocket('ws://localhost:3001');
-        setWebsocket(ws);
-        ws.onmessage = (event) => {
-          const data = JSON.parse(event.data);
-          // Обработка данных, полученных через WebSocket
-          console.log(data)
-          setSimulationData(`Дата: ${data.datetime}, Координаты: широта ${data.lat}, долгота ${data.lon}, высота ${data.alt}`);
-        };
-  
-        ws.onopen = () => {
-          console.log('WebSocket соединение установлено');
-        };
-  
-        ws.onerror = (error) => {
-          console.error('Ошибка WebSocket:', error);
-        };
-      console.log('Ответ сервера:', data);
-    };
-      // Здесь вы можете обработать ответ сервера, например, сохранить flightId
+        setOnlineFlightId(data.flightId); // Сохраняем ID полета
+        setupWebSocket(data.flightId); // Установка WebSocket соединения
+        console.log('Ответ сервера:', data);
+      };
     })
     .catch(error => {
       console.error('Ошибка при запуске эмуляции полета:', error);
@@ -144,8 +142,35 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
     setStartFlightDialogOpen(false);
   };
 
+  useEffect(() => {
+    // Функция для запроса статуса онлайн-полета
+    const checkOnlineFlightStatus = async () => {
+      try {
+        const response = await fetch('/api/online-flight-status');
+        const statusData = await response.json();
+  
+        // Исправление условия на проверку ключа "active"
+        if (statusData && statusData.active) {
+          console.log('Онлайн-полет активен:', statusData);
+          setOnlineFlightId(statusData.flightId); // Сохраняем ID активного полета
+          setSelectedFlight(statusData.dbName); // Устанавливаем выбранную базу данных
+          // Установка WebSocket соединения
+          setupWebSocket(statusData.flightId);
+        } else {
+          console.log('Онлайн-полет не активен');
+        }
+      } catch (error) {
+        console.error('Ошибка при запросе статуса онлайн-полета:', error);
+      }
+    };
+  
+    // Выполнение функции проверки статуса онлайн-полета при инициализации
+    checkOnlineFlightStatus();
+  }, []); // Пустой массив зависимостей означает, что эффект выполнится один раз при монтировании компонента
+ 
+
   const handleStopFlight = () => {
-    if (!flightId) {
+    if (!onlineFlightId) {
       console.error('Ошибка: ID симуляции отсутствует');
       return;
     }
@@ -155,13 +180,13 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ flightId })
+      body: JSON.stringify({ flightId: onlineFlightId })
     })
     
     .then(response => {
       if(response.ok) {
         // Действия после успешного останова симуляции
-        setFlightId(null); // Сброс ID симуляции
+        setOnlineFlightId(null); // Сброс ID симуляции
         if (websocket) {
           websocket.close();
           setWebsocket(null);
@@ -535,14 +560,14 @@ const handleDeleteDatabase = async () => {
   return (
     <AppBar position="static" sx={{ height: '64px' }}>
         <Toolbar >
-
         <IconButton
           color="inherit"
           onClick={handleDatabaseMenuClick}
+          disabled={onlineFlightId !== null} // Блокировка кнопки при активном онлайн-полете
         >
           <Tooltip title="База данных">
             {/* Маппинг массива полетов в элементы меню */}
-            <DatabaseIcon style={{fill: "white", width: 24, height: 24 }} />
+            <DatabaseIcon style={{fill: onlineFlightId?"lightgray":"white", width: 24, height: 24 }} />
           </Tooltip>
         </IconButton>
         <Menu
@@ -626,9 +651,9 @@ const handleDeleteDatabase = async () => {
             </MenuItem>
           ))}
           <Divider />
-          <MenuItem onClick={handleStartFlightDialogOpen}>Начать онлайн-полет</MenuItem>
+          <MenuItem onClick={handleStartFlightDialogOpen} disabled={onlineFlightId !== null}>Начать онлайн-полет</MenuItem>
 
-          <MenuItem onClick={handleStopFlight}> Остановить онлайн-полет</MenuItem>
+          <MenuItem onClick={handleStopFlight} disabled={onlineFlightId === null}> Остановить онлайн-полет</MenuItem>
         </Menu>
  
         <div style={{
@@ -785,8 +810,6 @@ const handleDeleteDatabase = async () => {
         <Button onClick={handleStartFlight}>Начать полет</Button>
       </DialogActions>
     </Dialog>
-
- 
     </AppBar>
          
   );
