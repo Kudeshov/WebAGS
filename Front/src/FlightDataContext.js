@@ -14,6 +14,8 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
   const [selectedFlight, setSelectedFlight] = useState(null);
   const [selectedCollection, setSelectedCollection] = useState(null);
   const [measurements, setMeasurements] = useState([]);
+  const [onlineMeasurements, setOnlineMeasurements] = useState([]);
+
   const [validMeasurements, setValidMeasurements] = useState([]);
   const [selectedPoints, setSelectedPoints] = useState([]);
   const [selectionSource, setSelectionSource] = useState('table'); // 'map' или 'table'
@@ -36,6 +38,9 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
 
   const [minDoseValueR, setMinDoseValueR] = useState(0); //округленные до 2 знаков значения доз для отображения в слайдере
   const [maxDoseValueR, setMaxDoseValueR] = useState(0);
+
+  const [onlineFlightId, setOnlineFlightId] = useState(null); // Состояние для хранения ID онлайн полета
+
 
   const [colorThresholds, setColorThresholds ] = useState({
     v0: 0,
@@ -211,7 +216,11 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
       setSelectedPoints,
       selectionSource, 
       setSelectionSource,
-      isLoadingFlight
+      isLoadingFlight,
+      onlineMeasurements,
+      setOnlineMeasurements,
+      onlineFlightId,
+      setOnlineFlightId
     }}>
       {children}
     </FlightDataContext.Provider>

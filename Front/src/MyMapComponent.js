@@ -118,6 +118,9 @@
     const [selectMode, setSelectMode] = useState(false);    
     const { selectedPoints, setSelectedPoints } = useContext(FlightDataContext);
     const { selectionSource, setSelectionSource } = useContext(FlightDataContext);
+    const {onlineFlightId, setOnlineFlightId} = useContext(FlightDataContext); // Состояние для хранения ID онлайн полета
+    const onlineMeasurementsLayerRef = useRef(null);
+    const { onlineMeasurements } = useContext(FlightDataContext);
 
     const handlePointClick = (event, measurement) => {
       const nativeEvent = event.originalEvent || event;
@@ -867,6 +870,29 @@
                 );
             })}
           </FeatureGroup>        
+        </LayersControl.Overlay>
+
+                <LayersControl.Overlay name="Онлайн Измерения">
+          <FeatureGroup ref={onlineMeasurementsLayerRef}>
+            {onlineMeasurements.map((onlineMeasurements, index) => (
+              <CircleMarker
+                key={index}
+                center={[onlineMeasurements.lat, onlineMeasurements.lon]}
+                pathOptions={{
+                  color: 'red', // Вы можете настроить стиль маркера здесь
+                  fillColor: 'red',
+                  fillOpacity: 0.5,
+                  radius: 5,
+                }}
+                eventHandlers={{
+                  click: () => {
+                    console.log('Measurement clicked', onlineMeasurements);
+                    // Действия при клике на маркер, если требуется
+                  },
+                }}
+              />
+            ))}
+          </FeatureGroup>
         </LayersControl.Overlay>
 
         <LayersControl.Overlay name="Тепловая карта">

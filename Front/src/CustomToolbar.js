@@ -23,6 +23,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
 
   const { selectedCollection, setSelectedCollection } = useContext(FlightDataContext);
   const { selectedFlight, setSelectedFlight } = useContext(FlightDataContext);
+  const { onlineMeasurements, setOnlineMeasurements } = useContext(FlightDataContext);
   const [unitMenuAnchorEl, setUnitMenuAnchorEl] = useState(null);
   const [settingsMenuAnchorEl, setSettingsMenuAnchorEl] = useState(null);
   
@@ -71,7 +72,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   const [winLowValue, setWinLowValue] = useState('');
   const [winHighValue, setWinHighValue] = useState('');
   const [isDemoMode, setIsDemoMode] = useState(true);
-  const [onlineFlightId, setOnlineFlightId] = useState(null); // Состояние для хранения ID онлайн полета
+  const {onlineFlightId, setOnlineFlightId} = useContext(FlightDataContext); // Состояние для хранения ID онлайн полета
   const [websocket, setWebsocket] = useState(null);
   const [simulationData, setSimulationData] = useState('');
 
@@ -95,6 +96,15 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
       console.log(data);
+      setOnlineMeasurements(currentMeasurements => {
+        // Проверяем, что широта и долгота существуют и не равны null
+        if (data.lat != null && data.lon != null) {
+          return [...currentMeasurements, data];
+        } else {
+          // Если условие не выполняется, возвращаем текущее состояние без изменений
+          return currentMeasurements;
+        }
+      });
       setSimulationData(`Дата: ${convertDateTime(data.datetime)}, Широта: ${data.lat ? Number(data.lat).toFixed(6) : '0.000000'}, ` +
                         `Долгота: ${data.lon ? Number(data.lon).toFixed(6) : '0.000000'}, ` +
                         `Высота: ${data.alt ? Number(data.alt).toFixed(2) : '0.00'}, ` +
@@ -646,7 +656,11 @@ const handleDeleteDatabase = async () => {
         >
           {/* Маппинг массива коллекций в элементы меню */}
           {collectionOptions.map((collection, index) => (
-            <MenuItem key={collection._id} onClick={() => handleCollectionSelect(collection)}>
+            <MenuItem       
+            key={collection._id} 
+            onClick={() => handleCollectionSelect(collection)}
+            disabled={onlineFlightId !== null} // Блокировка выбора коллекции при активном онлайн-полете
+          >
               {collection.description} 
             </MenuItem>
           ))}
