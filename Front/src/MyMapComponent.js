@@ -14,7 +14,6 @@
   import { createRoot } from 'react-dom/client';
   import 'leaflet-easyprint';
   import { convertDateTime } from './dateUtils';
-/*   import Slider from '@mui/material/Slider'; */
 
   delete L.Icon.Default.prototype._getIconUrl;
 
@@ -650,26 +649,6 @@
       });
     
     }, [validMeasurements, previousValidMeasurementsBand, isIsobandLayerActive]);
-    
-/*   useEffect(() => {
-    if (mapInstance && minDoseValue != null && maxDoseValue != null) {
-      if (!legendControlRef.current) {
-        const legendControl = L.control({ position: 'bottomleft' });
-    
-        legendControl.onAdd = function (map) {
-          const div = L.DomUtil.create('div', 'info legend');
-          legendControlRef.current = legendControl;
-          
-          return div;
-        };
-    
-        legendControl.addTo(mapInstance);
-      }
-
-      // Обновляем легенду
-      updateLegend(colorThresholds, minDoseValue, maxDoseValue);
-    }
-  }, [mapInstance, minDoseValue, maxDoseValue, colorThresholds]); */
 
   const measurementsLayerRef = useRef(null);
 
@@ -872,9 +851,11 @@
           </FeatureGroup>        
         </LayersControl.Overlay>
 
-                <LayersControl.Overlay name="Онлайн Измерения">
+        <LayersControl.Overlay checked name="Онлайн измерения">
           <FeatureGroup ref={onlineMeasurementsLayerRef}>
-            {onlineMeasurements.map((onlineMeasurements, index) => (
+            {
+            
+            onlineMeasurements.map((onlineMeasurements, index) => (
               <CircleMarker
                 key={index}
                 center={[onlineMeasurements.lat, onlineMeasurements.lon]}

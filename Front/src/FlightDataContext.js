@@ -125,12 +125,14 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
 
             const newColorThresholds = calculateColorThresholds(newMinDoseValue, newMaxDoseValue);
             setColorThresholds(newColorThresholds);
-      
-            const latitudes = validData.map(m => m.lat);
-            const longitudes = validData.map(m => m.lon);
-            const centerLat = (Math.min(...latitudes) + Math.max(...latitudes)) / 2;
-            const centerLng = (Math.min(...longitudes) + Math.max(...longitudes)) / 2;
-            setGeoCenter({ lat: centerLat, lng: centerLng });
+
+            if (!onlineFlightId) {
+              const latitudes = validData.map(m => m.lat);
+              const longitudes = validData.map(m => m.lon);
+              const centerLat = (Math.min(...latitudes) + Math.max(...latitudes)) / 2;
+              const centerLng = (Math.min(...longitudes) + Math.max(...longitudes)) / 2;
+              setGeoCenter({ lat: centerLat, lng: centerLng });
+            }
             // Находим минимальное и максимальное значение высоты
             const heights = validData.map(m => m.height); // Предполагаем, что данные о высоте хранятся в свойстве height
             const minHeight = Math.min(...heights);
@@ -158,6 +160,42 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
     fetchMeasurements();
   }, [fetchMeasurements]);
 
+  useEffect(() => {
+    // Функция для запроса статуса онлайн-полета и загрузки данных измерений
+    const fetchOnlineFlightData = async () => {
+      try {
+        // Запрашиваем статус онлайн-полета
+        const statusResponse = await fetch('/api/online-flight-status');
+        const statusData = await statusResponse.json();
+        if (statusData && statusData.active) {
+          setOnlineFlightId(statusData.flightId); // Сохраняем ID активного онлайн-полета
+          setSelectedFlight(statusData.dbName); // Устанавливаем активную базу данных
+          
+          // Загружаем данные текущего онлайн-полета
+          
+          const measurementsResponse = await fetch('/api/online-measurements');
+          const measurementsData = await measurementsResponse.json();
+          console.log('Загружаем данные текущего онлайн-полета', measurementsData);
+          setOnlineMeasurements(measurementsData); // Сохраняем данные измерений онлайн-полета
+        } else {
+          console.log('Онлайн-полет не активен');
+        }
+      } catch (error) {
+        console.error('Ошибка при загрузке данных онлайн-полета:', error);
+      }
+    };
+  
+    // Вызываем функцию при инициализации компонента
+    fetchOnlineFlightData();
+  }, []); // Пустой массив зависимостей означает, что эффект выполнится один раз при монтировании компонента
+  
+
+  useEffect(() => {
+    if (onlineFlightId) {
+      setGeoCenter(initialCenter);
+    }
+  }, [onlineFlightId]);
+  
 
   const filterMeasurementsByHeight = useCallback(() => {
     let validData = measurements.filter(m => m.lat >= 0 && m.lon >= 0 && m.dose >= 0 && m.dosew >= 0 && m.countw<1000000);

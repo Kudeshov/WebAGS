@@ -18,9 +18,14 @@ const MAX_ALLOWED_HEIGHT = 5000; // максимально допустимая 
 const flightsDirectory = './flights'; // Укажите путь к папке с файлами
 
 // Инициализация начальных значений координат и высоты
-let lat = 55.704034038232834; // Начальная широта
-let lon = 37.62119540524117;  // Начальная долгота
-let alt = 100;                // Начальная высота, например 100 метров
+const latInit = 55.704034038232834; // Начальная широта
+const lonInit = 37.62119540524117;  // Начальная долгота
+const altInit = 25;                 // Начальная высота, например 100 метров
+
+// Инициализация начальных значений координат и высоты
+let lat = latInit;  // Начальная широта
+let lon = lonInit;  // Начальная долгота
+let alt = altInit;  // Начальная высота, например 100 метров
 
 // Коэффициенты полинома и калибровочные данные
 
@@ -226,7 +231,6 @@ app.get('/api/downloadDatabase/:dbname', (req, res) => {
   }
 });
 
-
 app.delete('/api/deleteDatabase/:dbname', (req, res) => {
   const dbname = req.params.dbname;
   const filePath = path.join(flightsDirectory, `${dbname}.sqlite`);
@@ -360,8 +364,14 @@ app.post('/start-flight-simulation', (req, res) => {
   console.log(req.body);
   console.log(flightsDirectory);
   const dbName = req.body.dbName;
+  const flightName = req.body.flightName; // Получаем название полета из тела запроса
+  const winLow = req.body.winLow; // Получаем нижнюю границу окна из тела запроса
+  const winHigh = req.body.winHigh; // Получаем верхнюю границу окна из тела запроса
+  lat = latInit;  // Начальная широта
+  lon = lonInit;  // Начальная долгота
+  alt = altInit;  // Начальная высота, например 100 метров
   const db = new sqlite3.Database(`${flightsDirectory}/${dbName}.sqlite`);
-  createFlightRecord(db, (flightId) => {
+  createFlightRecord(db, flightName, winLow, winHigh, (flightId) => {
     flightSimulations[flightId] = setInterval(() => {
       generateMeasurementData(db, flightId);
     }, 1000);
@@ -371,6 +381,9 @@ app.post('/start-flight-simulation', (req, res) => {
       active: true,
       flightId,
       dbName,
+      flightName, // Добавляем название полета в статус
+      winLow, // Добавляем нижнюю границу окна в статус
+      winHigh, // Добавляем верхнюю границу окна в статус
       startTime: new Date().toISOString()
     };
     res.json({ message: "Эмуляция полета запущена", flightId });
@@ -403,12 +416,12 @@ app.get('/api/online-flight-status', (req, res) => {
   res.json(onlineFlightStatus);
 });
 
-function createFlightRecord(db, callback) {
+function createFlightRecord(db, flightName, winLow, winHigh, callback) {
   const dateTime = new Date().toISOString();
-  const description = "Полет";
-  const insertSql = "INSERT INTO online_collection (dateTime, winLow, winHigh, description) VALUES (?, 20, 200, ?)";
+  const description = flightName; // Используем название полета как описание
+  const insertSql = "INSERT INTO online_collection (dateTime, winLow, winHigh, description) VALUES (?, ?, ?, ?)";
 
-  db.run(insertSql, [dateTime, description], function(err) {
+  db.run(insertSql, [dateTime, winLow, winHigh, description], function(err) {
     if (err) {
       console.error(err.message);
       // Можно добавить обработку ошибки, например, отправку ответа с ошибкой
@@ -419,80 +432,88 @@ function createFlightRecord(db, callback) {
   });
 }
 
-function startGeneratingMeasurements(db, flightId) {
-  setInterval(() => {
-    generateMeasurementData(db, flightId);
-  }, 1000);
+function toECEF(lat, lon, alt) {
+  const latRad = lat * Math.PI / 180.0;
+  const lonRad = lon * Math.PI / 180.0;
+
+  const N = a / Math.sqrt(1 - e * e * Math.sin(latRad) * Math.sin(latRad));
+
+  const X = (N + alt) * Math.cos(latRad) * Math.cos(lonRad);
+  const Y = (N + alt) * Math.cos(latRad) * Math.sin(lonRad);
+  const Z = ((b2 / a2) * N + alt) * Math.sin(latRad);
+
+  // Округляем результат до ближайшего целого и масштабируем, если это необходимо
+  return {
+    x: Math.round(X * 100), // Округляем и умножаем на 100, если нужно соответствовать исходному масштабированию
+    y: Math.round(Y * 100), // Округляем и умножаем на 100
+    z: Math.round(Z * 100)  // Округляем и умножаем на 100
+  };
 }
 
-function toECEF(lat, lon, alt) {
-    // Константы для WGS-84
-    const a = 6378137; // длина большой полуоси
-    const b = 6356752.3142; // длина малой полуоси
-    const f = (a - b) / a; // сплюснутость
-    const e_sq = f * (2-f); // квадрат эксцентриситета
-  
-    const lambda = lat * Math.PI / 180; // широта в радианах
-    const phi = lon * Math.PI / 180; // долгота в радианах
-  
-    const cosLambda = Math.cos(lambda);
-    const sinLambda = Math.sin(lambda);
-    const cosPhi = Math.cos(phi);
-    const sinPhi = Math.sin(phi);
-  
-    const N = a / Math.sqrt(1 - e_sq * sinLambda * sinLambda); // радиус кривизны в первом вертикале
-  
-    const x = (N + alt) * cosLambda * cosPhi;
-    const y = (N + alt) * cosLambda * sinPhi;
-    const z = (N * (1 - e_sq) + alt) * sinLambda;
-  
-    return { x, y, z };
+
+const stepSizeLat = 0.00025; // шаг изменения широты
+const stepSizeLon = 0.0005; // шаг изменения долготы
+const meanderLength = 20; // количество шагов в одном направлении до смены направления
+let stepCounter = 0; // счетчик шагов
+let directionLon = 1; // направление движения по долготе: 1 или -1
+
+function generateMeasurementData(db, flightId) {
+  // Добавляем случайную погрешность к шагам
+  const randomErrorLat = (Math.random() - 0.5) * 0.0001;
+  const randomErrorLon = (Math.random() - 0.5) * 0.0001;
+
+  // Меняем направление каждые meanderLength шагов
+  stepCounter++;
+  if (stepCounter % meanderLength === 0) {
+    lat += stepSizeLat; // Движемся на север или юг
+    directionLon *= -1; // Смена направления вдоль долготы
   }
-  
-  function insertMeasurementData(db, flightId, ecefCoords, rHeight, winCount) {
-    const dateTime = new Date().toISOString();
-    const insertSql = `INSERT INTO online_measurement (flightId, dateTime, gpsX, gpsY, gpsZ, rHeight, srtmHeight, calcHeight, geiger1, geiger2, winCount) VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, 0, 0, ?)`;
-  
-    db.run(insertSql, [flightId, dateTime, ecefCoords.x, ecefCoords.y, ecefCoords.z, rHeight, winCount], function(err) {
+  else
+  {
+    lon += stepSizeLon * directionLon;
+  }
+
+  // Высота остается постоянной или изменяется в небольшом диапазоне
+  alt += (Math.random() - 0.5) * 2;
+ 
+  const ecefCoords = toECEF(lat+randomErrorLat, lon+randomErrorLon, alt);
+  const winCount = Math.floor(Math.random() * (100 - 20 + 1)) + 20;
+
+  // Время создания записи
+  const dateTime = new Date().toISOString();
+
+  // SQL запрос на вставку
+  const insertSql = `INSERT INTO online_measurement (flightId, dateTime, gpsX, gpsY, gpsZ, rHeight, srtmHeight, calcHeight, geiger1, geiger2, winCount) VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, 0, 0, ?)`;
+
+  // Вставка данных в базу данных
+  db.run(insertSql, [flightId, dateTime, ecefCoords.x, ecefCoords.y, ecefCoords.z, alt, winCount], function(err) {
       if (err) {
-        console.error(err.message);
-      } else {
-        console.log(dateTime, `Запись измерения добавлена для flightId: ${flightId}`);
+          console.error(err.message);
+          return;
       }
-    });
-  }
 
-  function generateMeasurementData(db, flightId) {
-    // Генерация изменений координат
-    lat += (Math.random() - 0.5) * 0.0001; // Случайное изменение широты
-    lon += (Math.random() - 0.5) * 0.0001; // Случайное изменение долготы
-    alt += (Math.random() - 0.5) * 2; // Случайное изменение высоты в диапазоне +/- 1 метр
-  
-    // Преобразование в ECEF
-    const ecefCoords = toECEF(lat, lon, alt);
-  
-    // Случайное значение для winCount
-    const winCount = Math.floor(Math.random() * (100 - 20 + 1)) + 20;
-  
-    // Вставка данных измерения в базу данных
-    insertMeasurementData(db, flightId, ecefCoords, alt, winCount);
-    // Пример данных, которые можно отправить
-    const flightData = {
-      flightId: flightId,
-      datetime: new Date().toISOString(),
-      lat: lat, // текущая широта
-      lon: lon, // текущая долгота
-      alt: alt, // текущая высота
-      winCount: winCount //счет в окне
-    };
+      console.log(`Запись измерения добавлена для flightId: ${flightId} с ID: ${this.lastID}`);
 
-    // Отправка данных всем подключенным клиентам WebSocket
-    wss.clients.forEach(client => {
-      if (client.readyState === WebSocket.OPEN) {
-        client.send(JSON.stringify(flightData));
-      }
-    });
-  }
+      // Подготовка данных для отправки через WebSocket в географических координатах
+      const flightDataForWebSocket = {
+          _id: this.lastID,
+          flightId,
+          dateTime,
+          lat: (lat+randomErrorLat), // Преобразование в географические координаты не требуется, так как мы уже работаем с ними
+          lon: (lon+randomErrorLon),
+          alt,
+          height: alt, // использование alt для height
+          countw: winCount
+      };
+
+      // Отправка подготовленных данных всем подключенным клиентам через WebSocket
+      wss.clients.forEach(client => {
+          if (client.readyState === WebSocket.OPEN) {
+              client.send(JSON.stringify(flightDataForWebSocket));
+          }
+      });
+  });
+}
 
 app.get('/api/collection/:dbname', (req, res) => {
   const dbname = req.params.dbname;
@@ -534,6 +555,59 @@ app.get('/api/flights', (req, res) => {
       .map(file => path.basename(file, '.sqlite'));
 
     res.json(sqliteFiles);
+  });
+});
+
+app.get('/api/online-measurements', (req, res) => {
+  // Проверяем, активен ли онлайн-полет
+  if (!onlineFlightStatus.active) {
+      return res.json([]); // Возвращаем пустой массив, если онлайн-полет не активен
+  }
+
+  // Открываем соединение с базой данных
+  const dbPath = path.join(flightsDirectory, `${onlineFlightStatus.dbName}.sqlite`);
+  const db = new sqlite3.Database(dbPath, sqlite3.OPEN_READONLY, (err) => {
+      if (err) {
+          console.error(err.message);
+          return res.status(500).send('Ошибка при подключении к базе данных');
+      }
+      console.log(`Connected to the ${onlineFlightStatus.dbName} database.`);
+  });
+
+  // Формируем и выполняем SQL-запрос для получения данных текущего онлайн полета
+  const sql = `SELECT * FROM online_measurement WHERE flightId = ? ORDER BY _id DESC`;
+  db.all(sql, [onlineFlightStatus.flightId], (err, rows) => {
+      if (err) {
+          console.error(err.message);
+          return res.status(500).send('Ошибка при выполнении запроса к базе данных');
+      }
+      // Преобразование полученных данных
+      const transformedData = rows.map(row => {
+          const coords = toLLA(row.gpsX, row.gpsY, row.gpsZ);
+          return {
+              _id: row._id,
+              flightId: row.flightId,
+              dateTime: row.dateTime,
+              lat: coords.lat,
+              lon: coords.lon,
+              alt: coords.alt,
+              height: row.rHeight,
+              countw: row.winCount,
+              // Дополнительные поля, если необходимо
+/*               geiger1: row.geiger1,
+              geiger2: row.geiger2 */
+          };
+      });
+      // Отправляем преобразованные данные
+      res.json(transformedData);
+  });
+
+  // Закрываем соединение с базой данных
+  db.close((err) => {
+      if (err) {
+          console.error(err.message);
+      }
+      console.log('Closed the database connection.');
   });
 });
 

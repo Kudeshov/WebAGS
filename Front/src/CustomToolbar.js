@@ -68,9 +68,9 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   const [isLoading, setIsLoading] = useState(false);
 
   const [startFlightDialogOpen, setStartFlightDialogOpen] = useState(false);
-  const [onlineFlightName, setOnlineFlightName] = useState('');
-  const [winLowValue, setWinLowValue] = useState('');
-  const [winHighValue, setWinHighValue] = useState('');
+  const [onlineFlightName, setOnlineFlightName] = useState('Полет');
+  const [winLowValue, setWinLowValue] = useState(20);
+  const [winHighValue, setWinHighValue] = useState(200);
   const [isDemoMode, setIsDemoMode] = useState(true);
   const {onlineFlightId, setOnlineFlightId} = useContext(FlightDataContext); // Состояние для хранения ID онлайн полета
   const [websocket, setWebsocket] = useState(null);
@@ -88,15 +88,19 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
     setStartFlightDialogOpen(false);
   };
 
-
   const setupWebSocket = (onlineFlightId) => {
-    const ws = new WebSocket('ws://localhost:3001');
-    setWebsocket(ws);
-  
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      console.log(data);
-      setOnlineMeasurements(currentMeasurements => {
+    let ws = new WebSocket('ws://localhost:3001');
+
+    const connectWebSocket = () => {
+        // Установка обработчиков событий WebSocket
+        ws.onopen = () => {
+            console.log('WebSocket соединение установлено');
+        };
+
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            console.log(data);
+            setOnlineMeasurements(currentMeasurements => {
         // Проверяем, что широта и долгота существуют и не равны null
         if (data.lat != null && data.lon != null) {
           return [...currentMeasurements, data];
@@ -105,53 +109,79 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
           return currentMeasurements;
         }
       });
-      setSimulationData(`Дата: ${convertDateTime(data.datetime)}, Широта: ${data.lat ? Number(data.lat).toFixed(6) : '0.000000'}, ` +
+      setSimulationData(`Дата: ${convertDateTime(data.dateTime)}, Широта: ${data.lat ? Number(data.lat).toFixed(6) : '0.000000'}, ` +
                         `Долгота: ${data.lon ? Number(data.lon).toFixed(6) : '0.000000'}, ` +
                         `Высота: ${data.alt ? Number(data.alt).toFixed(2) : '0.00'}, ` +
-                        `Счет в окне: ${data.winCount ? data.winCount : '0'}`);
+                        `Счет в окне: ${data.countw ? data.countw : '0'}`);
+        };
+
+        ws.onerror = (error) => {
+            console.error('Ошибка WebSocket:', error);
+        };
+
+        ws.onclose = () => {
+            console.log('WebSocket соединение закрыто');
+            setTimeout(() => {
+                console.log('Попытка переподключения...');
+                ws = new WebSocket('ws://localhost:3001');
+                connectWebSocket(); // Попытка переподключения
+            }, 1000); // Переподключение через 1 секунду
+        };
     };
-  
-    ws.onopen = () => {
-      console.log('WebSocket соединение установлено');
-      // Здесь можно отправить начальные данные, если это необходимо
-    };
-  
-    ws.onerror = (error) => {
-      console.error('Ошибка WebSocket:', error);
-    };
+
+    connectWebSocket(); // Первоначальное подключение
+    setWebsocket(ws);
   };
-  
-  
+
+  useEffect(() => {
+    return () => {
+        if (websocket) {
+            websocket.close();
+        }
+    };
+  }, [websocket]);
+
   const handleStartFlight = () => {
+    //setIsLoading(true); // Включаем индикатор загрузки
     fetch('/start-flight-simulation', {
-      
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ dbName: dbName })
+      body: JSON.stringify({
+        dbName: dbName,
+        flightName: onlineFlightName, // Добавляем название полета
+        winLow: winLowValue, // Добавляем нижнюю границу окна
+        winHigh: winHighValue, // Добавляем верхнюю границу окна
+        demoMode: isDemoMode // Добавляем статус демо-режима
+      })
     })
-    
     .then(response => response.json())
     .then(data => {
-
       if (data && data.flightId) {
-        console.log('data.flightId', data.flightId);
+        console.log('Полет запущен с ID:', data.flightId);
         setOnlineFlightId(data.flightId); // Сохраняем ID полета
         setupWebSocket(data.flightId); // Установка WebSocket соединения
-        console.log('Ответ сервера:', data);
-      };
+        setSnackbarOpen(true);
+        setSnackbarMessage('Эмуляция полета запущена');
+      } else {
+        console.error('Не удалось запустить полет:', data);
+        setSnackbarOpen(true);
+        setSnackbarMessage('Ошибка при запуске полета');
+      }
     })
     .catch(error => {
       console.error('Ошибка при запуске эмуляции полета:', error);
+      setSnackbarOpen(true);
+      setSnackbarMessage('Ошибка сети при запуске полета');
+    })
+    .finally(() => {
+      //setIsLoading(false); // Выключаем индикатор загрузки
+      handleStartFlightDialogClose(); // Закрываем диалоговое окно
     });
-
-    console.log(`Starting online flight with name: ${onlineFlightName}, Window Low: ${winLowValue}, Window High: ${winHighValue}, Demo Mode: ${isDemoMode}`);
-    // Здесь вызвать функцию, которая отправляет эти данные на сервер
-    // ...
-    setStartFlightDialogOpen(false);
   };
 
+ 
   useEffect(() => {
     // Функция для запроса статуса онлайн-полета
     const checkOnlineFlightStatus = async () => {
@@ -201,8 +231,9 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
           websocket.close();
           setWebsocket(null);
         }
+        setSnackbarMessage('Полета остановлен');
       } else {
-        console.error('Ошибка остановки эмуляции: HTTP-статус', response.status);
+        console.error('Ошибка остановки полета: HTTP-статус', response.status);
       }
     })
     .catch(error => {
