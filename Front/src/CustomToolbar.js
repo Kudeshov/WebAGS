@@ -9,7 +9,8 @@ import { ReactComponent as DownloadIcon } from './icons/download.svg';
 import { ReactComponent as EraserIcon } from './icons/trash.svg';
 import Tooltip from '@mui/material/Tooltip';
 import { useTheme } from '@mui/material/styles';
-import { AppBar, Grid, Toolbar, IconButton, Menu, MenuItem, ListSubheader, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, FormControlLabel, TextField, Button, Checkbox } from '@mui/material';
+import { AppBar, Grid, Toolbar, IconButton, Menu, MenuItem, ListSubheader, Dialog, DialogTitle, 
+         Autocomplete, DialogContent, DialogContentText, DialogActions, FormControlLabel, TextField, Button, Checkbox } from '@mui/material';
 import { FlightDataContext } from './FlightDataContext';
 import Snackbar from '@mui/material/Snackbar';
 import Divider from '@mui/material/Divider';
@@ -34,6 +35,8 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   const [collectionOptions, setCollectionOptions] = useState([]);
   const [heightFilterDialogOpen, setHeightFilterDialogOpen] = useState(false);
   const [colorLegendFilterDialogOpen, setColorLegendFilterDialogOpen] = useState(false);
+
+  const [selectedOnlineFlight, setSelectedOnlineFlight] = useState(null);
 
   const { heightFrom } = useContext(FlightDataContext);
   const { heightTo } = useContext(FlightDataContext);
@@ -80,6 +83,13 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   const dbName = selectedFlight;
 
   const handleStartFlightDialogOpen = () => {
+
+    if (selectedFlight) {
+      setSelectedOnlineFlight(selectedFlight);
+    } else {
+      setSelectedOnlineFlight('');
+    }
+
     setStartFlightDialogOpen(true);
     handleCollectionMenuClose();
   };
@@ -143,13 +153,16 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
 
   const handleStartFlight = () => {
     //setIsLoading(true); // Включаем индикатор загрузки
+
+    console.log('selectedOnlineFlight',selectedOnlineFlight);
+
     fetch('/start-flight-simulation', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        dbName: dbName,
+        dbName: selectedOnlineFlight,
         flightName: onlineFlightName, // Добавляем название полета
         winLow: winLowValue, // Добавляем нижнюю границу окна
         winHigh: winHighValue, // Добавляем верхнюю границу окна
@@ -158,6 +171,8 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
     })
     .then(response => response.json())
     .then(data => {
+      console.log('Полет начат:', data);
+
       if (data && data.flightId) {
         console.log('Полет запущен с ID:', data.flightId);
         setOnlineFlightId(data.flightId); // Сохраняем ID полета
@@ -811,6 +826,18 @@ const handleDeleteDatabase = async () => {
     <Dialog open={startFlightDialogOpen} onClose={handleStartFlightDialogClose}>
       <DialogTitle>Начать онлайн-полет</DialogTitle>
       <DialogContent>
+        <Autocomplete
+          value={selectedOnlineFlight}
+          onChange={(event, newValue) => {
+            setSelectedOnlineFlight(newValue);
+          }}
+          freeSolo
+          autoSelect
+          options={flightOptions}
+          renderInput={(params) => (
+            <TextField {...params} label="Выберите или введите имя БД" margin="normal" />
+          )}
+        />      
         <TextField
           autoFocus
           margin="dense"
