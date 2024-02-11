@@ -251,6 +251,49 @@ app.delete('/api/deleteDatabase/:dbname', (req, res) => {
   }
 });
 
+app.get('/api/collection/:dbname', (req, res) => {
+  const dbname = req.params.dbname;
+
+  console.log('БД ', dbname);
+
+  if (!dbname) 
+    return;
+
+  if (dbname=='null') 
+    return;
+
+  const db_current = new sqlite3.Database(flightsDirectory+'/'+dbname+'.sqlite', (err) => {
+    if (err) {
+      console.error(err.message);
+    }
+    console.log('Connected to the database '+dbname);
+  });
+
+  const sql = 'SELECT * FROM collection';
+  db_current.all(sql, [], (err, rows) => {
+    if (err) {
+      throw err;
+    }
+    const results = rows;
+    res.json(results);
+  });
+});
+
+app.get('/api/flights', (req, res) => {
+  fs.readdir(flightsDirectory, (err, files) => {
+    if (err) {
+      res.status(500).json({ error: err.message });
+      return;
+    }
+
+    const sqliteFiles = files
+      .filter(file => path.extname(file) === '.sqlite')
+      .map(file => path.basename(file, '.sqlite'));
+
+    res.json(sqliteFiles);
+  });
+});
+
 app.get('/api/data/:dbname/:collectionId', (req, res) => {
   const dbname = req.params.dbname;
   const collectionId = req.params.collectionId;
@@ -451,16 +494,16 @@ function toECEF(lat, lon, alt) {
 }
 
 
-const stepSizeLat = 0.00025; // шаг изменения широты
-const stepSizeLon = 0.0005; // шаг изменения долготы
+const stepSizeLat = 0.0001; // шаг изменения широты
+const stepSizeLon = 0.0002; // шаг изменения долготы
 const meanderLength = 20; // количество шагов в одном направлении до смены направления
 let stepCounter = 0; // счетчик шагов
 let directionLon = 1; // направление движения по долготе: 1 или -1
 
 function generateMeasurementData(db, flightId) {
   // Добавляем случайную погрешность к шагам
-  const randomErrorLat = (Math.random() - 0.5) * 0.0001;
-  const randomErrorLon = (Math.random() - 0.5) * 0.0001;
+  const randomErrorLat = (Math.random() - 0.5) * 0.00005;
+  const randomErrorLon = (Math.random() - 0.5) * 0.00005;
 
   // Меняем направление каждые meanderLength шагов
   stepCounter++;
@@ -481,6 +524,10 @@ function generateMeasurementData(db, flightId) {
 
   // Время создания записи
   const dateTime = new Date().toISOString();
+  // Расчёты дозы
+  const windose = getDose(winCount, alt, false, 1, 0.0024, 0.0024, 0.0073); // Используем функцию getDose для расчета дозы в окне
+  const gmDose1 = getDose(0, alt, true, 1, 0.0024, 0.0024, 0.0073); // Примерный вызов для gmdose1 с предположением, что geiger1 = 0
+  const gmDose2 = getDose(0, alt, true, 2, 0.0024, 0.0024, 0.0073); // Примерный вызов для gmdose2 с предположением, что geiger2 = 0
 
   // SQL запрос на вставку
   const insertSql = `INSERT INTO online_measurement (flightId, dateTime, gpsX, gpsY, gpsZ, rHeight, srtmHeight, calcHeight, geiger1, geiger2, winCount) VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, 0, 0, ?)`;
@@ -503,7 +550,14 @@ function generateMeasurementData(db, flightId) {
           lon: (lon+randomErrorLon),
           alt,
           height: alt, // использование alt для height
-          countw: winCount
+          countw: winCount,
+          dosew: windose,
+          dose: windose,
+          geiger1: 0,
+          geiger2: 0,
+          gmdose1: gmDose1,
+          gmdose2: gmDose2,
+          spectrum: []
       };
 
       // Отправка подготовленных данных всем подключенным клиентам через WebSocket
@@ -515,48 +569,7 @@ function generateMeasurementData(db, flightId) {
   });
 }
 
-app.get('/api/collection/:dbname', (req, res) => {
-  const dbname = req.params.dbname;
 
-  console.log('БД ', dbname);
-
-  if (!dbname) 
-    return;
-
-  if (dbname=='null') 
-    return;
-
-  const db_current = new sqlite3.Database(flightsDirectory+'/'+dbname+'.sqlite', (err) => {
-    if (err) {
-      console.error(err.message);
-    }
-    console.log('Connected to the database '+dbname);
-  });
-
-  const sql = 'SELECT * FROM collection';
-  db_current.all(sql, [], (err, rows) => {
-    if (err) {
-      throw err;
-    }
-    const results = rows;
-    res.json(results);
-  });
-});
-
-app.get('/api/flights', (req, res) => {
-  fs.readdir(flightsDirectory, (err, files) => {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
-    }
-
-    const sqliteFiles = files
-      .filter(file => path.extname(file) === '.sqlite')
-      .map(file => path.basename(file, '.sqlite'));
-
-    res.json(sqliteFiles);
-  });
-});
 
 app.get('/api/online-measurements', (req, res) => {
   // Проверяем, активен ли онлайн-полет
@@ -593,9 +606,9 @@ app.get('/api/online-measurements', (req, res) => {
               alt: coords.alt,
               height: row.rHeight,
               countw: row.winCount,
-              // Дополнительные поля, если необходимо
-/*               geiger1: row.geiger1,
-              geiger2: row.geiger2 */
+ 
+              geiger1: row.geiger1,
+              geiger2: row.geiger2 
           };
       });
       // Отправляем преобразованные данные
