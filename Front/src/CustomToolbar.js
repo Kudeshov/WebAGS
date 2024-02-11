@@ -23,7 +23,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
     handleThreeDToggle, threeDActive, onColorOverrideActive, colorOverrideActive }) => {
 
   const { selectedCollection, setSelectedCollection } = useContext(FlightDataContext);
-  const { selectedFlight, setSelectedFlight } = useContext(FlightDataContext);
+  const { selectedDatabase, setSelectedDatabase } = useContext(FlightDataContext);
   const { onlineMeasurements, setOnlineMeasurements } = useContext(FlightDataContext);
   const [unitMenuAnchorEl, setUnitMenuAnchorEl] = useState(null);
   const [settingsMenuAnchorEl, setSettingsMenuAnchorEl] = useState(null);
@@ -36,7 +36,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   const [heightFilterDialogOpen, setHeightFilterDialogOpen] = useState(false);
   const [colorLegendFilterDialogOpen, setColorLegendFilterDialogOpen] = useState(false);
 
-  const [selectedOnlineFlight, setSelectedOnlineFlight] = useState(null);
+  const [selectedOnlineDB, setSelectedOnlineFlight] = useState(null);
 
   const { heightFrom } = useContext(FlightDataContext);
   const { heightTo } = useContext(FlightDataContext);
@@ -79,13 +79,10 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   const [websocket, setWebsocket] = useState(null);
   const [simulationData, setSimulationData] = useState('');
 
-
-  const dbName = selectedFlight;
-
   const handleStartFlightDialogOpen = () => {
 
-    if (selectedFlight) {
-      setSelectedOnlineFlight(selectedFlight);
+    if (selectedDatabase) {
+      setSelectedOnlineFlight(selectedDatabase);
     } else {
       setSelectedOnlineFlight('');
     }
@@ -154,7 +151,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   const handleStartFlight = () => {
     //setIsLoading(true); // Включаем индикатор загрузки
 
-    console.log('selectedOnlineFlight',selectedOnlineFlight);
+    console.log('selectedOnlineFlight',selectedOnlineDB);
 
     fetch('/start-flight-simulation', {
       method: 'POST',
@@ -162,7 +159,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        dbName: selectedOnlineFlight,
+        dbName: selectedOnlineDB,
         flightName: onlineFlightName, // Добавляем название полета
         winLow: winLowValue, // Добавляем нижнюю границу окна
         winHigh: winHighValue, // Добавляем верхнюю границу окна
@@ -172,6 +169,8 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
     .then(response => response.json())
     .then(data => {
       console.log('Полет начат:', data);
+      
+      setSelectedDatabase(selectedOnlineDB);
 
       if (data && data.flightId) {
         console.log('Полет запущен с ID:', data.flightId);
@@ -208,7 +207,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
         if (statusData && statusData.active) {
           console.log('Онлайн-полет активен:', statusData);
           setOnlineFlightId(statusData.flightId); // Сохраняем ID активного полета
-          setSelectedFlight(statusData.dbName); // Устанавливаем выбранную базу данных
+          setSelectedDatabase(statusData.dbName); // Устанавливаем выбранную базу данных
           // Установка WebSocket соединения
           setupWebSocket(statusData.flightId);
         } else {
@@ -339,10 +338,8 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   
       if (response.ok) {
         handleSnackbarOpen(`Файл базы данных ${file.name} загружен`);
-  
-        // Вызываем setSelectedFlight с именем файла без расширения
-        setSelectedFlight(fileNameWithoutExtension);
-  
+        // Вызываем setSelectedDatabase с именем файла без расширения
+        setSelectedDatabase(fileNameWithoutExtension);
       } else {
         // Отображение сообщения об ошибке от сервера
         handleSnackbarOpen(textResponse);
@@ -430,15 +427,15 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   }, [minDoseValue, maxDoseValue]);
 
   useEffect(() => {
-    if (!selectedFlight) return;
-    fetch(`/api/collection/${selectedFlight}`)
+    if (!selectedDatabase) return;
+    fetch(`/api/collection/${selectedDatabase}`)
       .then(response => response.json())
       .then(data => {
       })
       .catch(error => {
         console.error('Ошибка при загрузке данных:', error);
       });
-  }, [selectedFlight]);
+  }, [selectedDatabase]);
 
   useEffect(() => {
     //console.log('isLoadingFlight changed = ', isLoadingFlight);
@@ -459,7 +456,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
 
   const fetchDataCollection = async () => {
     try {
-      const response = await fetch(`/api/collection/${selectedFlight}`)
+      const response = await fetch(`/api/collection/${selectedDatabase}`)
       const data = await response.json();
       setCollectionOptions(data);
     } catch (error) {
@@ -490,7 +487,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   const handleFlightSelect = (flightName) => {
     setSelectedCollection(null); // Установите в null перед получением новых коллекций
     //setIsLoading(true);
-    setSelectedFlight(flightName);
+    setSelectedDatabase(flightName);
     // Закрыть меню после выбора
     setDatabaseMenuAnchorE2(null);
   };
@@ -774,7 +771,7 @@ const handleDeleteDatabase = async () => {
           {selectedCollection ? (
             <div style={{ color: 'white', fontSize: 'small' }}>
               <span>{simulationData} | </span>
-              <span>{selectedFlight ? selectedFlight : ''} | </span>
+              <span>{selectedDatabase ? selectedDatabase : ''} | </span>
               <span>{selectedCollection?.description} | </span>
               <span>{convertDateTime(selectedCollection?.dateTime)} | </span>
               <span>P0: {selectedCollection?.P0} | </span>
@@ -827,7 +824,7 @@ const handleDeleteDatabase = async () => {
       <DialogTitle>Начать онлайн-полет</DialogTitle>
       <DialogContent>
         <Autocomplete
-          value={selectedOnlineFlight}
+          value={selectedOnlineDB}
           onChange={(event, newValue) => {
             setSelectedOnlineFlight(newValue);
           }}

@@ -403,35 +403,74 @@ app.get('/api/data/:dbname/:collectionId', (req, res) => {
 
 app.use(express.json());
 
-app.post('/start-flight-simulation', (req, res) => {
-  console.log(req.body);
-  console.log(flightsDirectory);
-  const dbName = req.body.dbName;
-  const flightName = req.body.flightName; // Получаем название полета из тела запроса
-  const winLow = req.body.winLow; // Получаем нижнюю границу окна из тела запроса
-  const winHigh = req.body.winHigh; // Получаем верхнюю границу окна из тела запроса
-  lat = latInit;  // Начальная широта
-  lon = lonInit;  // Начальная долгота
-  alt = altInit;  // Начальная высота, например 100 метров
-  const db = new sqlite3.Database(`${flightsDirectory}/${dbName}.sqlite`);
-  createFlightRecord(db, flightName, winLow, winHigh, (flightId) => {
-    flightSimulations[flightId] = setInterval(() => {
-      generateMeasurementData(db, flightId);
-    }, 1000);
+// Предполагается, что flightsDirectory определена ранее в вашем коде
+function ensureDatabaseExists(newDbName) {
+  return new Promise((resolve, reject) => {
+    const templatePath = path.join(flightsDirectory, 'template.udkgdb');
+    const newDbPath = path.join(flightsDirectory, `${newDbName}.sqlite`);
 
-    // Обновляем статус онлайн-полета
-    onlineFlightStatus = {
-      active: true,
-      flightId,
-      dbName,
-      flightName, // Добавляем название полета в статус
-      winLow, // Добавляем нижнюю границу окна в статус
-      winHigh, // Добавляем верхнюю границу окна в статус
-      startTime: new Date().toISOString()
-    };
-    res.json({ message: "Эмуляция полета запущена", flightId });
+    if (fs.existsSync(newDbPath)) {
+      console.log('База данных уже существует.');
+      resolve(true); // База данных существует, продолжаем выполнение
+    } else {
+      fs.copyFile(templatePath, newDbPath, (err) => {
+        if (err) {
+          console.error('Ошибка при копировании файла для создания новой базы данных:', err);
+          reject(err);
+        } else {
+          console.log(`База данных ${newDbName} успешно создана из шаблона.`);
+          resolve(true); // База данных успешно создана, продолжаем выполнение
+        }
+      });
+    }
+  });
+}
+
+
+app.post('/start-flight-simulation', (req, res) => {
+  const dbName = req.body.dbName;
+  const flightName = req.body.flightName;
+  const winLow = req.body.winLow;
+  const winHigh = req.body.winHigh;
+
+  ensureDatabaseExists(dbName).then(() => {
+    // Теперь когда база данных гарантированно существует, открываем её
+    const dbPath = `${flightsDirectory}/${dbName}.sqlite`;
+    const db = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE, (err) => {
+      if (err) {
+        console.error('Ошибка при открытии базы данных:', err);
+        return res.status(500).json({ message: "Ошибка при открытии базы данных" });
+      }
+      console.log('База данных успешно открыта');
+
+      // Создаём запись полёта, уже внутри коллбека открытия базы данных
+      createFlightRecord(db, flightName, winLow, winHigh, (flightId) => {
+        console.log('Начинаем симуляцию');
+        flightSimulations[flightId] = setInterval(() => {
+          generateMeasurementData(db, flightId);
+        }, 1000);
+
+        onlineFlightStatus = {
+          active: true,
+          flightId,
+          dbName,
+          flightName,
+          winLow,
+          winHigh,
+          startTime: new Date().toISOString()
+        };
+
+        res.json({ message: "Эмуляция полета запущена", flightId });
+      });
+    });
+  }).catch((error) => {
+    console.error('Ошибка при подготовке базы данных:', error);
+    res.status(500).json({ message: "Внутренняя ошибка сервера при подготовке базы данных" });
   });
 });
+
+  
+ 
 
 app.post('/stop-flight-simulation', (req, res) => {
   const flightId = req.body.flightId;
@@ -622,5 +661,6 @@ app.get('/api/online-measurements', (req, res) => {
       }
       console.log('Closed the database connection.');
   });
+  
 });
 
