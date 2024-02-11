@@ -11,7 +11,7 @@ const initialCenter = {
 export const FlightDataContext = createContext();
 
 export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilterActive, childrenolorOverrideActive, onColorOverrideActive }) => {
-  const [selectedFlight, setSelectedFlight] = useState(null);
+  const [selectedDatabase, setSelectedDatabase] = useState(null);
   const [selectedCollection, setSelectedCollection] = useState(null);
   const [measurements, setMeasurements] = useState([]);
   const [onlineMeasurements, setOnlineMeasurements] = useState([]);
@@ -82,8 +82,8 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
 
   const fetchCollections = useCallback(() => {
     //console.log('вызвана fetchCollections')
-    if (selectedFlight) {
-      fetch(`/api/collection/${selectedFlight}`)
+    if (selectedDatabase) {
+      fetch(`/api/collection/${selectedDatabase}`)
         .then(response => response.json())
         .then(collections => {
           // Автоматически выбираем первую коллекцию из списка
@@ -95,7 +95,7 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
         })
         .catch(error => console.error('Ошибка при загрузке списка коллекций:', error));
     }
-  }, [selectedFlight]);
+  }, [selectedDatabase]);
 
   useEffect(() => {
     //console.log('вызвана fetchCollections из useEffect')
@@ -103,10 +103,10 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
   }, [fetchCollections]);
 
   const fetchMeasurements = useCallback(() => {
-    if (selectedFlight && selectedCollection) {
+    if (selectedDatabase && selectedCollection) {
       setIsLoadingFlight(true); // Начинаем загрузку
       console.log('!!!! fetch');
-      const apiUrl = `/api/data/${selectedFlight}/${selectedCollection?._id || null}`;
+      const apiUrl = `/api/data/${selectedDatabase}/${selectedCollection?._id || null}`;
       fetch(apiUrl)
         .then(response => response.json())
         .then(data => {
@@ -154,7 +154,7 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
           setIsLoadingFlight(false); // Заканчиваем загрузку
         });
     }
-  }, [selectedFlight, selectedCollection]);
+  }, [selectedDatabase, selectedCollection]);
   
   useEffect(() => {
     fetchMeasurements();
@@ -169,7 +169,7 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
         const statusData = await statusResponse.json();
         if (statusData && statusData.active) {
           setOnlineFlightId(statusData.flightId); // Сохраняем ID активного онлайн-полета
-          setSelectedFlight(statusData.dbName); // Устанавливаем активную базу данных
+          setSelectedDatabase(statusData.dbName); // Устанавливаем активную базу данных
           
           // Загружаем данные текущего онлайн-полета
           
@@ -221,8 +221,8 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
 
   return (
     <FlightDataContext.Provider value={{
-      selectedFlight,
-      setSelectedFlight,
+      selectedDatabase,
+      setSelectedDatabase,
       selectedCollection,
       setSelectedCollection,
       measurements,
