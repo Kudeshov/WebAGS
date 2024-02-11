@@ -860,7 +860,7 @@
                 key={index}
                 center={[onlineMeasurements.lat, onlineMeasurements.lon]}
                 pathOptions={{
-                  color: 'red', // Вы можете настроить стиль маркера здесь
+                  color: getColor(onlineMeasurements.dose, 0, 2), // Вы можете настроить стиль маркера здесь
                   fillColor: 'red',
                   fillOpacity: 0.5,
                   radius: 5,
