@@ -861,7 +861,7 @@
                 center={[onlineMeasurements.lat, onlineMeasurements.lon]}
                 pathOptions={{
                   color: getColor(onlineMeasurements.dose, 0, 2), // Вы можете настроить стиль маркера здесь
-                  fillColor: 'red',
+                  fillColor: getColor(onlineMeasurements.dose, 0, 2),
                   fillOpacity: 0.5,
                   radius: 5,
                 }}

@@ -35,7 +35,8 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   const [collectionOptions, setCollectionOptions] = useState([]);
   const [heightFilterDialogOpen, setHeightFilterDialogOpen] = useState(false);
   const [colorLegendFilterDialogOpen, setColorLegendFilterDialogOpen] = useState(false);
-
+  const { validMeasurements, setValidMeasurements } = useContext(FlightDataContext);
+  const { measurements, setMeasurements } = useContext(FlightDataContext);
   const [selectedOnlineDB, setSelectedOnlineFlight] = useState(null);
 
   const { heightFrom } = useContext(FlightDataContext);
@@ -139,6 +140,11 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
     connectWebSocket(); // Первоначальное подключение
     setWebsocket(ws);
   };
+
+  useEffect(() => {
+    setValidMeasurements(onlineMeasurements);
+    setMeasurements(onlineMeasurements);
+  }, [onlineMeasurements]);
 
   useEffect(() => {
     return () => {

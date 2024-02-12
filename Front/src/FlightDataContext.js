@@ -41,7 +41,6 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
 
   const [onlineFlightId, setOnlineFlightId] = useState(null); // Состояние для хранения ID онлайн полета
 
-
   const [colorThresholds, setColorThresholds ] = useState({
     v0: 0,
     v1: 1,
@@ -103,7 +102,7 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
   }, [fetchCollections]);
 
   const fetchMeasurements = useCallback(() => {
-    if (selectedDatabase && selectedCollection) {
+    if (selectedDatabase && selectedCollection && !onlineFlightId) {
       setIsLoadingFlight(true); // Начинаем загрузку
       console.log('!!!! fetch');
       const apiUrl = `/api/data/${selectedDatabase}/${selectedCollection?._id || null}`;
@@ -177,6 +176,7 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
           const measurementsData = await measurementsResponse.json();
           console.log('Загружаем данные текущего онлайн-полета', measurementsData);
           setOnlineMeasurements(measurementsData); // Сохраняем данные измерений онлайн-полета
+          setValidMeasurements(measurementsData);
         } else {
           console.log('Онлайн-полет не активен');
         }
@@ -231,6 +231,7 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
       maxDoseValue,
       geoCenter,
       validMeasurements,
+      setValidMeasurements,
       heightFrom, 
       setHeightFrom,
       heightTo, 

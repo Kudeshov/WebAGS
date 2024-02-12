@@ -444,7 +444,7 @@ app.post('/start-flight-simulation', (req, res) => {
       console.log('База данных успешно открыта');
 
       // Создаём запись полёта, уже внутри коллбека открытия базы данных
-      createFlightRecord(db, flightName, winLow, winHigh, (flightId) => {
+      createFlightRecord(db, dbName, flightName, winLow, winHigh, (flightId) => {
         console.log('Начинаем симуляцию');
         flightSimulations[flightId] = setInterval(() => {
           generateMeasurementData(db, flightId);
@@ -498,7 +498,23 @@ app.get('/api/online-flight-status', (req, res) => {
   res.json(onlineFlightStatus);
 });
 
-function createFlightRecord(db, flightName, winLow, winHigh, callback) {
+function formatDateTimeISO(date) {
+  const pad = (number) => number.toString().padStart(2, '0');
+
+  const year = date.getFullYear();
+  const month = pad(date.getMonth() + 1); // Месяцы в JavaScript начинаются с 0
+  const day = pad(date.getDate());
+  const hours = pad(date.getHours());
+  const minutes = pad(date.getMinutes());
+  const seconds = pad(date.getSeconds());
+  const milliseconds = date.getMilliseconds().toString().padStart(3, '0'); // Убедитесь, что миллисекунды трехзначные
+
+  // Форматирование строки в требуемый формат
+  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}.${milliseconds}`;
+}
+
+function createFlightRecord(db, dbName, flightName, winLow, winHigh, callback) {
+  //const dateTime = formatDateTimeISO(new Date());
   const dateTime = new Date().toISOString();
   const description = flightName; // Используем название полета как описание
   const insertSql = "INSERT INTO online_collection (dateTime, winLow, winHigh, description) VALUES (?, ?, ?, ?)";
@@ -541,8 +557,8 @@ let directionLon = 1; // направление движения по долго
 
 function generateMeasurementData(db, flightId) {
   // Добавляем случайную погрешность к шагам
-  const randomErrorLat = (Math.random() - 0.5) * 0.00005;
-  const randomErrorLon = (Math.random() - 0.5) * 0.00005;
+  const randomErrorLat = (Math.random() - 0.5) * 0.00002;
+  const randomErrorLon = (Math.random() - 0.5) * 0.00002;
 
   // Меняем направление каждые meanderLength шагов
   stepCounter++;
@@ -582,9 +598,9 @@ function generateMeasurementData(db, flightId) {
 
       // Подготовка данных для отправки через WebSocket в географических координатах
       const flightDataForWebSocket = {
-          _id: this.lastID,
+          id: this.lastID,
           flightId,
-          dateTime,
+          datetime: dateTime,
           lat: (lat+randomErrorLat), // Преобразование в географические координаты не требуется, так как мы уже работаем с ними
           lon: (lon+randomErrorLon),
           alt,
@@ -607,8 +623,6 @@ function generateMeasurementData(db, flightId) {
       });
   });
 }
-
-
 
 app.get('/api/online-measurements', (req, res) => {
   // Проверяем, активен ли онлайн-полет
@@ -636,18 +650,28 @@ app.get('/api/online-measurements', (req, res) => {
       // Преобразование полученных данных
       const transformedData = rows.map(row => {
           const coords = toLLA(row.gpsX, row.gpsY, row.gpsZ);
+
+          // Расчёты дозы
+          const windose = getDose(row.winCount, coords.alt, false, 1, 0.0024, 0.0024, 0.0073); // Используем функцию getDose для расчета дозы в окне
+          const gmDose1 = getDose(0, coords.alt, true, 1, 0.0024, 0.0024, 0.0073); // Примерный вызов для gmdose1 с предположением, что geiger1 = 0
+          const gmDose2 = getDose(0, coords.alt, true, 2, 0.0024, 0.0024, 0.0073); // Примерный вызов для gmdose2 с предположением, что geiger2 = 0
+ 
           return {
-              _id: row._id,
+              id: row._id,
               flightId: row.flightId,
-              dateTime: row.dateTime,
+              datetime: row.dateTime,
               lat: coords.lat,
               lon: coords.lon,
               alt: coords.alt,
               height: row.rHeight,
               countw: row.winCount,
- 
+              dosew: windose,
+              dose: windose,
               geiger1: row.geiger1,
-              geiger2: row.geiger2 
+              geiger2: row.geiger2,
+              gmdose1: gmDose1,
+              gmdose2: gmDose2,
+              spectrum: [] 
           };
       });
       // Отправляем преобразованные данные
