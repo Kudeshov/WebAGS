@@ -197,6 +197,13 @@
         return [];
       }
     
+      // Проверяем, есть ли спектр у первой выбранной точки и содержит ли он массив каналов
+      const hasSpectrumChannels = selectedPoints[0].spectrum && Array.isArray(selectedPoints[0].spectrum.channels);
+
+      // Если нет спектра или каналов, возвращаем пустой массив
+      if (!hasSpectrumChannels) {
+        return [];
+      }
       // Используем значения по умолчанию, если P0 или P1 отсутствуют
       const { P0 = 70, P1 = 11 } = selectedCollection || {};
     

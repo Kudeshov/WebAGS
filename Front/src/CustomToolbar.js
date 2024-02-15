@@ -17,7 +17,7 @@ import Divider from '@mui/material/Divider';
 import { createGradientT, calculateColorThresholds } from './colorUtils';
 import CircularProgress from '@mui/material/CircularProgress';
 import Backdrop from '@mui/material/Backdrop';
-import { convertDateTime } from './dateUtils';
+import { convertDateTime, convertToTime } from './dateUtils';
 
 const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, onHeightFilterActive, heightFilterActive,
     handleThreeDToggle, threeDActive, onColorOverrideActive, colorOverrideActive }) => {
@@ -37,7 +37,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   const [colorLegendFilterDialogOpen, setColorLegendFilterDialogOpen] = useState(false);
   const { validMeasurements, setValidMeasurements } = useContext(FlightDataContext);
   const { measurements, setMeasurements } = useContext(FlightDataContext);
-  const [selectedOnlineDB, setSelectedOnlineFlight] = useState(null);
+  const [selectedOnlineDB, setSelectedOnlineDB] = useState(null);
 
   const { heightFrom } = useContext(FlightDataContext);
   const { heightTo } = useContext(FlightDataContext);
@@ -72,7 +72,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   const [isLoading, setIsLoading] = useState(false);
 
   const [startFlightDialogOpen, setStartFlightDialogOpen] = useState(false);
-  const [onlineFlightName, setOnlineFlightName] = useState('Полет');
+  const [onlineFlightName, setOnlineCollectionName] = useState('Полет');
   const [winLowValue, setWinLowValue] = useState(20);
   const [winHighValue, setWinHighValue] = useState(200);
   const [isDemoMode, setIsDemoMode] = useState(true);
@@ -83,9 +83,9 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   const handleStartFlightDialogOpen = () => {
 
     if (selectedDatabase) {
-      setSelectedOnlineFlight(selectedDatabase);
+      setSelectedOnlineDB(selectedDatabase);
     } else {
-      setSelectedOnlineFlight('');
+      setSelectedOnlineDB('');
     }
 
     setStartFlightDialogOpen(true);
@@ -117,7 +117,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
           return currentMeasurements;
         }
       });
-      setSimulationData(`Дата: ${convertDateTime(data.dateTime)}, Широта: ${data.lat ? Number(data.lat).toFixed(6) : '0.000000'}, ` +
+      setSimulationData(`Время: ${convertToTime(data.datetime)}, Широта: ${data.lat ? Number(data.lat).toFixed(6) : '0.000000'}, ` +
                         `Долгота: ${data.lon ? Number(data.lon).toFixed(6) : '0.000000'}, ` +
                         `Высота: ${data.alt ? Number(data.alt).toFixed(2) : '0.00'}, ` +
                         `Счет в окне: ${data.countw ? data.countw : '0'}`);
@@ -155,10 +155,6 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   }, [websocket]);
 
   const handleStartFlight = () => {
-    //setIsLoading(true); // Включаем индикатор загрузки
-
-    console.log('selectedOnlineFlight',selectedOnlineDB);
-
     fetch('/start-flight-simulation', {
       method: 'POST',
       headers: {
@@ -269,15 +265,15 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
     setWinHighValue(event.target.value);
   };
   
-  const handleOnlineFlightNameChange = (event) => {
-    setOnlineFlightName(event.target.value);
+  const handleOnlineCollectionNameChange = (event) => {
+    setOnlineCollectionName(event.target.value);
+    setSelectedCollection(event.target.value);
   };
   
   const handleDemoModeChange = (event) => {
     setIsDemoMode(event.target.checked);
   };
   
-
   const handleOpenConfirmDialog = (databaseName) => {
     setDatabaseToDelete(databaseName);
     setOpenConfirmDialog(true);
@@ -490,19 +486,14 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
     setDatabaseMenuAnchorCollection(null);
   };
  
-  const handleFlightSelect = (flightName) => {
-    setSelectedCollection(null); // Установите в null перед получением новых коллекций
-    //setIsLoading(true);
-    setSelectedDatabase(flightName);
+  const handleFlightSelect = (dbName) => {
+    setSelectedCollection(null); // Установим в null перед получением новых коллекций
+    setSelectedDatabase(dbName);
     // Закрыть меню после выбора
     setDatabaseMenuAnchorE2(null);
   };
 
   const handleCollectionSelect = (value) => {
-    //setSelectedCollection(null);
-    //setIsLoading(true);
-    //console.log('handleCollectionSelect value = ', value);
-
     setSelectedCollection(value);
     // Закрыть меню после выбора
     setDatabaseMenuAnchorCollection(null);
@@ -615,6 +606,26 @@ const handleDeleteDatabase = async () => {
       handleCloseConfirmDialog(); // Закрыть диалог подтверждения
   }
 };
+
+// Состояние для отслеживания текущего ввода в Autocomplete
+const [dbInputValue, setDbInputValue] = useState('');
+
+const handleInputChange = (event, newInputValue) => {
+  setDbInputValue(newInputValue);
+};
+
+// Функция проверки валидности введенных данных
+const isStartFlightButtonDisabled = () => {
+  // Обеспечиваем, что переменные будут строками перед использованием trim()
+  const isDBSelectedOrInputValid = dbInputValue?.trim() || '';
+  const isFlightNameValid = onlineFlightName?.trim() || '';
+  const isWinLowValid = !isNaN(winLowValue) && parseInt(winLowValue, 10) > 0;
+  const isWinHighValid = !isNaN(winHighValue) && parseInt(winHighValue, 10) > 0;
+  const isWindowRangeValid = isWinLowValid && isWinHighValid && parseInt(winLowValue, 10) < parseInt(winHighValue, 10);
+
+  return !isDBSelectedOrInputValid || !isFlightNameValid || !isWindowRangeValid;
+};
+
 
   return (
     <AppBar position="static" sx={{ height: '64px' }}>
@@ -832,8 +843,10 @@ const handleDeleteDatabase = async () => {
         <Autocomplete
           value={selectedOnlineDB}
           onChange={(event, newValue) => {
-            setSelectedOnlineFlight(newValue);
+            setSelectedOnlineDB(newValue);
+            setDbInputValue(newValue); // Обновляем dbInputValue при выборе из списка
           }}
+          onInputChange={handleInputChange}
           freeSolo
           autoSelect
           options={flightOptions}
@@ -849,7 +862,7 @@ const handleDeleteDatabase = async () => {
           fullWidth
           variant="outlined"
           value={onlineFlightName}
-          onChange={handleOnlineFlightNameChange}
+          onChange={handleOnlineCollectionNameChange}
         />
         <Grid container spacing={2}>  
           <Grid item xs={6}>
@@ -861,6 +874,7 @@ const handleDeleteDatabase = async () => {
               variant="outlined"
               value={winLowValue}
               onChange={handleWinLowChange}
+              type="number"
             />
           </Grid>
           <Grid item xs={6}>
@@ -872,6 +886,7 @@ const handleDeleteDatabase = async () => {
               variant="outlined"
               value={winHighValue}
               onChange={handleWinHighChange}
+              type="number"
             />
           </Grid>
         </Grid>
@@ -882,7 +897,7 @@ const handleDeleteDatabase = async () => {
       </DialogContent>
       <DialogActions>
         <Button onClick={handleStartFlightDialogClose}>Отмена</Button>
-        <Button onClick={handleStartFlight}>Начать полет</Button>
+        <Button onClick={handleStartFlight} disabled={isStartFlightButtonDisabled()}>Начать полет</Button>
       </DialogActions>
     </Dialog>
     </AppBar>
