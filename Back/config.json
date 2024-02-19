@@ -1,0 +1,25 @@
+{
+  "NSPCHANNELS": "238",
+  "SPECDEFTIME": 1,
+  "winLow": 20,
+  "winHigh": 200,
+  "MAX_ALLOWED_HEIGHT": 5000,
+  "flightsDirectory": "./flights",
+  "latInit": 55.704034038232834,
+  "lonInit": 37.62119540524117,
+  "altInit": 25,
+  "coeffs_below_550": [
+    3.88e-23,   
+    -6.70e-20,
+    4.28e-17,
+    -8.48e-15,
+    5.97e-13
+  ],
+  "coeffs_above_550": [
+    -2.08e-27,
+    8.32e-23,
+    -1.03e-18,
+    4.67e-15,
+    -9.95e-13
+  ]
+}

@@ -7,32 +7,40 @@ const app = express();
 const port = 3001;
 const fs = require('fs');
 const path = require('path');
+const configPath = path.join(__dirname, 'config.json');
 
-const NSPCHANNELS = 238;
-const SPECDEFTIME = 1;
-const winLow = 20;
-const winHigh = 200;
-const MAX_ALLOWED_HEIGHT = 5000; // максимально допустимая высота в метрах
+// Синхронное чтение и парсинг файла конфигурации
+let config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
 
-const flightsDirectory = './flights'; // Укажите путь к папке с файлами
+app.use(express.json());
 
-// Инициализация начальных значений координат и высоты
-const latInit = 55.70393728639029; //55.704034038232834; // Начальная широта
-const lonInit = 37.62089337490596;//37.62119540524117;  // Начальная долгота
-const altInit = 25;                 // Начальная высота, например 100 метров
+//const flightsDirectory = './flights'; // Укажите путь к папке с файлами
 
-// Инициализация начальных значений координат и высоты
-let lat = latInit;  // Начальная широта
-let lon = lonInit;  // Начальная долгота
-let alt = altInit;  // Начальная высота, например 100 метров
+// Получение всех настроек
+app.get('/api/settings', (req, res) => {
+  fs.readFile(configPath, 'utf8', (err, data) => {
+    if (err) {
+      res.status(500).send('Ошибка чтения файла настроек');
+      return;
+    }
+    res.json(JSON.parse(data));
+  });
+});
 
-// Коэффициенты полинома и калибровочные данные
-
-const coeffs_below_550 = [3.88e-23, -6.70e-20, 4.28e-17, -8.48e-15, 5.97e-13];
-const coeffs_above_550 = [-2.08e-27, 8.32e-23, -1.03e-18, 4.67e-15, -9.95e-13];
+// Обновление настроек
+app.post('/api/settings', (req, res) => {
+  const newSettings = req.body;
+  fs.writeFile(configPath, JSON.stringify(newSettings, null, 2), 'utf8', (err) => {
+    if (err) {
+      res.status(500).send('Ошибка записи файла настроек');
+      return;
+    }
+    config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    res.send('Настройки успешно обновлены');
+  });
+});
 
 app.use(cors());
-
 const flightSimulations = {};
 
 // Добавляем объект для хранения текущего состояния онлайн-полета
@@ -84,16 +92,16 @@ ws.on('error', (error) => {
 
 function calculateConversionFactor(E) {
   if (E <= 550) {
-    return coeffs_below_550[0] * E**4 + coeffs_below_550[1] * E**3 +
-           coeffs_below_550[2] * E**2 + coeffs_below_550[3] * E + coeffs_below_550[4];
+    return config.coeffs_below_550[0] * E**4 + config.coeffs_below_550[1] * E**3 +
+           config.coeffs_below_550[2] * E**2 + config.coeffs_below_550[3] * E + config.coeffs_below_550[4];
   } else {
-    return coeffs_above_550[0] * E**4 + coeffs_above_550[1] * E**3 +
-           coeffs_above_550[2] * E**2 + coeffs_above_550[3] * E + coeffs_above_550[4];
+    return config.coeffs_above_550[0] * E**4 + config.coeffs_above_550[1] * E**3 +
+           config.coeffs_above_550[2] * E**2 + config.coeffs_above_550[3] * E + config.coeffs_above_550[4];
   }
 }
 
 function calculateConversionFactors(eP0, eP1) {
-  return Array.from({ length: NSPCHANNELS }, (_, i) => eP0 + eP1 * i)
+  return Array.from({ length: config.NSPCHANNELS }, (_, i) => eP0 + eP1 * i)
               .map(E => calculateConversionFactor(E));
 }
 
@@ -199,8 +207,8 @@ const upload = multer({
 });
 
 // Проверяем, существует ли папка для загрузки файлов. Если нет, создаем ее.
-if (!fs.existsSync(flightsDirectory)){
-  fs.mkdirSync(flightsDirectory, { recursive: true });
+if (!fs.existsSync(config.flightsDirectory)){
+  fs.mkdirSync(config.flightsDirectory, { recursive: true });
 }
 
 app.post('/api/uploadDatabase', upload.single('databaseFile'), (req, res) => {
@@ -210,7 +218,7 @@ app.post('/api/uploadDatabase', upload.single('databaseFile'), (req, res) => {
 
   const tempPath = req.file.path;
   const name_dec = Buffer.from(req.file.originalname, 'latin1').toString('utf8');
-  const targetPath = path.join(flightsDirectory, name_dec);
+  const targetPath = path.join(config.flightsDirectory, name_dec);
 
   // Проверяем, существует ли уже такой файл
   if (fs.existsSync(targetPath)) {
@@ -229,7 +237,7 @@ app.post('/api/uploadDatabase', upload.single('databaseFile'), (req, res) => {
 
 app.get('/api/downloadDatabase/:dbname', (req, res) => {
   const dbname = req.params.dbname;
-  const filePath = path.join(flightsDirectory, `${dbname}.sqlite`);
+  const filePath = path.join(config.flightsDirectory, `${dbname}.sqlite`);
 
   // Проверяем, существует ли файл
   if (fs.existsSync(filePath)) {
@@ -241,7 +249,7 @@ app.get('/api/downloadDatabase/:dbname', (req, res) => {
 
 app.delete('/api/deleteDatabase/:dbname', (req, res) => {
   const dbname = req.params.dbname;
-  const filePath = path.join(flightsDirectory, `${dbname}.sqlite`);
+  const filePath = path.join(config.flightsDirectory, `${dbname}.sqlite`);
 
   // Проверяем, существует ли файл
   if (fs.existsSync(filePath)) {
@@ -266,7 +274,7 @@ app.get('/api/collection/:dbname', (req, res) => {
     return;
   if (dbname=='null') 
     return;
-  const db_current = new sqlite3.Database(flightsDirectory+'/'+dbname+'.sqlite', (err) => {
+  const db_current = new sqlite3.Database(config.flightsDirectory+'/'+dbname+'.sqlite', (err) => {
     if (err) {
       console.error(err.message);
     }
@@ -283,7 +291,7 @@ app.get('/api/collection/:dbname', (req, res) => {
 });
 
 app.get('/api/flights', (req, res) => {
-  fs.readdir(flightsDirectory, (err, files) => {
+  fs.readdir(config.flightsDirectory, (err, files) => {
     if (err) {
       res.status(500).json({ error: err.message });
       return;
@@ -307,7 +315,7 @@ app.get('/api/data/:dbname/:collectionId', (req, res) => {
     return;
   }
 
-  const db_current = new sqlite3.Database(`${flightsDirectory}/${dbname}.sqlite`, (err) => {
+  const db_current = new sqlite3.Database(`${config.flightsDirectory}/${dbname}.sqlite`, (err) => {
     if (err) {
       console.error(err.message);
       return;
@@ -369,16 +377,16 @@ app.get('/api/data/:dbname/:collectionId', (req, res) => {
 
           const buffer = Buffer.from(row.spectrum, 'binary');
           const spectrumData = [];
-          for (let i = 0; i < NSPCHANNELS; i++) {
+          for (let i = 0; i < config.NSPCHANNELS; i++) {
             spectrumData.push(buffer.readUInt16LE(i * 2));
           }
 
-          const spectrum = new Spectrum(spectrumData, SPECDEFTIME);
-          const countInWindow = spectrum.valueInChannels(winLow, winHigh, false);
+          const spectrum = new Spectrum(spectrumData, config.SPECDEFTIME);
+          const countInWindow = spectrum.valueInChannels(config.winLow, config.winHigh, false);
           const windose = getDose(countInWindow, row.rHeight, false, 1, 0.0024, 0.0024, 0.0073); 
           const gmDose1 = getDose(row.geiger1, row.rHeight, true, 1, 0.0024, 0.0024, 0.0073);
           const gmDose2 = getDose(row.geiger2, row.rHeight, true, 2, 0.0024, 0.0024, 0.0073);
-          const height = row.rHeight > MAX_ALLOWED_HEIGHT ? 0 : row.rHeight; // Задаем высоту равную 0, если она превышает MAX_ALLOWED_HEIGHT
+          const height = row.rHeight > config.MAX_ALLOWED_HEIGHT ? 0 : row.rHeight; // Задаем высоту равную 0, если она превышает config.MAX_ALLOWED_HEIGHT
 
           return {
             id: row._id,
@@ -406,11 +414,11 @@ app.get('/api/data/:dbname/:collectionId', (req, res) => {
 
 app.use(express.json());
 
-// Предполагается, что flightsDirectory определена ранее в вашем коде
+// Предполагается, что config.flightsDirectory определена ранее в вашем коде
 function ensureDatabaseExists(newDbName) {
   return new Promise((resolve, reject) => {
-    const templatePath = path.join(flightsDirectory, 'template.udkgdb');
-    const newDbPath = path.join(flightsDirectory, `${newDbName}.sqlite`);
+    const templatePath = path.join(config.flightsDirectory, 'template.udkgdb');
+    const newDbPath = path.join(config.flightsDirectory, `${newDbName}.sqlite`);
 
     if (fs.existsSync(newDbPath)) {
       console.log('База данных уже существует.');
@@ -435,16 +443,16 @@ app.post('/start-flight-simulation', (req, res) => {
   const winLow = req.body.winLow;
   const winHigh = req.body.winHigh;
 
-  lat = latInit;  // Начальная широта
-  lon = lonInit;  // Начальная долгота
-  alt = altInit;  // Начальная высота, например 100 метров
+  lat = config.latInit;  // Начальная широта
+  lon = config.lonInit;  // Начальная долгота
+  alt = config.altInit;  // Начальная высота, например 100 метров
 
   stepCounter = 5; // счетчик шагов
   directionLon = 1; // направление движения по долготе: 1 или -1
 
   ensureDatabaseExists(dbName).then(() => {
     // Теперь когда база данных гарантированно существует, открываем её
-    const dbPath = `${flightsDirectory}/${dbName}.sqlite`;
+    const dbPath = `${config.flightsDirectory}/${dbName}.sqlite`;
     const db = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE, (err) => {
       if (err) {
         console.error('Ошибка при открытии базы данных:', err);
@@ -728,7 +736,7 @@ app.get('/api/online-measurements', (req, res) => {
   }
 
   // Открываем соединение с базой данных
-  const dbPath = path.join(flightsDirectory, `${onlineFlightStatus.dbName}.sqlite`);
+  const dbPath = path.join(config.flightsDirectory, `${onlineFlightStatus.dbName}.sqlite`);
   const db = new sqlite3.Database(dbPath, sqlite3.OPEN_READONLY, (err) => {
       if (err) {
           console.error(err.message);
