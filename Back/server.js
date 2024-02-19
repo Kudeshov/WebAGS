@@ -14,12 +14,11 @@ const winLow = 20;
 const winHigh = 200;
 const MAX_ALLOWED_HEIGHT = 5000; // максимально допустимая высота в метрах
 
-
 const flightsDirectory = './flights'; // Укажите путь к папке с файлами
 
 // Инициализация начальных значений координат и высоты
-const latInit = 55.704034038232834; // Начальная широта
-const lonInit = 37.62119540524117;  // Начальная долгота
+const latInit = 55.70393728639029; //55.704034038232834; // Начальная широта
+const lonInit = 37.62089337490596;//37.62119540524117;  // Начальная долгота
 const altInit = 25;                 // Начальная высота, например 100 метров
 
 // Инициализация начальных значений координат и высоты
@@ -38,10 +37,19 @@ const flightSimulations = {};
 
 // Добавляем объект для хранения текущего состояния онлайн-полета
 let onlineFlightStatus = {
+  _id: null,
+  dateTime: null,
+  detector: null,
+  hasCalibr: null,
+  P0: null,
+  P1: null,
+  P2: null,
+  P3: null,
+  description: null,
+  winLow: null,
+  winHigh: null,
   active: false,
-  flightId: null,
-  dbName: null,
-  startTime: null
+  dbName: null
 };
 
 // Запуск HTTP сервера
@@ -70,7 +78,7 @@ ws.on('error', (error) => {
   console.error('Ошибка WebSocket:', error);
 });
 
-ws.send(JSON.stringify({ message: 'Connection established' }));
+//ws.send(JSON.stringify({ message: 'Connection established' }));
 });
 
 
@@ -253,22 +261,17 @@ app.delete('/api/deleteDatabase/:dbname', (req, res) => {
 
 app.get('/api/collection/:dbname', (req, res) => {
   const dbname = req.params.dbname;
-
   console.log('БД ', dbname);
-
   if (!dbname) 
     return;
-
   if (dbname=='null') 
     return;
-
   const db_current = new sqlite3.Database(flightsDirectory+'/'+dbname+'.sqlite', (err) => {
     if (err) {
       console.error(err.message);
     }
     console.log('Connected to the database '+dbname);
   });
-
   const sql = 'SELECT * FROM collection';
   db_current.all(sql, [], (err, rows) => {
     if (err) {
@@ -426,12 +429,18 @@ function ensureDatabaseExists(newDbName) {
   });
 }
 
-
 app.post('/start-flight-simulation', (req, res) => {
   const dbName = req.body.dbName;
   const flightName = req.body.flightName;
   const winLow = req.body.winLow;
   const winHigh = req.body.winHigh;
+
+  lat = latInit;  // Начальная широта
+  lon = lonInit;  // Начальная долгота
+  alt = altInit;  // Начальная высота, например 100 метров
+
+  stepCounter = 5; // счетчик шагов
+  directionLon = 1; // направление движения по долготе: 1 или -1
 
   ensureDatabaseExists(dbName).then(() => {
     // Теперь когда база данных гарантированно существует, открываем её
@@ -442,25 +451,62 @@ app.post('/start-flight-simulation', (req, res) => {
         return res.status(500).json({ message: "Ошибка при открытии базы данных" });
       }
       console.log('База данных успешно открыта');
-
       // Создаём запись полёта, уже внутри коллбека открытия базы данных
-      createFlightRecord(db, dbName, flightName, winLow, winHigh, (flightId) => {
+      createFlightRecord(db, dbName, flightName, winLow, winHigh, (_id) => {
         console.log('Начинаем симуляцию');
-        flightSimulations[flightId] = setInterval(() => {
-          generateMeasurementData(db, flightId);
-        }, 1000);
 
-        onlineFlightStatus = {
-          active: true,
-          flightId,
-          dbName,
-          flightName,
-          winLow,
-          winHigh,
-          startTime: new Date().toISOString()
+        flightSimulations[_id] = {
+          interval: setInterval(() => {
+            // Добавляем проверку на существование flightSimulations[_id] перед доступом к iterations
+            if (flightSimulations[_id] && flightSimulations[_id].iterations < 500) {
+              generateMeasurementData(db, _id);
+              flightSimulations[_id].iterations++;
+            } else {
+              // В случае если flightSimulations[_id] уже не существует, очищаем интервал без ошибок
+              clearInterval(flightSimulations[_id]?.interval);
+              delete flightSimulations[_id];
+              onlineFlightStatus = {
+                _id: null,
+                active: false,
+                dbName: null,
+                description: null,
+                winLow: null,
+                winHigh: null,
+                dateTime: null,
+                detector: null,
+                hasCalibr: null,
+                P0: null,
+                P1: null,
+                P2: null,
+                P3: null
+              };
+              console.log(`Симуляция полета ${_id} достигла лимита итераций и была остановлена.`);
+            }
+          }, 1000),
+          iterations: 0
         };
 
-        res.json({ message: "Эмуляция полета запущена", flightId });
+/*         flightSimulations[_id] = setInterval(() => {
+          generateMeasurementData(db, _id);
+        }, 1000); */
+
+        onlineFlightStatus = {
+          _id,
+          dateTime: new Date().toISOString(),
+          detector: null,
+          hasCalibr: null,
+          P0: null,
+          P1: null,
+          P2: null,
+          P3: null,
+          description: flightName,
+          winLow,
+          winHigh,
+          active: true,
+          dbName: dbName
+        };
+
+        res.json({ message: "Эмуляция полета запущена", _id, onlineFlightStatus });
       });
     });
   }).catch((error) => {
@@ -469,28 +515,37 @@ app.post('/start-flight-simulation', (req, res) => {
   });
 });
 
-  
- 
-
 app.post('/stop-flight-simulation', (req, res) => {
-  const flightId = req.body.flightId;
+  const _id = req.body._id;
+  console.log('Попытка останова полета, _id=',_id);
+  if (flightSimulations[_id]) {
 
-  if (flightSimulations[flightId]) {
-    clearInterval(flightSimulations[flightId]);
-    delete flightSimulations[flightId];
+    // Останавливаем интервал, используя сохранённый идентификатор
+    clearInterval(flightSimulations[_id].interval);
+
+    //clearInterval(flightSimulations[_id]);
+    delete flightSimulations[_id];
 
     onlineFlightStatus = {
+      _id: null,
       active: false,
-      flightId: null,
       dbName: null,
-      startTime: null
+      description: null,
+      winLow: null,
+      winHigh: null,
+      dateTime: null,
+      detector: null,
+      hasCalibr: null,
+      P0: null,
+      P1: null,
+      P2: null,
+      P3: null
     };
-
-    console.log( "Эмуляция полета остановлена", flightId);
-    res.json({ message: "Эмуляция полета остановлена", flightId });
+    console.log(`Эмуляция полета ${_id} была остановлена вручную.`);
+    res.json({ message: "Эмуляция полета остановлена", _id });
   } else {
-    console.log( "Эмуляция полета  не найдена", flightId);
-    res.status(404).json({ message: "Эмуляция полета не найдена", flightId });
+    console.log( "Эмуляция полета  не найдена", _id);
+    res.status(404).json({ message: "Эмуляция полета не найдена", _id });
   }
 });
 
@@ -549,11 +604,28 @@ function toECEF(lat, lon, alt) {
 }
 
 
-const stepSizeLat = 0.0001; // шаг изменения широты
-const stepSizeLon = 0.0002; // шаг изменения долготы
+const stepSizeLat = 0.00005; // шаг изменения широты
+const stepSizeLon = 0.0001; // шаг изменения долготы
 const meanderLength = 20; // количество шагов в одном направлении до смены направления
 let stepCounter = 0; // счетчик шагов
 let directionLon = 1; // направление движения по долготе: 1 или -1
+
+const hotspots = [
+  {lat: 55.70457387488768, lon: 37.62113840815405}, // Пример координат очага 1
+  {lat: 55.70428567465594, lon: 37.621579947018716},  // Пример координат очага 2
+];
+
+// Функция для расчета расстояния между двумя точками на сфере (Земле)
+function calculateDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371; // Радиус Земли в километрах
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c; // Возвращает расстояние в километрах
+}
 
 function generateMeasurementData(db, flightId) {
   // Добавляем случайную погрешность к шагам
@@ -575,15 +647,38 @@ function generateMeasurementData(db, flightId) {
   alt += (Math.random() - 0.5) * 2;
  
   const ecefCoords = toECEF(lat+randomErrorLat, lon+randomErrorLon, alt);
-  const winCount = Math.floor(Math.random() * (100 - 20 + 1)) + 20;
+  //const winCount = Math.floor(Math.random() * (100 - 20 + 1)) + 20;
 
+  // Расчет близости к ближайшему очагу
+  let minDistance = Infinity;
+  hotspots.forEach(hotspot => {
+    const distance = calculateDistance(lat, lon, hotspot.lat, hotspot.lon) * 1000; // Переводим расстояние в метры
+    if (distance < minDistance) {
+      minDistance = distance;
+    }
+  });
+
+  // Модификация winCount в зависимости от близости к очагу
+  const maxWinCount = 170; // Максимальное значение для winCount
+  const baseWinCount = 20; // Базовое значение для winCount
+  // Адаптация логики для нового условия близости (40 метров)
+  if (minDistance <= 30) { // Если расстояние до очага 40 метров или меньше
+    // Масштабируем winCount на основе расстояния, где близость к 0 метров дает максимальное значение winCount
+    winCount = maxWinCount - ((minDistance / 30) * (maxWinCount - baseWinCount));
+  } else {
+    winCount = Math.floor(Math.random() * (baseWinCount + 1)); // Базовое значение для случаев, когда объект далеко от очагов
+  }
+  winCount = Math.round(winCount);
+  
   // Время создания записи
   const dateTime = new Date().toISOString();
   // Расчёты дозы
-  const windose = getDose(winCount, alt, false, 1, 0.0024, 0.0024, 0.0073); // Используем функцию getDose для расчета дозы в окне
-  const gmDose1 = getDose(0, alt, true, 1, 0.0024, 0.0024, 0.0073); // Примерный вызов для gmdose1 с предположением, что geiger1 = 0
-  const gmDose2 = getDose(0, alt, true, 2, 0.0024, 0.0024, 0.0073); // Примерный вызов для gmdose2 с предположением, что geiger2 = 0
-
+  let windose = getDose(winCount, alt, false, 1, 0.0024, 0.0024, 0.0073); // Используем функцию getDose для расчета дозы в окне
+  const gmDose1 = getDose(0, alt, true, 1, 0.0024, 0.0024, 0.0073);  
+  const gmDose2 = getDose(0, alt, true, 2, 0.0024, 0.0024, 0.0073);  
+  if (windose>3) {
+    windose = 3
+  }
   // SQL запрос на вставку
   const insertSql = `INSERT INTO online_measurement (flightId, dateTime, gpsX, gpsY, gpsZ, rHeight, srtmHeight, calcHeight, geiger1, geiger2, winCount) VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, 0, 0, ?)`;
 
@@ -594,7 +689,7 @@ function generateMeasurementData(db, flightId) {
           return;
       }
 
-      console.log(`Запись измерения добавлена для flightId: ${flightId} с ID: ${this.lastID}`);
+      console.log(`Запись измерения добавлена для flightId: ${flightId} с ID: ${this.lastID}, ${dateTime}, ${windose}`);
 
       // Подготовка данных для отправки через WebSocket в географических координатах
       const flightDataForWebSocket = {
@@ -617,8 +712,10 @@ function generateMeasurementData(db, flightId) {
 
       // Отправка подготовленных данных всем подключенным клиентам через WebSocket
       wss.clients.forEach(client => {
+          //console.log(`Отправка подготовленных данных 1`);
           if (client.readyState === WebSocket.OPEN) {
-              client.send(JSON.stringify(flightDataForWebSocket));
+            //console.log(`Отправка подготовленных данных 2`);
+            client.send(JSON.stringify(flightDataForWebSocket));
           }
       });
   });
@@ -642,7 +739,7 @@ app.get('/api/online-measurements', (req, res) => {
 
   // Формируем и выполняем SQL-запрос для получения данных текущего онлайн полета
   const sql = `SELECT * FROM online_measurement WHERE flightId = ? ORDER BY _id DESC`;
-  db.all(sql, [onlineFlightStatus.flightId], (err, rows) => {
+  db.all(sql, [onlineFlightStatus._id], (err, rows) => {
       if (err) {
           console.error(err.message);
           return res.status(500).send('Ошибка при выполнении запроса к базе данных');

@@ -80,8 +80,8 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
   const [isLoadingFlight, setIsLoadingFlight] = useState(false);
 
   const fetchCollections = useCallback(() => {
-    //console.log('вызвана fetchCollections')
-    if (selectedDatabase) {
+    console.log('вызвана fetchCollections, onlineFlightID', onlineFlightId);
+    if (!onlineFlightId && selectedDatabase) {
       fetch(`/api/collection/${selectedDatabase}`)
         .then(response => response.json())
         .then(collections => {
@@ -104,7 +104,6 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
   const fetchMeasurements = useCallback(() => {
     if (selectedDatabase && selectedCollection && !onlineFlightId) {
       setIsLoadingFlight(true); // Начинаем загрузку
-      console.log('!!!! fetch');
       const apiUrl = `/api/data/${selectedDatabase}/${selectedCollection?._id || null}`;
       fetch(apiUrl)
         .then(response => response.json())
@@ -138,18 +137,15 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
             const maxHeight = Math.max(...heights);
             setHeightFrom(minHeight);
             setHeightTo(maxHeight);
-            console.log('setHeightFilterTo(maxHeight)', maxHeight);
             setHeightFilterFrom(minHeight);
             setHeightFilterTo(maxHeight);
             setLocalHeightFrom(minHeight);
             setLocalHeightTo(maxHeight);    
-            console.log(' heightFrom, heightTo', heightFrom, heightTo, minHeight, maxHeight);
             setLocalHeightFrom(minHeight);
             setLocalHeightTo(maxHeight);
           }
           setMeasurements(data);
         }).finally(() => {
-          console.log('----------------- fetch');
           setIsLoadingFlight(false); // Заканчиваем загрузку
         });
     }
@@ -167,9 +163,11 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
         const statusResponse = await fetch('/api/online-flight-status');
         const statusData = await statusResponse.json();
         if (statusData && statusData.active) {
-          setOnlineFlightId(statusData.flightId); // Сохраняем ID активного онлайн-полета
-          setSelectedDatabase(statusData.dbName); // Устанавливаем активную базу данных
+          console.log('statusData', statusData);
           
+          setOnlineFlightId(statusData._id); // Сохраняем ID активного онлайн-полета
+          setSelectedDatabase(statusData.dbName); // Устанавливаем активную базу данных
+          setSelectedCollection(statusData);
           // Загружаем данные текущего онлайн-полета
           
           const measurementsResponse = await fetch('/api/online-measurements');
@@ -203,7 +201,7 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
     validData = validData.filter(m => 
       (m.height >= heightFilterFrom && m.height <= heightFilterTo)) 
     }
-
+    console.log('filter by height');
     setValidMeasurements(validData);
   }, [measurements, heightFilterFrom, heightFilterTo, heightFilterActive]);
 
@@ -213,11 +211,27 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
 
   useEffect(() => {
     const newThresholds = calculateColorThresholds(minDoseValue, maxDoseValue);
-    /* setCurrentColorThresholds(newThresholds); */
-    console.log('useEffect color', newThresholds);
     setMinDoseValueR(parseFloat(newThresholds.v0));
     setMaxDoseValueR(parseFloat(newThresholds.v3));
   }, [minDoseValue, maxDoseValue]);
+
+
+  useEffect(() => {
+    if (onlineFlightId) {
+      setMinDoseValue(0);
+      setMaxDoseValue(3);
+      setColorThresholds({
+        v0: 0,
+        v1: 1,
+        v2: 2,
+        v3: 3,
+      });
+      setHeightFrom(0);
+      setHeightTo(100); 
+      setHeightFilterFrom(0);
+      setHeightFilterTo(100);
+    }
+  }, [onlineFlightId]); 
 
   return (
     <FlightDataContext.Provider value={{

@@ -858,7 +858,7 @@
           </FeatureGroup>        
         </LayersControl.Overlay>
 
-        <LayersControl.Overlay checked name="Онлайн измерения">
+{/*         <LayersControl.Overlay checked name="Онлайн измерения">
           <FeatureGroup ref={onlineMeasurementsLayerRef}>
             {
             
@@ -881,7 +881,7 @@
               />
             ))}
           </FeatureGroup>
-        </LayersControl.Overlay>
+        </LayersControl.Overlay> */}
 
         <LayersControl.Overlay name="Тепловая карта">
           <HeatmapLayer

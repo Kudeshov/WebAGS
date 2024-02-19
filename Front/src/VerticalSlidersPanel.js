@@ -50,14 +50,6 @@ const VerticalSlidersPanel = () => {
     setLocalColorThresholds(colorThresholds);
   }, [colorThresholds]);
   
-
-/*   const gradientPanelStyle = {
-    marginLeft: '10px',
-    background: `linear-gradient(to top, ${createGradientT(colorThresholds, minDoseValue, maxDoseValue)})`, 
-    width: '15px', 
-    height: '150px'
-  }; */
-
   // Функция для сброса значений слайдеров
   const handleReset = () => {
     setHeightFilterFrom(heightFrom);
@@ -94,14 +86,13 @@ const VerticalSlidersPanel = () => {
               height: 150, marginLeft: 7, marginRight: 0
             }}
             orientation="vertical"
-            value={[localHeightFrom, localHeightTo]}
+            value={[localHeightFrom ?? 0, localHeightTo ?? 0]}
             onChange={handleHeightChange}
             onChangeCommitted={handleHeightChangeCommitted}
             min={heightFrom}
             max={heightTo}
             valueLabelDisplay="on"
           />
-          {/* <div style={{ width: '25px' }}></div> */}
         </div>
         <div className="sliderValue">{`${heightFrom}м`}</div>
       </div>
@@ -133,7 +124,12 @@ const VerticalSlidersPanel = () => {
               height: 150, marginLeft: 7, marginRight: 0
             }}
             orientation="vertical"
-            value={[localColorThresholds.v0, localColorThresholds.v1, localColorThresholds.v2, localColorThresholds.v3]}
+            value={[
+              localColorThresholds.v0 ?? 0,
+              localColorThresholds.v1 ?? 0,
+              localColorThresholds.v2 ?? 0,
+              localColorThresholds.v3 ?? 0,
+            ]}
             onChange={handleColorChange}
             onChangeCommitted={handleColorChangeCommitted}
             min={minDoseValueR}
@@ -141,7 +137,6 @@ const VerticalSlidersPanel = () => {
             step={0.01}
             valueLabelDisplay="on"
           />
-          {/* <div style={gradientPanelStyle}></div> */}
         </div>
         <div className="sliderValue">{`${minDoseValueR}`}</div>
       </div>
