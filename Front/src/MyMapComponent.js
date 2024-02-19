@@ -480,7 +480,7 @@
 
       setPreviousValidMeasurements(validMeasurements);
     
-      if (!validMeasurements || validMeasurements.length === 0) {
+      if (!validMeasurements || validMeasurements.length < 3) {
         setCachedIsolines({
           lines: [],
           minDose: null,
@@ -495,7 +495,6 @@
       );
 
       const cellSize = 0.003; // Размер ячейки для интерполяции
-
     
       // Выполнение интерполяции
       const interpolated = turf.interpolate(pointsCollection, cellSize, { gridType: 'point', property: 'dose' });
@@ -607,6 +606,8 @@
 
     useEffect(() => {
 
+
+      console.log('validMeasurements.length = ', validMeasurements.length);
       if (!isIsobandLayerActive) {
         return;
       }
@@ -617,7 +618,7 @@
 
       setPreviousValidMeasurementsBand(validMeasurements);
     
-      if (!validMeasurements || validMeasurements.length === 0) {
+      if (!validMeasurements || validMeasurements.length < 3) {
         setCachedIsobands({ // Обновление состояния для хранения изобендов
           bands: [],
           minDose: null,

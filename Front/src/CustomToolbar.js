@@ -178,6 +178,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   }, [websocket]);
 
   const handleStartFlight = () => {
+    setOnlineMeasurements([]);
     fetch('/start-flight-simulation', {
       method: 'POST',
       headers: {
@@ -276,6 +277,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
           setWebsocket(null);
         }
         setSnackbarMessage('Полет остановлен');
+        handleCollectionMenuClose();
       } else {
         console.error('Ошибка остановки полета: HTTP-статус', response.status);
         setSnackbarMessage('Полет уже остановлен');
@@ -897,14 +899,14 @@ const [settings, setSettings] = useState({}); // Для хранения нас�
   <DialogTitle id="settings-dialog-title">Настройки</DialogTitle>
   {isSettingsLoading ? (
     <DialogContent>
-      <CircularProgress /> // Индикатор загрузки
+      <CircularProgress />
     </DialogContent>
   ) : (
     <DialogContent>
             <TextField
       margin="dense"
       id="NSPCHANNELS"
-      label="Количество каналов NSP"
+      label="Количество спектральных каналов"
       type="number"
       fullWidth
       size = "small"
@@ -915,7 +917,7 @@ const [settings, setSettings] = useState({}); // Для хранения нас�
     <TextField
       margin="dense"
       id="SPECDEFTIME"
-      label="Стандартное время спецификации"
+      label="Частота (скважность) измерений"
       type="number"
       fullWidth
       size = "small"
@@ -959,7 +961,7 @@ const [settings, setSettings] = useState({}); // Для хранения нас�
     <TextField
       margin="dense"
       id="flightsDirectory"
-      label="Каталог полетов"
+      label="Каталог файлов полетов"
       fullWidth
       size = "small"
       variant="outlined"
@@ -1001,13 +1003,13 @@ const [settings, setSettings] = useState({}); // Для хранения нас�
     />
     {/* Для массивов можно использовать сериализацию в JSON или отдельные поля */}
     <div>
-      <div>Коэффициенты ниже 550</div>
+      <div>Коэффициенты полинома для уровня энергии менее 550 кэВ</div>
       {settings.coeffs_below_550 && settings.coeffs_below_550.map((coeff, index) => (
         <TextField
           key={`coeff-below-${index}`}
           margin="dense"
           id={`coeff-below-${index}`}
-          label={`Коэф ${index + 1} (ниже 550)`}
+          label={`Коэфф ${index + 1} (<= 550 кэВ)`}
           fullWidth
           size = "small"
           variant="outlined"
@@ -1017,14 +1019,14 @@ const [settings, setSettings] = useState({}); // Для хранения нас�
       ))}
     </div>
     <div>
-      <div>Коэффициенты выше 550</div>
+      <div>Коэффициенты полинома для уровня энергии более 550 кэВ</div>
       
       {settings.coeffs_above_550 && settings.coeffs_above_550.map((coeff, index) => (
         <TextField
           key={`coeff-above-${index}`}
           margin="dense"
           id={`coeff-above-${index}`}
-          label={`Коэф ${index + 1} (выше 550)`}
+          label={`Коэфф ${index + 1} (> 550 кэВ)`}
           fullWidth
           size = "small"
           variant="outlined"
@@ -1062,7 +1064,7 @@ const [settings, setSettings] = useState({}); // Для хранения нас�
         <div style={{ flexGrow: 1, display: 'flex', justifyContent: 'flex-end' }}>
           {selectedCollection ? (
             <div style={{ color: 'white', fontSize: 'small' }}>
-              <span>{simulationData} | </span>
+              {simulationData && <><span>{simulationData}</span><span> | </span></>}
               <span>{selectedDatabase ? selectedDatabase : ''} | </span>
               <span>{selectedCollection?.description} | </span>
               <span>{convertDateTime(selectedCollection?.dateTime)} </span>
