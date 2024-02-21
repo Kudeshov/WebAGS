@@ -19,7 +19,7 @@ export function getColor(value, doseLow, doseHigh) {
       r = 255 * (diff - 0.33) / 0.33;
     }
     //yellow to red
-    else if (diff > 0.66 && diff <= 1) {
+    else if (diff > 0.66 ) {
       g = 255 * (1 - diff) / 0.33;
       r = 255;
       b = 0;
@@ -83,12 +83,11 @@ export function createGradientT(thresholds, doseLow, doseHigh) {
 export function calculateColorThresholds(minDose, maxDose) {
   const roundedDownMinDoseValue = Math.floor(minDose * 100) / 100;
   const roundedUpMaxDoseValue = Math.ceil(maxDose * 100) / 100;
-  console.log('calculateColorThresholds', minDose, maxDose, roundedDownMinDoseValue, roundedUpMaxDoseValue);
   return {
-    v0: roundedDownMinDoseValue.toFixed(2),
-    v1: (minDose + (maxDose - minDose) * 0.333333).toFixed(2),
-    v2: (minDose + (maxDose - minDose) * 0.666666).toFixed(2),
-    v3: roundedUpMaxDoseValue.toFixed(2),
+    v0: parseFloat(roundedDownMinDoseValue.toFixed(2)),
+    v1: parseFloat((minDose + (maxDose - minDose) * 0.333333).toFixed(2)),
+    v2: parseFloat((minDose + (maxDose - minDose) * 0.666666).toFixed(2)),
+    v3: parseFloat(roundedUpMaxDoseValue.toFixed(2)),
   };
 }
 

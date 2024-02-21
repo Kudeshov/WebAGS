@@ -1,6 +1,6 @@
 {
   "NSPCHANNELS": "238",
-  "SPECDEFTIME": 1,
+  "SPECDEFTIME": "1",
   "winLow": 20,
   "winHigh": 200,
   "MAX_ALLOWED_HEIGHT": 5000,

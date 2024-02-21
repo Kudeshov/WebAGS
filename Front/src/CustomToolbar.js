@@ -116,26 +116,37 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
             console.log('WebSocket соединение установлено');
         };
 
+        console.log('Установка обработчика ws.onmessage');
         ws.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            console.log(data);
-            setOnlineMeasurements(currentMeasurements => {
-        // Проверяем, что широта и долгота существуют и не равны null
-        if (data.lat != null && data.lon != null) {
-          return [...currentMeasurements, data];
-        } else {
-          // Если условие не выполняется, возвращаем текущее состояние без изменений
-          return currentMeasurements;
-        }
-      });
-      setSimulationData(`Время: ${convertToTime(data.datetime)}, Широта: ${data.lat ? Number(data.lat).toFixed(6) : '0.000000'}, ` +
-                        `Долгота: ${data.lon ? Number(data.lon).toFixed(6) : '0.000000'}, ` +
-                        `Высота: ${data.alt ? Number(data.alt).toFixed(2) : '0.00'}, ` +
-                        `Счет в окне: ${data.countw ? data.countw : '0'}`);
+          const data = JSON.parse(event.data);
+          console.log(data);
+          setOnlineMeasurements(currentMeasurements => {
+          // Проверяем, что широта и долгота существуют и не равны null
+          if (data.lat != null && data.lon != null) {
+            const isDuplicate = currentMeasurements.some(item => item.id === data.id);
+            if (!isDuplicate) {
+              // Если элемент уникален, добавляем его в массив
+              return [...currentMeasurements, data];
+            }
+            else
+            {
+              return currentMeasurements;
+            }
+          } else {
+            // Если условие не выполняется, возвращаем текущее состояние без изменений
+            return currentMeasurements;
+          }
+          });
+          setSimulationData(`Время: ${convertToTime(data.datetime)}, Широта: ${data.lat ? Number(data.lat).toFixed(6) : '0.000000'}, ` +
+                            `Долгота: ${data.lon ? Number(data.lon).toFixed(6) : '0.000000'}, ` +
+                            `Высота: ${data.alt ? Number(data.alt).toFixed(2) : '0.00'}, ` +
+                            `Счет в окне: ${data.countw ? data.countw : '0'}`);
         };
 
         ws.onerror = (error) => {
-            console.error('Ошибка WebSocket:', error);
+          console.error('Ошибка WebSocket:', error);
+          // Дополнительное логирование
+          console.log(error.message);
         };
 
         ws.onclose = () => {
@@ -155,6 +166,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   useEffect(() => {
     setValidMeasurements(onlineMeasurements);
     setMeasurements(onlineMeasurements);
+    console.log('onlineMeasurements', onlineMeasurements);
   }, [onlineMeasurements]);
 
   useEffect(() => {
@@ -166,6 +178,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   }, [websocket]);
 
   const handleStartFlight = () => {
+    setOnlineMeasurements([]);
     fetch('/start-flight-simulation', {
       method: 'POST',
       headers: {
@@ -181,14 +194,19 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
     })
     .then(response => response.json())
     .then(data => {
-      console.log('Полет начат:', data);
-      
-      setSelectedDatabase(selectedOnlineDB);
+      //console.log('Полет начат:', data);
+     
+      //setSelectedDatabase(selectedOnlineDB);
 
-      if (data && data.flightId) {
-        console.log('Полет запущен с ID:', data.flightId);
-        setOnlineFlightId(data.flightId); // Сохраняем ID полета
-        setupWebSocket(data.flightId); // Установка WebSocket соединения
+      if (data && data.onlineFlightStatus) {
+        console.log('Полет запущен:', data.onlineFlightStatus);
+        setOnlineFlightId(data.onlineFlightStatus._id); // Сохраняем ID полета
+        setSelectedDatabase(selectedOnlineDB);
+        setSelectedCollection(data.onlineFlightStatus); // Предполагая, что это корректные данные для вашего контекста
+
+        console.log("setupWebSocket из HandleStartFlight");
+        setupWebSocket(data.onlineFlightStatus._id); // Установка WebSocket соединения
+        
         setSnackbarOpen(true);
         setSnackbarMessage('Эмуляция полета запущена');
       } else {
@@ -219,10 +237,10 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
         // Исправление условия на проверку ключа "active"
         if (statusData && statusData.active) {
           console.log('Онлайн-полет активен:', statusData);
-          setOnlineFlightId(statusData.flightId); // Сохраняем ID активного полета
+          setOnlineFlightId(statusData._id); // Сохраняем ID активного полета
           setSelectedDatabase(statusData.dbName); // Устанавливаем выбранную базу данных
           // Установка WebSocket соединения
-          setupWebSocket(statusData.flightId);
+          setupWebSocket(statusData._id);
         } else {
           console.log('Онлайн-полет не активен');
         }
@@ -247,7 +265,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ flightId: onlineFlightId })
+      body: JSON.stringify({ _id: onlineFlightId })
     })
     
     .then(response => {
@@ -258,13 +276,26 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
           websocket.close();
           setWebsocket(null);
         }
-        setSnackbarMessage('Полета остановлен');
+        setSnackbarMessage('Полет остановлен');
+        handleCollectionMenuClose();
       } else {
         console.error('Ошибка остановки полета: HTTP-статус', response.status);
+        setSnackbarMessage('Полет уже остановлен');
+        setOnlineFlightId(null); // Сброс ID симуляции
+        if (websocket) {
+          websocket.close();
+          setWebsocket(null);
+        }
       }
     })
     .catch(error => {
       console.error('Ошибка остановки эмуляции:', error);
+      setSnackbarMessage('Ошибка остановки полета: ', error);
+      setOnlineFlightId(null); // Сброс ID симуляции
+      if (websocket) {
+        websocket.close();
+        setWebsocket(null);
+      }
     });
   };
   
@@ -278,7 +309,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   
   const handleOnlineCollectionNameChange = (event) => {
     setOnlineCollectionName(event.target.value);
-    setSelectedCollection(event.target.value);
+    //setSelectedCollection(event.target.value);
   };
   
   const handleDemoModeChange = (event) => {
@@ -868,14 +899,14 @@ const [settings, setSettings] = useState({}); // Для хранения нас�
   <DialogTitle id="settings-dialog-title">Настройки</DialogTitle>
   {isSettingsLoading ? (
     <DialogContent>
-      <CircularProgress /> // Индикатор загрузки
+      <CircularProgress />
     </DialogContent>
   ) : (
     <DialogContent>
             <TextField
       margin="dense"
       id="NSPCHANNELS"
-      label="Количество каналов NSP"
+      label="Количество спектральных каналов"
       type="number"
       fullWidth
       size = "small"
@@ -886,7 +917,7 @@ const [settings, setSettings] = useState({}); // Для хранения нас�
     <TextField
       margin="dense"
       id="SPECDEFTIME"
-      label="Стандартное время спецификации"
+      label="Частота (скважность) измерений"
       type="number"
       fullWidth
       size = "small"
@@ -930,7 +961,7 @@ const [settings, setSettings] = useState({}); // Для хранения нас�
     <TextField
       margin="dense"
       id="flightsDirectory"
-      label="Каталог полетов"
+      label="Каталог файлов полетов"
       fullWidth
       size = "small"
       variant="outlined"
@@ -1007,13 +1038,13 @@ const [settings, setSettings] = useState({}); // Для хранения нас�
       />
     {/* Для массивов можно использовать сериализацию в JSON или отдельные поля */}
     <div>
-      <div>Коэффициенты ниже 550</div>
+      <div>Коэффициенты полинома для уровня энергии менее 550 кэВ</div>
       {settings.coeffs_below_550 && settings.coeffs_below_550.map((coeff, index) => (
         <TextField
           key={`coeff-below-${index}`}
           margin="dense"
           id={`coeff-below-${index}`}
-          label={`Коэф ${index + 1} (ниже 550)`}
+          label={`Коэфф ${index + 1} (<= 550 кэВ)`}
           fullWidth
           size = "small"
           variant="outlined"
@@ -1023,14 +1054,14 @@ const [settings, setSettings] = useState({}); // Для хранения нас�
       ))}
     </div>
     <div>
-      <div>Коэффициенты выше 550</div>
+      <div>Коэффициенты полинома для уровня энергии более 550 кэВ</div>
       
       {settings.coeffs_above_550 && settings.coeffs_above_550.map((coeff, index) => (
         <TextField
           key={`coeff-above-${index}`}
           margin="dense"
           id={`coeff-above-${index}`}
-          label={`Коэф ${index + 1} (выше 550)`}
+          label={`Коэфф ${index + 1} (> 550 кэВ)`}
           fullWidth
           size = "small"
           variant="outlined"
@@ -1068,12 +1099,12 @@ const [settings, setSettings] = useState({}); // Для хранения нас�
         <div style={{ flexGrow: 1, display: 'flex', justifyContent: 'flex-end' }}>
           {selectedCollection ? (
             <div style={{ color: 'white', fontSize: 'small' }}>
-              <span>{simulationData} | </span>
+              {simulationData && <><span>{simulationData}</span><span> | </span></>}
               <span>{selectedDatabase ? selectedDatabase : ''} | </span>
               <span>{selectedCollection?.description} | </span>
-              <span>{convertDateTime(selectedCollection?.dateTime)} | </span>
-              <span>P0: {selectedCollection?.P0} | </span>
-              <span>P1: {selectedCollection?.P1}</span>        
+              <span>{convertDateTime(selectedCollection?.dateTime)} </span>
+{/*               <span>P0: {selectedCollection?.P0} | </span>
+              <span>P1: {selectedCollection?.P1}</span>    */}     
             </div>
           ) : (
             <div style={{ color: 'white', fontSize: 'small' }}>
@@ -1081,12 +1112,11 @@ const [settings, setSettings] = useState({}); // Для хранения нас�
             </div>
           )}
           
-           {isLoading && (
-        <Backdrop sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1 }} open={isLoading}>
-          <CircularProgress color="inherit" />
-        </Backdrop>
-      )}
-
+          {isLoading && (
+            <Backdrop sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1 }} open={isLoading}>
+              <CircularProgress color="inherit" />
+            </Backdrop>
+          )}
         </div>
 
     </Toolbar>
