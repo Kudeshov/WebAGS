@@ -1001,6 +1001,41 @@ const [settings, setSettings] = useState({}); // Для хранения нас�
       value={settings.altInit}
       onChange={(e) => setSettings({...settings, altInit: e.target.value})}
     />
+      <TextField
+        margin="dense"
+        id="gm1Coeff"
+        label="Коэффициент пересчета ГМ1"
+        type="number"
+        fullWidth
+        size="small"
+        variant="outlined"
+        value={settings.gm1Coeff}
+        onChange={(e) => setSettings({...settings, gm1Coeff: e.target.value})}
+      />
+
+      <TextField
+        margin="dense"
+        id="gm2Coeff"
+        label="Коэффициент пересчета ГМ2"
+        type="number"
+        fullWidth
+        size="small"
+        variant="outlined"
+        value={settings.gm2Coeff}
+        onChange={(e) => setSettings({...settings, gm2Coeff: e.target.value})}
+      />
+
+      <TextField
+        margin="dense"
+        id="winCoeff"
+        label="Коэффициент пересчета Cs (1 окно)"
+        type="number"
+        fullWidth
+        size="small"
+        variant="outlined"
+        value={settings.winCoeff}
+        onChange={(e) => setSettings({...settings, winCoeff: e.target.value})}
+      />
     {/* Для массивов можно использовать сериализацию в JSON или отдельные поля */}
     <div>
       <div>Коэффициенты полинома для уровня энергии менее 550 кэВ</div>

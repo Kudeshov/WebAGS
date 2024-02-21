@@ -338,7 +338,6 @@ app.get('/api/data/:dbname/:collectionId', (req, res) => {
 
     console.log(settings);
 
-    const { gm1Coeff, gm2Coeff, winCoeff } = settings;
 
     // Запрос для получения калибровочных коэффициентов
     const sqlCalibration = `SELECT P0, P1 FROM collection WHERE _id = ?`;
@@ -383,9 +382,9 @@ app.get('/api/data/:dbname/:collectionId', (req, res) => {
 
           const spectrum = new Spectrum(spectrumData, config.SPECDEFTIME);
           const countInWindow = spectrum.valueInChannels(config.winLow, config.winHigh, false);
-          const windose = getDose(countInWindow, row.rHeight, false, 1, 0.0024, 0.0024, 0.0073); 
-          const gmDose1 = getDose(row.geiger1, row.rHeight, true, 1, 0.0024, 0.0024, 0.0073);
-          const gmDose2 = getDose(row.geiger2, row.rHeight, true, 2, 0.0024, 0.0024, 0.0073);
+          const windose = getDose(countInWindow, row.rHeight, false, 1, config.gm1Coeff, config.gm2Coeff, config.winCoeff); 
+          const gmDose1 = getDose(row.geiger1, row.rHeight, true, 1, config.gm1Coeff, config.gm2Coeff, config.winCoeff); 
+          const gmDose2 = getDose(row.geiger2, row.rHeight, true, 2, config.gm1Coeff, config.gm2Coeff, config.winCoeff);
           const height = row.rHeight > config.MAX_ALLOWED_HEIGHT ? 0 : row.rHeight; // Задаем высоту равную 0, если она превышает config.MAX_ALLOWED_HEIGHT
 
           return {
@@ -537,7 +536,9 @@ app.post('/stop-flight-simulation', (req, res) => {
     onlineFlightStatus = {
       _id: null,
       active: false,
+  
       dbName: null,
+  
       description: null,
       winLow: null,
       winHigh: null,
@@ -549,9 +550,11 @@ app.post('/stop-flight-simulation', (req, res) => {
       P2: null,
       P3: null
     };
+
     console.log(`Эмуляция полета ${_id} была остановлена вручную.`);
     res.json({ message: "Эмуляция полета остановлена", _id });
   } else {
+
     console.log( "Эмуляция полета  не найдена", _id);
     res.status(404).json({ message: "Эмуляция полета не найдена", _id });
   }
@@ -612,6 +615,7 @@ function toECEF(lat, lon, alt) {
 }
 
 
+
 const stepSizeLat = 0.00005; // шаг изменения широты
 const stepSizeLon = 0.0001; // шаг изменения долготы
 const meanderLength = 20; // количество шагов в одном направлении до смены направления
@@ -655,6 +659,7 @@ function generateMeasurementData(db, flightId) {
   alt += (Math.random() - 0.5) * 2;
  
   const ecefCoords = toECEF(lat+randomErrorLat, lon+randomErrorLon, alt);
+
   //const winCount = Math.floor(Math.random() * (100 - 20 + 1)) + 20;
 
   // Расчет близости к ближайшему очагу
@@ -681,10 +686,11 @@ function generateMeasurementData(db, flightId) {
   // Время создания записи
   const dateTime = new Date().toISOString();
   // Расчёты дозы
-  let windose = getDose(winCount, alt, false, 1, 0.0024, 0.0024, 0.0073); // Используем функцию getDose для расчета дозы в окне
-  const gmDose1 = getDose(0, alt, true, 1, 0.0024, 0.0024, 0.0073);  
-  const gmDose2 = getDose(0, alt, true, 2, 0.0024, 0.0024, 0.0073);  
-  if (windose>3) {
+
+  const windose = getDose(winCount, alt, false, 1, config.gm1Coeff, config.gm2Coeff, config.winCoeff); // Используем функцию getDose для расчета дозы в окне
+  const gmDose1 = getDose(0, alt, true, 1, config.gm1Coeff, config.gm2Coeff, config.winCoeff); // Примерный вызов для gmdose1 с предположением, что geiger1 = 0
+  const gmDose2 = getDose(0, alt, true, 2, config.gm1Coeff, config.gm2Coeff, config.winCoeff); // Примерный вызов для gmdose2 с предположением, что geiger2 = 0
+if (windose>3) {
     windose = 3
   }
   // SQL запрос на вставку
@@ -722,6 +728,7 @@ function generateMeasurementData(db, flightId) {
       wss.clients.forEach(client => {
           //console.log(`Отправка подготовленных данных 1`);
           if (client.readyState === WebSocket.OPEN) {
+
             //console.log(`Отправка подготовленных данных 2`);
             client.send(JSON.stringify(flightDataForWebSocket));
           }
@@ -747,6 +754,7 @@ app.get('/api/online-measurements', (req, res) => {
 
   // Формируем и выполняем SQL-запрос для получения данных текущего онлайн полета
   const sql = `SELECT * FROM online_measurement WHERE flightId = ? ORDER BY _id DESC`;
+
   db.all(sql, [onlineFlightStatus._id], (err, rows) => {
       if (err) {
           console.error(err.message);
@@ -757,9 +765,9 @@ app.get('/api/online-measurements', (req, res) => {
           const coords = toLLA(row.gpsX, row.gpsY, row.gpsZ);
 
           // Расчёты дозы
-          const windose = getDose(row.winCount, coords.alt, false, 1, 0.0024, 0.0024, 0.0073); // Используем функцию getDose для расчета дозы в окне
-          const gmDose1 = getDose(0, coords.alt, true, 1, 0.0024, 0.0024, 0.0073); // Примерный вызов для gmdose1 с предположением, что geiger1 = 0
-          const gmDose2 = getDose(0, coords.alt, true, 2, 0.0024, 0.0024, 0.0073); // Примерный вызов для gmdose2 с предположением, что geiger2 = 0
+          const windose = getDose(row.winCount, coords.alt, false, 1, config.gm1Coeff, config.gm2Coeff, config.winCoeff); // Используем функцию getDose для расчета дозы в окне
+          const gmDose1 = getDose(0, coords.alt, true, 1,config.gm1Coeff, config.gm2Coeff, config.winCoeff); // Примерный вызов для gmdose1 с предположением, что geiger1 = 0
+          const gmDose2 = getDose(0, coords.alt, true, 2, config.gm1Coeff, config.gm2Coeff, config.winCoeff); // Примерный вызов для gmdose2 с предположением, что geiger2 = 0
  
           return {
               id: row._id,
