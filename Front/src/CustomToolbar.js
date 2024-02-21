@@ -166,7 +166,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   useEffect(() => {
     setValidMeasurements(onlineMeasurements);
     setMeasurements(onlineMeasurements);
-    console.log('onlineMeasurements', onlineMeasurements);
+    //console.log('onlineMeasurements', onlineMeasurements);
   }, [onlineMeasurements]);
 
   useEffect(() => {
@@ -917,7 +917,7 @@ const [settings, setSettings] = useState({}); // Для хранения нас�
     <TextField
       margin="dense"
       id="SPECDEFTIME"
-      label="Частота (скважность) измерений"
+      label="Частота (скважность) измерений, с"
       type="number"
       fullWidth
       size = "small"

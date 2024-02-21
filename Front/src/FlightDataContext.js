@@ -201,7 +201,7 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
     validData = validData.filter(m => 
       (m.height >= heightFilterFrom && m.height <= heightFilterTo)) 
     }
-    console.log('filter by height');
+    //console.log('filter by height');
     setValidMeasurements(validData);
   }, [measurements, heightFilterFrom, heightFilterTo, heightFilterActive]);
 

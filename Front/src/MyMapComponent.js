@@ -480,7 +480,7 @@
 
       setPreviousValidMeasurements(validMeasurements);
     
-      if (!validMeasurements || validMeasurements.length < 3) {
+      if (!validMeasurements || validMeasurements.length < 10) {
         setCachedIsolines({
           lines: [],
           minDose: null,
@@ -605,9 +605,7 @@
   
 
     useEffect(() => {
-
-
-      console.log('validMeasurements.length = ', validMeasurements.length);
+      //console.log('validMeasurements.length = ', validMeasurements.length);
       if (!isIsobandLayerActive) {
         return;
       }
@@ -618,7 +616,7 @@
 
       setPreviousValidMeasurementsBand(validMeasurements);
     
-      if (!validMeasurements || validMeasurements.length < 3) {
+      if (!validMeasurements || validMeasurements.length < 10) {
         setCachedIsobands({ // Обновление состояния для хранения изобендов
           bands: [],
           minDose: null,
