@@ -334,7 +334,6 @@ app.get('/api/data/:dbname/:collectionId', (req, res) => {
 
     console.log(settings);
 
-    const { gm1Coeff, gm2Coeff, winCoeff } = settings;
 
     // Запрос для получения калибровочных коэффициентов
     const sqlCalibration = `SELECT P0, P1 FROM collection WHERE _id = ?`;
@@ -379,9 +378,9 @@ app.get('/api/data/:dbname/:collectionId', (req, res) => {
 
           const spectrum = new Spectrum(spectrumData, config.SPECDEFTIME);
           const countInWindow = spectrum.valueInChannels(config.winLow, config.winHigh, false);
-          const windose = getDose(countInWindow, row.rHeight, false, 1, 0.0024, 0.0024, 0.0073); 
-          const gmDose1 = getDose(row.geiger1, row.rHeight, true, 1, 0.0024, 0.0024, 0.0073);
-          const gmDose2 = getDose(row.geiger2, row.rHeight, true, 2, 0.0024, 0.0024, 0.0073);
+          const windose = getDose(countInWindow, row.rHeight, false, 1, config.gm1Coeff, config.gm2Coeff, config.winCoeff); 
+          const gmDose1 = getDose(row.geiger1, row.rHeight, true, 1, config.gm1Coeff, config.gm2Coeff, config.winCoeff); 
+          const gmDose2 = getDose(row.geiger2, row.rHeight, true, 2, config.gm1Coeff, config.gm2Coeff, config.winCoeff);
           const height = row.rHeight > config.MAX_ALLOWED_HEIGHT ? 0 : row.rHeight; // Задаем высоту равную 0, если она превышает config.MAX_ALLOWED_HEIGHT
 
           return {
@@ -587,9 +586,9 @@ function generateMeasurementData(db, flightId) {
   // Время создания записи
   const dateTime = new Date().toISOString();
   // Расчёты дозы
-  const windose = getDose(winCount, alt, false, 1, 0.0024, 0.0024, 0.0073); // Используем функцию getDose для расчета дозы в окне
-  const gmDose1 = getDose(0, alt, true, 1, 0.0024, 0.0024, 0.0073); // Примерный вызов для gmdose1 с предположением, что geiger1 = 0
-  const gmDose2 = getDose(0, alt, true, 2, 0.0024, 0.0024, 0.0073); // Примерный вызов для gmdose2 с предположением, что geiger2 = 0
+  const windose = getDose(winCount, alt, false, 1, config.gm1Coeff, config.gm2Coeff, config.winCoeff); // Используем функцию getDose для расчета дозы в окне
+  const gmDose1 = getDose(0, alt, true, 1, config.gm1Coeff, config.gm2Coeff, config.winCoeff); // Примерный вызов для gmdose1 с предположением, что geiger1 = 0
+  const gmDose2 = getDose(0, alt, true, 2, config.gm1Coeff, config.gm2Coeff, config.winCoeff); // Примерный вызов для gmdose2 с предположением, что geiger2 = 0
 
   // SQL запрос на вставку
   const insertSql = `INSERT INTO online_measurement (flightId, dateTime, gpsX, gpsY, gpsZ, rHeight, srtmHeight, calcHeight, geiger1, geiger2, winCount) VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, 0, 0, ?)`;
@@ -659,9 +658,9 @@ app.get('/api/online-measurements', (req, res) => {
           const coords = toLLA(row.gpsX, row.gpsY, row.gpsZ);
 
           // Расчёты дозы
-          const windose = getDose(row.winCount, coords.alt, false, 1, 0.0024, 0.0024, 0.0073); // Используем функцию getDose для расчета дозы в окне
-          const gmDose1 = getDose(0, coords.alt, true, 1, 0.0024, 0.0024, 0.0073); // Примерный вызов для gmdose1 с предположением, что geiger1 = 0
-          const gmDose2 = getDose(0, coords.alt, true, 2, 0.0024, 0.0024, 0.0073); // Примерный вызов для gmdose2 с предположением, что geiger2 = 0
+          const windose = getDose(row.winCount, coords.alt, false, 1, config.gm1Coeff, config.gm2Coeff, config.winCoeff); // Используем функцию getDose для расчета дозы в окне
+          const gmDose1 = getDose(0, coords.alt, true, 1,config.gm1Coeff, config.gm2Coeff, config.winCoeff); // Примерный вызов для gmdose1 с предположением, что geiger1 = 0
+          const gmDose2 = getDose(0, coords.alt, true, 2, config.gm1Coeff, config.gm2Coeff, config.winCoeff); // Примерный вызов для gmdose2 с предположением, что geiger2 = 0
  
           return {
               id: row._id,

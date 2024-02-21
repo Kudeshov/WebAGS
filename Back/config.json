@@ -1,5 +1,5 @@
 {
-  "NSPCHANNELS": "9392",
+  "NSPCHANNELS": "238",
   "SPECDEFTIME": 1,
   "winLow": 20,
   "winHigh": 200,
@@ -10,7 +10,7 @@
   "altInit": 25,
   "coeffs_below_550": [
     3.88e-23,
-    -0.067,
+    -6.7e-20,
     4.28e-17,
     -8.48e-15,
     5.97e-13
@@ -21,5 +21,8 @@
     -1.03e-18,
     4.67e-15,
     -9.95e-13
-  ]
+  ],
+  "gm1Coeff": 0.0024,
+  "gm2Coeff": 0.0024,
+  "winCoeff": "0.0073"
 }
