@@ -710,11 +710,21 @@ const [settings, setSettings] = useState({}); // Для хранения нас�
   const updateSettings = () => {
     const updatedSettings = {
       ...settings,
-      winLow: winLowValue,
-      winHigh: winHighValue,
-      // Добавьте остальные настройки для обновления здесь
+      NSPCHANNELS: parseInt(settings.NSPCHANNELS), // Преобразование в целое число 
+      SPECDEFTIME: parseInt(settings.SPECDEFTIME), // Преобразование в целое число
+      winLow: parseInt(settings.winLow), // Преобразование в целое число
+      winHigh: parseInt(settings.winHigh), // Преобразование в целое число
+      MAX_ALLOWED_HEIGHT: settings.MAX_ALLOWED_HEIGHT, // Преобразование в целое число
+      flightsDirectory: settings.flightsDirectory, // Строка остается строкой
+      latInit: parseFloat(settings.latInit), // Преобразование в число с плавающей запятой
+      lonInit: parseFloat(settings.lonInit), // Преобразование в число с плавающей запятой
+      altInit: parseInt(settings.altInit), // Преобразование в целое число
+      coeffs_below_550: settings.coeffs_below_550, // Массив остается массивом
+      coeffs_above_550: settings.coeffs_above_550, // Массив остается массивом
+      gm1Coeff: parseFloat(settings.gm1Coeff), // Преобразование в число с плавающей запятой
+      gm2Coeff: parseFloat(settings.gm2Coeff), // Преобразование в число с плавающей запятой
+      winCoeff: parseFloat(settings.winCoeff) // Преобразование в число с плавающей запятой
     };
-
     fetch('/api/settings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -726,28 +736,6 @@ const [settings, setSettings] = useState({}); // Для хранения нас�
     })
     .catch(error => console.error('Ошибка при обновлении настроек:', error));
   };
-
-
-
-  /* function SettingsDialog({ configSettings, open, onClose, onSave }) {
-    // Создаем локальные состояния для каждого параметра
-    const [localSettings, setLocalSettings] = useState({ ...configSettings });
-  
-    // Обработчик изменения для текстовых полей
-    const handleChange = (name, value) => {
-      setLocalSettings((prevSettings) => ({
-        ...prevSettings,
-        [name]: value,
-      }));
-    };
-  
-    // Обработчик сохранения изменений
-    const handleSave = () => {
-      onSave(localSettings);
-      onClose(); // Закрываем диалог после сохранения
-    };
-  } */
-
 
   return (
     <AppBar position="static" sx={{ height: '64px' }}>
