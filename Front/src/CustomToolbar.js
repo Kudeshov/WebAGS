@@ -40,7 +40,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   const { validMeasurements, setValidMeasurements } = useContext(FlightDataContext);
   const { measurements, setMeasurements } = useContext(FlightDataContext);
   const [selectedOnlineDB, setSelectedOnlineDB] = useState(null);
-
+  
   const { heightFrom } = useContext(FlightDataContext);
   const { heightTo } = useContext(FlightDataContext);
   const { heightFilterFrom, setHeightFilterFrom } = useContext(FlightDataContext);
@@ -48,6 +48,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   const { colorThresholds, setColorThresholds } = useContext(FlightDataContext);  
   const { minDoseValue } = useContext(FlightDataContext);
   const { maxDoseValue } = useContext(FlightDataContext);
+  const { setGlobalSettings } = useContext(FlightDataContext);
   const [openConfirmDialog, setOpenConfirmDialog] = useState(false);
   const [currentColorThresholds, setCurrentColorThresholds ] = useState({
     v0: 0,
@@ -733,6 +734,7 @@ const [settings, setSettings] = useState({}); // Для хранения нас�
     .then(response => response.text())
     .then(result => {
       console.log('Настройки обновлены:', result);
+      setGlobalSettings(updatedSettings); // Обновим глобальные настройки здесь
     })
     .catch(error => console.error('Ошибка при обновлении настроек:', error));
   };

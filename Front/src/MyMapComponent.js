@@ -23,10 +23,6 @@
     shadowUrl: require('leaflet/dist/images/marker-shadow.png'),
   });
 
-  const initialCenter = {
-    lat: 55.704034038232834,
-    lng: 37.62119540524117
-  };
 
   function SpectrumChartWithLabel({ data }) {
     return (
@@ -120,6 +116,8 @@
     const {onlineFlightId, setOnlineFlightId} = useContext(FlightDataContext); // Состояние для хранения ID онлайн полета
     const onlineMeasurementsLayerRef = useRef(null);
     const { onlineMeasurements } = useContext(FlightDataContext);
+    const { globalSettings } = useContext(FlightDataContext);
+
 
     const handlePointClick = (event, measurement) => {
       const nativeEvent = event.originalEvent || event;
@@ -789,7 +787,8 @@
           mapRef.current = mapInstance;
         }}
         id="map" 
-        center={initialCenter} 
+        center={[globalSettings.latInit, globalSettings.lonInit]}
+        //center={[55, 37]}
         zoom={18} 
         style={{ width: '100%', height: 'calc(100vh - 64px)' }}> {/* Убедитесь, что высота вычисляется правильно */}
 

@@ -3,10 +3,10 @@ import { calculateColorThresholds } from './colorUtils';
 import { ExportToCsv } from 'export-to-csv-fix-source-map';
 import { convertDateTime } from './dateUtils';
 
-const initialCenter = {
+/* const initialCenter = {
   lat: 55.704034038232834,
   lng: 37.62119540524117
-};
+}; */
 
 export const FlightDataContext = createContext();
 
@@ -23,7 +23,10 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
   const [minDoseValue, setMinDoseValue] = useState(0);
   const [maxDoseValue, setMaxDoseValue] = useState(3);
 
-  const [geoCenter, setGeoCenter] = useState(initialCenter);
+  const [geoCenter, setGeoCenter] = useState({
+    lat: 55.704034038232834,
+    lng: 37.62119540524117
+  });
   // Глобальные состояния для хранения значений высот полета
   const [heightFrom, setHeightFrom] = useState(0);
   const [heightTo, setHeightTo] = useState(1000);
@@ -40,6 +43,32 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
   const [maxDoseValueR, setMaxDoseValueR] = useState(0);
 
   const [onlineFlightId, setOnlineFlightId] = useState(null); // Состояние для хранения ID онлайн полета
+
+  const [globalSettings, setGlobalSettings] = useState({
+    latInit: 55.704034038232834,
+    lonInit: 37.62119540524117
+  }); // Инициализация состояния для хранения глобальных настроек
+
+  const [isSettingsLoading, setIsSettingsLoading] = useState(false); // Состояние для отслеживания загрузки настроек
+
+    useEffect(() => {
+      const fetchSettings = () => {
+        setIsSettingsLoading(true); // Начало загрузки
+        fetch('/api/settings')
+          .then(response => response.json())
+          .then(data => {
+            setGlobalSettings(data); // Сохранение полученных настроек в состояние
+            console.log('Настройки загружены:', data, data.latInit);
+            // Здесь вы можете инициализировать другие состояния значениями из настроек, если это необходимо
+
+            setGeoCenter({ lat: data.latInit, lng: data.lonInit });
+          })
+          .catch(error => console.error('Ошибка при получении настроек:', error))
+          .finally(() => setIsSettingsLoading(false)); // Загрузка завершена
+      };
+
+      fetchSettings();
+    }, []); // Пустой массив зависимостей означает, что эффект выполнится один раз при монтировании компонента
 
   const [colorThresholds, setColorThresholds ] = useState({
     v0: 0,
@@ -190,7 +219,7 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
 
   useEffect(() => {
     if (onlineFlightId) {
-      setGeoCenter(initialCenter);
+      setGeoCenter({ lat: globalSettings.latInit, lng: globalSettings.lonInit });
     }
   }, [onlineFlightId]);
   
@@ -273,7 +302,9 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
       onlineMeasurements,
       setOnlineMeasurements,
       onlineFlightId,
-      setOnlineFlightId
+      setOnlineFlightId,
+      globalSettings,
+      setGlobalSettings
     }}>
       {children}
     </FlightDataContext.Provider>
