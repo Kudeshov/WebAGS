@@ -5,7 +5,7 @@
   "winHigh": 200,
   "MAX_ALLOWED_HEIGHT": 5000,
   "flightsDirectory": "./flights",
-  "latInit": 56.704034038232834,
+  "latInit": 55.704034038232834,
   "lonInit": 37.62119540524117,
   "altInit": 25,
   "coeffs_below_550": [
