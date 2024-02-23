@@ -8,6 +8,7 @@ import { ReactComponent as CameraIcon } from './icons/camera.svg';
 import { ReactComponent as DownloadIcon } from './icons/download.svg';
 import { ReactComponent as EraserIcon } from './icons/trash.svg';
 import { ReactComponent as CogIcon } from './icons/cog.svg';
+import { ReactComponent as HelicopterIcon } from './icons/helicopter.svg';
 
 import Tooltip from '@mui/material/Tooltip';
 import { useTheme } from '@mui/material/styles';
@@ -83,14 +84,70 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   const [simulationData, setSimulationData] = useState('');
   const [isSettingsLoading, setIsSettingsLoading] = useState(false);
 
-    const handleCoeffChange = (value, index, arrayName) => {
-      const newCoeffs = [...settings[arrayName]]; // Копируем текущий массив
-      newCoeffs[index] = parseFloat(value); // Обновляем конкретный коэффициент по индексу
-      setSettings({...settings, [arrayName]: newCoeffs}); // Обновляем состояние настроек
+  const [websocketConnected, setWebsocketConnected] = useState(false);
+  const [lastDataTimestamp, setLastDataTimestamp] = useState(Date.now());
+
+// Обновление статуса соединения WebSocket
+/* useEffect(() => {
+  if (websocket) {
+    websocket.onopen = () => {
+      setWebsocketConnected(true);
     };
+    websocket.onclose = () => {
+      setWebsocketConnected(false);
+    };
+    websocket.onmessage = (event) => {
+      setLastDataTimestamp(Date.now()); // Обновляем временную метку при получении данных
+    };
+  }
+}, [websocket]); */
 
+// Проверка на отсутствие данных в течение заданного времени (например, 30 секунд)
+useEffect(() => {
+  const interval = setInterval(() => {
+    if (Date.now() - lastDataTimestamp > 30000) { // 30 секунд
+      // Если данных нет более 30 секунд
+      if (websocketConnected) {
+        // Соединение есть, но данных нет
+        setSnackbarMessage('Отсутствуют данные более 30 секунд');
+      }
+    }
+  }, 10000); // Проверяем каждые 10 секунд
 
-  
+  return () => clearInterval(interval);
+}, [lastDataTimestamp, websocketConnected]);
+
+// Индикатор в тулбаре
+const OnlineIndicator = () => {
+  let color = 'red'; // Отсутствие соединения
+  let message = 'Соединение отсутствует';
+  //let color = 'white'; 
+  //let message = '';
+
+  if (websocketConnected) {
+    color = 'lightgreen';
+    message = 'Онлайн-полет активен';
+  }
+
+  if (Date.now() - lastDataTimestamp > 30000) { // 30 секунд без данных
+    color = 'yellow';
+    message = 'Отсутствуют данные более 30 секунд';
+  }
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', color }}>
+      {onlineFlightId && <div><HelicopterIcon style={{fill: /* onlineFlightId?"lightgray": */"white", width: 28, height: 28 }} />   
+      <span>{message}</span></div>}
+    </div>
+  );
+};
+
+  const handleCoeffChange = (value, index, arrayName) => {
+    const newCoeffs = [...settings[arrayName]]; // Копируем текущий массив
+    newCoeffs[index] = parseFloat(value); // Обновляем конкретный коэффициент по индексу
+    setSettings({...settings, [arrayName]: newCoeffs}); // Обновляем состояние настроек
+  };
+
   const handleStartFlightDialogOpen = () => {
 
     if (selectedDatabase) {
@@ -113,18 +170,32 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
     const connectWebSocket = () => {
         // Установка обработчиков событий WebSocket
         ws.onopen = () => {
-            console.log('WebSocket соединение установлено');
+          console.log('WebSocket соединение установлено');
+          setWebsocketConnected(true);
         };
 
         console.log('Установка обработчика ws.onmessage');
         ws.onmessage = (event) => {
           const data = JSON.parse(event.data);
           console.log(data);
+          // Проверка на сообщение о завершении полета
+          if (data.type && data.type === 'flightEnded') {
+            console.log('Полет завершен:', data.flightId);
+            setSnackbarMessage('Полет завершен в штатном режиме');
+            setSnackbarOpen(true); // Открываем Snackbar с сообщением
+            setOnlineFlightId(null); // Сброс ID симуляции
+            if (websocket) {
+              websocket.close(); // Закрытие WebSocket соединения
+              setWebsocket(null);
+            }
+            return; // Завершаем выполнение функции, чтобы не обрабатывать данные дальше
+          }          
           setOnlineMeasurements(currentMeasurements => {
           // Проверяем, что широта и долгота существуют и не равны null
           if (data.lat != null && data.lon != null) {
             const isDuplicate = currentMeasurements.some(item => item.id === data.id);
             if (!isDuplicate) {
+              setLastDataTimestamp(Date.now());
               // Если элемент уникален, добавляем его в массив
               return [...currentMeasurements, data];
             }
@@ -150,12 +221,13 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
         };
 
         ws.onclose = () => {
-            console.log('WebSocket соединение закрыто');
-            setTimeout(() => {
-                console.log('Попытка переподключения...');
-                ws = new WebSocket('ws://localhost:3001');
-                connectWebSocket(); // Попытка переподключения
-            }, 1000); // Переподключение через 1 секунду
+          setWebsocketConnected(false);
+          console.log('WebSocket соединение закрыто');
+          setTimeout(() => {
+              console.log('Попытка переподключения...');
+              ws = new WebSocket('ws://localhost:3001');
+              connectWebSocket(); // Попытка переподключения
+          }, 1000); // Переподключение через 1 секунду
         };
     };
 
@@ -740,6 +812,7 @@ const [settings, setSettings] = useState({}); // Для хранения нас�
   return (
     <AppBar position="static" sx={{ height: '64px' }}>
         <Toolbar >
+        
         <IconButton
           color="inherit"
           onClick={handleDatabaseMenuClick}
@@ -875,7 +948,6 @@ const [settings, setSettings] = useState({}); // Для хранения нас�
             </Tooltip>
           </IconButton>
         </div>       
-
 
         <IconButton color="inherit" onClick={handleSettingsDialogOpen}>
           <Tooltip title="Настройки">
@@ -1083,6 +1155,7 @@ const [settings, setSettings] = useState({}); // Для хранения нас�
             <DownloadIcon style={{ fill: "white", width: 24, height: 24 }} />
           </Tooltip>
         </IconButton>
+        <OnlineIndicator />
 
         <div style={{ flexGrow: 1, display: 'flex', justifyContent: 'flex-end' }}>
           {selectedCollection ? (
