@@ -1,5 +1,5 @@
-  import React, { useEffect, useState, useRef, useContext } from 'react';
-  import { MapContainer, TileLayer, CircleMarker, LayersControl, useMap, GeoJSON } from 'react-leaflet';
+  import React, { useEffect, useState, useRef, useContext, useCallback  } from 'react';
+  import { MapContainer, TileLayer, CircleMarker, LayersControl, useMap } from 'react-leaflet';
   import * as turf from '@turf/turf';  
   import 'leaflet/dist/leaflet.css';
   import L from 'leaflet';
@@ -7,7 +7,7 @@
   import { FeatureGroup } from 'react-leaflet';
   import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
   import { HeatmapLayer } from 'react-leaflet-heatmap-layer-v3';
-  import { getColor, createGradientT, getColorT, calculateScaledThresholds } from './colorUtils';
+  import { getColorT, calculateScaledThresholds } from './colorUtils';
   import RectangularSelection from './RectangularSelection';
 /*   import { ReactComponent as RectangleIcon } from './icons/rectangle-landscape.svg'; */
   import { FlightDataContext } from './FlightDataContext';
@@ -112,18 +112,14 @@
     const isobandLayerRef = useRef(null);
     const [selectMode, setSelectMode] = useState(false);    
     const { selectedPoints, setSelectedPoints } = useContext(FlightDataContext);
-    const { selectionSource, setSelectionSource } = useContext(FlightDataContext);
-    const {onlineFlightId, setOnlineFlightId} = useContext(FlightDataContext); // Состояние для хранения ID онлайн полета
-    const onlineMeasurementsLayerRef = useRef(null);
-    const { onlineMeasurements } = useContext(FlightDataContext);
+    const { setSelectionSource } = useContext(FlightDataContext);
     const { globalSettings } = useContext(FlightDataContext);
 
 
-    const handlePointClick = (event, measurement) => {
+    const handlePointClick = useCallback((event, measurement) => {
       const nativeEvent = event.originalEvent || event;
       const isCtrlPressed = nativeEvent.ctrlKey; // Проверяем, нажата ли клавиша Ctrl
-      //console.log('isCtrlPressed', isCtrlPressed);
-    
+      
       if (isCtrlPressed) {
         // Добавляем точку в массив, если Ctrl нажат
         setSelectedPoints(prevPoints => [...prevPoints, measurement]);
@@ -132,7 +128,7 @@
         setSelectedPoints([measurement]);
       }
       setSelectionSource('map'); // Установка источника выбора в 'map'
-    };
+    }, [setSelectedPoints, setSelectionSource]); // Зависимости для useCallback
 
     useEffect(() => {
       // This assumes there's an array of selected points
@@ -190,38 +186,33 @@
       }
     }, [selectedPoints]); // This useEffect should depend on selectedPoints array
 
-    const calculateAverageSpectrum = (selectedPoints) => {
+    const calculateAverageSpectrum = useCallback((selectedPoints) => {
       if (selectedPoints.length === 0 || !selectedCollection) {
         return [];
       }
     
-      // Проверяем, есть ли спектр у первой выбранной точки и содержит ли он массив каналов
       const hasSpectrumChannels = selectedPoints[0].spectrum && Array.isArray(selectedPoints[0].spectrum.channels);
-
+    
       // Если нет спектра или каналов, возвращаем пустой массив
       if (!hasSpectrumChannels) {
         return [];
       }
-      // Используем значения по умолчанию, если P0 или P1 отсутствуют
       const { P0 = 70, P1 = 11 } = selectedCollection || {};
     
-      // Инициализация массива для суммы спектра
       const sumSpectrum = Array(selectedPoints[0].spectrum.channels.length).fill(0);
     
-      // Суммирование спектров всех выбранных точек
       selectedPoints.forEach(point => {
         point.spectrum.channels.forEach((value, index) => {
           sumSpectrum[index] += value;
         });
       });
     
-      // Вычисление среднего значения спектра
       const avgSpectrum = sumSpectrum.map((value, index) => ({
-        energy: P0 + P1 * index, // Преобразование номера канала в энергию
+        energy: P0 + P1 * index,
         value: value / selectedPoints.length
       }));
       return avgSpectrum;
-    };
+    }, [selectedCollection]);
     
     useEffect(() => {
       // Вызывается каждый раз при изменении selectedPoints
@@ -235,7 +226,7 @@
           );
         }
       }
-    }, [selectedPoints]);
+    }, [selectedPoints, selectedCollection, calculateAverageSpectrum]);
     
 
     useEffect(() => {
@@ -346,7 +337,7 @@
     }, [chartOpen]);
 
     
-    function createInfoControl(map, panelRef) {
+    const createInfoControl = useCallback((map, panelRef) => {
       var control = L.control({ position: 'bottomright' });
     
       control.onAdd = function() {
@@ -359,7 +350,7 @@
       };
     
       control.addTo(map);
-  
+    
       const printPlugin = L.easyPrint({
         title: 'Моя карта',
         position: 'topright',
@@ -369,38 +360,38 @@
         hideControlContainer: true,
         hidden: true // Скрываем кнопку на карте
       }).addTo(map);
-
-  
+    
       // Задаем функцию в контекст
       setSaveMapAsImage(() => () => printPlugin.printMap('CurrentSize', 'myMap'));
-    }
-
-    function createSpectrumControl(map) {
+    }, [setSaveMapAsImage]); // Указываем зависимости
+    
+    const createSpectrumControl = useCallback((map) => {
       const spectrumControl = L.control({ position: 'bottomright' });
     
-      spectrumControl.onAdd = function () {
+      spectrumControl.onAdd = function() {
         spectrumPanelRef.current = L.DomUtil.create('div', 'spectrum-panel');
         L.DomEvent.disableClickPropagation(spectrumPanelRef.current);
         // Создаем корень для рендеринга компонента
         const root = createRoot(spectrumPanelRef.current);
         spectrumPanelRef.current._root = root; // Сохраняем корень в свойстве для последующего доступа
-        root.render(<SpectrumChartWithLabel data={spectrumData}/*  isLoading={isLoading} */ />);
+        root.render(<SpectrumChartWithLabel data={spectrumData} />);
         return spectrumPanelRef.current;
       };
     
       spectrumControl.addTo(map);
-          // Изначально скрываем панель
+      // Изначально скрываем панель
       if (spectrumPanelRef.current && !chartOpen) {
         spectrumPanelRef.current.style.display = 'none';
       }
-    }
+    }, [spectrumData, chartOpen]); // Указываем зависимости
+    
 
     useEffect(() => {
       if (mapInstance) {
         createSpectrumControl(mapInstance);
         createInfoControl(mapInstance, infoPanelRef);
       }
-    }, [mapInstance]);
+    }, [mapInstance, createSpectrumControl, createInfoControl]);
 
     useEffect(() => {
       // Обновляем содержимое панели при изменении selectedMeasurement
@@ -441,11 +432,10 @@
           Мощность дозы ГМ1: ${averageMeasurement.gmdose1} мкЗв/час`        
         }
       }
-    }, [averageMeasurement]);
+    }, [averageMeasurement, averageDiapasone, selectedPoints.length]);
 
-    const legendControlRef = useRef(null);
 
-    const updateLegend = (thresholds, minValue, maxValue) => {
+   /*  const updateLegend = (thresholds, minValue, maxValue) => {
       if (legendControlRef.current) {
         const div = legendControlRef.current.getContainer();
         const gradientStyle = `background: linear-gradient(to top, ${createGradientT(thresholds, minValue, maxValue)});`;
@@ -462,7 +452,7 @@
           </div>
         `;
       }
-    };
+    }; */
 
     const [previousValidMeasurements, setPreviousValidMeasurements] = useState();
     const [previousValidMeasurementsBand, setPreviousValidMeasurementsBand] = useState();
@@ -555,7 +545,7 @@
           isolineLayerRef.current = null;
         }
       }
-    }, [isIsolineLayerActive, cachedIsolines, mapInstance, colorThresholds]);    
+    }, [isIsolineLayerActive, cachedIsolines, mapInstance, colorThresholds, maxDoseValue, minDoseValue ]);    
 
     useEffect(() => {
       if (isIsobandLayerActive && mapInstance) {
@@ -599,7 +589,7 @@
           isobandLayerRef.current = null;
         }
       }
-    }, [isIsobandLayerActive, cachedIsobands, mapInstance, colorThresholds]);
+    }, [isIsobandLayerActive, cachedIsobands, mapInstance, colorThresholds, maxDoseValue, minDoseValue]);
   
 
     useEffect(() => {
@@ -656,27 +646,13 @@
 
   const measurementsLayerRef = useRef(null);
 
-  const toggleSelectMode = () => {
-    setSelectMode(!selectMode);
-  };
+  const toggleSelectMode = useCallback(() => {
+    setSelectMode(prevSelectMode => !prevSelectMode);
+  }, [setSelectMode]);
 
-  useEffect(() => {
-    if (mapInstance) {
-      if (!mapInstance.selectionModeControl) {
-        createSelectionModeControl(mapInstance, toggleSelectMode);
-      }
-    }
-  }, [mapInstance]);
+ 
   
-  useEffect(() => {
-    if (mapInstance?.selectionModeControl) {
-      const container = mapInstance.selectionModeControl.getContainer();
-      if (container) {
-        container.innerHTML = getSvgContent(selectMode);
-        container.title = updateTitle(selectMode);
-      }
-    }
-  }, [selectMode]);
+ 
 
   const getSvgContent = (selectMode) => {
     return selectMode
@@ -691,7 +667,7 @@
       : "Перейти в режим выделения"; 
   }
 
-  function createSelectionModeControl(map, onToggleSelectMode) {
+  const createSelectionModeControl = useCallback((map) => {
     const SelectionModeControl = L.Control.extend({
       onAdd: function(map) {
         const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-custom');
@@ -699,16 +675,17 @@
         container.style.width = '30px';
         container.style.height = '30px';
         container.style.display = 'flex';
-        container.style.alignItems = 'center'; // Центрирование по вертикали
-        container.style.justifyContent = 'center'; // Центрирование по горизонтали
-        container.title = updateTitle(selectMode);
-        container.innerHTML = getSvgContent(selectMode); // Инициализация с текущим состоянием selectMode
-        // Стили для эффекта затемнения при наведении
+        container.style.alignItems = 'center';
+        container.style.justifyContent = 'center';
+        container.title = selectMode ? "Перейти в режим навигации" : "Перейти в режим выделения";
+        container.innerHTML = selectMode
+          ? '<svg ...>...</svg>' // SVG для активного режима выделения
+          : '<svg ...>...</svg>'; // SVG для стандартного режима
         container.onmouseover = function() {
-          this.style.backgroundColor = 'rgba(244,244,244)'; // Затемнение
+          this.style.backgroundColor = 'rgba(244,244,244)';
         };
         container.onmouseout = function() {
-          this.style.backgroundColor = 'white'; // Возвращение к исходному состоянию
+          this.style.backgroundColor = 'white';
         };
         container.onclick = function() {
           setSelectMode(prevSelectMode => !prevSelectMode);
@@ -725,7 +702,26 @@
     selectionModeControl.addTo(map);
     // Сохранение ссылки на контрол в свойство карты
     map.selectionModeControl = selectionModeControl;
-  }
+  }, [selectMode, setSelectMode]); // Зависимости для useCallback
+  
+  useEffect(() => {
+    if (mapInstance) {
+      if (!mapInstance.selectionModeControl) {
+        createSelectionModeControl(mapInstance, toggleSelectMode);
+      }
+    }
+  }, [mapInstance, toggleSelectMode, createSelectionModeControl]);
+
+  useEffect(() => {
+    if (mapInstance?.selectionModeControl) {
+      const container = mapInstance.selectionModeControl.getContainer();
+      if (container) {
+        container.innerHTML = getSvgContent(selectMode);
+        container.title = updateTitle(selectMode);
+      }
+    }
+    //, mapInstance.selectionModeControl 
+  }, [selectMode]);
 
   useEffect(() => {
     if (!measurementsLayerRef.current || !colorThresholds) {
@@ -751,7 +747,7 @@
       .on('click', (event) => handlePointClick(event, measurement));
     });
   
-  }, [validMeasurements, colorThresholds, selectedPoints, minDoseValue, maxDoseValue]);
+  }, [validMeasurements, colorThresholds, selectedPoints, minDoseValue, maxDoseValue, handlePointClick]);
   
 
   const [windowSize, setWindowSize] = useState({
@@ -785,7 +781,7 @@
       <MapContainer
         whenCreated={(mapInstance) => {
           mapRef.current = mapInstance;
-        }}
+        }} 
         id="map" 
         center={[globalSettings.latInit, globalSettings.lonInit]}
         //center={[55, 37]}

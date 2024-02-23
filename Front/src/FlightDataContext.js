@@ -1,7 +1,7 @@
 import React, { createContext, useState, useEffect, useCallback } from 'react';
 import { calculateColorThresholds } from './colorUtils';
-import { ExportToCsv } from 'export-to-csv-fix-source-map';
-import { convertDateTime } from './dateUtils';
+/* import { ExportToCsv } from 'export-to-csv-fix-source-map';
+import { convertDateTime } from './dateUtils'; */
 
 /* const initialCenter = {
   lat: 55.704034038232834,
@@ -41,7 +41,7 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
 
   const [minDoseValueR, setMinDoseValueR] = useState(0); //округленные до 2 знаков значения доз для отображения в слайдере
   const [maxDoseValueR, setMaxDoseValueR] = useState(0);
-
+ 
   const [onlineFlightId, setOnlineFlightId] = useState(null); // Состояние для хранения ID онлайн полета
 
   const [globalSettings, setGlobalSettings] = useState({
@@ -49,11 +49,11 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
     lonInit: 37.62119540524117
   }); // Инициализация состояния для хранения глобальных настроек
 
-  const [isSettingsLoading, setIsSettingsLoading] = useState(false); // Состояние для отслеживания загрузки настроек
+  //const [isSettingsLoading, setIsSettingsLoading] = useState(false); // Состояние для отслеживания загрузки настроек
 
     useEffect(() => {
       const fetchSettings = () => {
-        setIsSettingsLoading(true); // Начало загрузки
+        //setIsSettingsLoading(true); // Начало загрузки
         fetch('/api/settings')
           .then(response => response.json())
           .then(data => {
@@ -63,8 +63,8 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
 
             setGeoCenter({ lat: data.latInit, lng: data.lonInit });
           })
-          .catch(error => console.error('Ошибка при получении настроек:', error))
-          .finally(() => setIsSettingsLoading(false)); // Загрузка завершена
+          .catch(error => console.error('Ошибка при получении настроек:', error));
+          //.finally(() => setIsSettingsLoading(false)); // Загрузка завершена
       };
 
       fetchSettings();
@@ -78,7 +78,7 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
   });
 
 
-  const optionsCSV = {
+  /* const optionsCSV = {
     filename: 'exported_data',
     fieldSeparator: ';',
     quoteStrings: '"',
@@ -86,12 +86,12 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
     showLabels: true, 
     useTextFile: false,
     useBom: true,
-/*     useKeysAsHeaders: true, */
+/*     useKeysAsHeaders: true, 
     headers: ['Дата и время', 'Широта', 'Долгота', 'Высота GPS', 'Барометрическая высота', 'Мощность дозы по окну', 'Доза']
   };
-
+ */
   // Функция для сохранения данных в файл
-  const saveDataToFile = useCallback(() => {
+  /* //const saveDataToFile = useCallback(() => {
     const formattedData = validMeasurements.map(item => ({
       datetime: convertDateTime(item.datetime),
       lat: item.lat,
@@ -100,11 +100,11 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
       height: item.height, // Барометрическая высота
       dosew: item.dosew, // Мощность дозы по окну
       dose: item.dose
-    }));
+    })); 
 
     const csvExporter = new ExportToCsv(optionsCSV);
     csvExporter.generateCsv(formattedData);
-  }, [validMeasurements]);
+  }, [validMeasurements]); */
 
   const [isLoadingFlight, setIsLoadingFlight] = useState(false);
 
@@ -123,7 +123,7 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
         })
         .catch(error => console.error('Ошибка при загрузке списка коллекций:', error));
     }
-  }, [selectedDatabase]);
+  }, [selectedDatabase, onlineFlightId]);
 
   useEffect(() => {
     //console.log('вызвана fetchCollections из useEffect')
@@ -178,7 +178,7 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
           setIsLoadingFlight(false); // Заканчиваем загрузку
         });
     }
-  }, [selectedDatabase, selectedCollection]);
+  }, [selectedDatabase, selectedCollection, onlineFlightId, onHeightFilterActive, onColorOverrideActive]);
   
   useEffect(() => {
     fetchMeasurements();
@@ -221,7 +221,7 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
     if (onlineFlightId) {
       setGeoCenter({ lat: globalSettings.latInit, lng: globalSettings.lonInit });
     }
-  }, [onlineFlightId]);
+  }, [onlineFlightId, globalSettings.latInit, globalSettings.lonInit]);
   
 
   const filterMeasurementsByHeight = useCallback(() => {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useRef, useLayoutEffect} from 'react';
+import React, { useState, useEffect, useContext} from 'react';
 import { ReactComponent as PlaneIcon } from './icons/plane.svg';
 import { ReactComponent as AnalyticsIcon } from './icons/table.svg';
 import { ReactComponent as ChartIcon } from './icons/chart-bar.svg';
@@ -16,52 +16,37 @@ import { AppBar, Grid, Toolbar, IconButton, Menu, MenuItem, ListSubheader, Dialo
 import { FlightDataContext } from './FlightDataContext';
 import Snackbar from '@mui/material/Snackbar';
 import Divider from '@mui/material/Divider';
-import { createGradientT, calculateColorThresholds } from './colorUtils';
 import CircularProgress from '@mui/material/CircularProgress';
 import Backdrop from '@mui/material/Backdrop';
 import { convertDateTime, convertToTime } from './dateUtils';
 
 const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, onHeightFilterActive, heightFilterActive,
-    handleThreeDToggle, threeDActive, settingsOpen, onColorOverrideActive, colorOverrideActive }) => {
+    handleThreeDToggle, threeDActive, settingsOpen,}) => {
 
   const { selectedCollection, setSelectedCollection } = useContext(FlightDataContext);
   const { selectedDatabase, setSelectedDatabase } = useContext(FlightDataContext);
   const { onlineMeasurements, setOnlineMeasurements } = useContext(FlightDataContext);
-  const [unitMenuAnchorEl, setUnitMenuAnchorEl] = useState(null);
-  const [settingsMenuAnchorEl, setSettingsMenuAnchorEl] = useState(null);
+
   
   const [filterMenuAnchorE2, setDatabaseMenuAnchorE2] = useState(null);
   const [filterMenuAnchorCollection, setDatabaseMenuAnchorCollection] = useState(null);
 
   const [flightOptions, setFlightOptions] = useState([]);
   const [collectionOptions, setCollectionOptions] = useState([]);
-  const [heightFilterDialogOpen, setHeightFilterDialogOpen] = useState(false);
-  const [colorLegendFilterDialogOpen, setColorLegendFilterDialogOpen] = useState(false);
-  const { validMeasurements, setValidMeasurements } = useContext(FlightDataContext);
-  const { measurements, setMeasurements } = useContext(FlightDataContext);
+  const {setValidMeasurements } = useContext(FlightDataContext);
+  const {setMeasurements } = useContext(FlightDataContext);
   const [selectedOnlineDB, setSelectedOnlineDB] = useState(null);
   
-  const { heightFrom } = useContext(FlightDataContext);
-  const { heightTo } = useContext(FlightDataContext);
-  const { heightFilterFrom, setHeightFilterFrom } = useContext(FlightDataContext);
-  const { heightFilterTo, setHeightFilterTo } = useContext(FlightDataContext);
-  const { colorThresholds, setColorThresholds } = useContext(FlightDataContext);  
-  const { minDoseValue } = useContext(FlightDataContext);
-  const { maxDoseValue } = useContext(FlightDataContext);
+  
   const { setGlobalSettings } = useContext(FlightDataContext);
-  const [openConfirmDialog, setOpenConfirmDialog] = useState(false);
-  const [currentColorThresholds, setCurrentColorThresholds ] = useState({
+  const [setOpenConfirmDialog] = useState(false);
+/*   const [setCurrentColorThresholds ] = useState({
     v0: 0,
     v1: 0,
     v2: 0,
     v3: 0,
-  });
+  }); */
 
-  const [minDoseValueR, setMinDoseValueR] = useState(0);
-  const [maxDoseValueR, setMaxDoseValueR] = useState(0);
-
-  const [localHeightFrom, setLocalHeightFrom] = useState(-1000);
-  const [localHeightTo, setLocalHeightTo] = useState(1000);
 
   const { saveMapAsImage } = useContext(FlightDataContext);
   const { saveDataToFile } = useContext(FlightDataContext);
@@ -168,7 +153,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
     setValidMeasurements(onlineMeasurements);
     setMeasurements(onlineMeasurements);
     //console.log('onlineMeasurements', onlineMeasurements);
-  }, [onlineMeasurements]);
+  }, [onlineMeasurements, setMeasurements, setValidMeasurements]);
 
   useEffect(() => {
     return () => {
@@ -252,6 +237,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   
     // Выполнение функции проверки статуса онлайн-полета при инициализации
     checkOnlineFlightStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Пустой массив зависимостей означает, что эффект выполнится один раз при монтировании компонента
  
 
@@ -317,11 +303,6 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
     setIsDemoMode(event.target.checked);
   };
   
-  const handleOpenConfirmDialog = (databaseName) => {
-    setDatabaseToDelete(databaseName);
-    setOpenConfirmDialog(true);
-  };
-
   
   const handleOpenDeleteDialog = (databaseName) => {
     setDatabaseToDelete(databaseName);
@@ -421,43 +402,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
     document.getElementById('fileInput').click();
   };
 
-  useEffect(() => {
-    setLocalHeightFrom(heightFrom);
-  }, [heightFrom]);
 
-  useEffect(() => {
-    setLocalHeightTo(heightTo);
-  }, [heightTo]);
-
-  // Функции для открытия и закрытия диалогового окна
-  const handleHeightFilterClickOpen = () => {
-    setHeightFilterDialogOpen(true);
-  };
-
-  const handleHeightFilterClose = () => {
-    setHeightFilterDialogOpen(false);
-  };
-
-    // Функции для обновления локальных состояний
-    const handleLocalHeightFromChange = (event) => {
-      setLocalHeightFrom(event.target.value);
-    };
-  
-    const handleLocalHeightToChange = (event) => {
-      setLocalHeightTo(event.target.value);
-    };
-  
-  // Функция применения фильтра
-  const applyHeightFilter = () => {
-    // Обновление глобального состояния или контекста с новыми значениями
-    setHeightFilterFrom(localHeightFrom);
-    setHeightFilterTo(localHeightTo);
-     
-    onHeightFilterActive(true);
-
-    // Закрытие диалогового окна
-    setHeightFilterDialogOpen(false);
-  };
 
    const theme = useTheme();
 
@@ -482,13 +427,13 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
       });
   }, []);
 
-  useEffect(() => {
+/*   useEffect(() => {
     const newThresholds = calculateColorThresholds(minDoseValue, maxDoseValue);
     setCurrentColorThresholds(newThresholds);
     setMinDoseValueR(parseFloat(newThresholds.v0));
     setMaxDoseValueR(parseFloat(newThresholds.v3));
   }, [minDoseValue, maxDoseValue]);
-
+ */
   useEffect(() => {
     if (!selectedDatabase) return;
     fetch(`/api/collection/${selectedDatabase}`)
@@ -560,50 +505,11 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
     setDatabaseMenuAnchorCollection(null);
   };
 
-  const handleUnitMenuClick = (event) => {
-    setUnitMenuAnchorEl(event.currentTarget);
-  };
-
-  const handleUnitMenuClose = () => {
-    setUnitMenuAnchorEl(null);
-  };
-
-  const handleSettingsMenuClick = (event) => {
-    setSettingsMenuAnchorEl(event.currentTarget);
-  };
-
-  const handleSettingsMenuClose = () => {
-    setSettingsMenuAnchorEl(null);
-  };
-
-  const handleColorLegendFilterClickOpen = () => {
-    setColorLegendFilterDialogOpen(true);
-  };
-
-  const handleColorLegendFilterClose = () => {
-    setColorLegendFilterDialogOpen(false);
-  };
-
-  const applyColorLegendFilter = () => {
-    setColorThresholds( currentColorThresholds );
-    setColorLegendFilterDialogOpen(false);
-    onColorOverrideActive(true);
-  };
   
-  const onColorLegendFilterActive = (isActive) => {
-  };
   
-  const legendControlRef = useRef(null);
+  
 
-  const GradientLegend = ({ thresholds, minValue, maxValue }) => {
-    const gradientStyle = {
-      background: `linear-gradient(to top, ${createGradientT(thresholds, minValue, maxValue)})`,
-      width: '20px',
-      height: '234px',
-      marginLeft: '10px',
-    };
-    return <div style={gradientStyle}></div>;
-  };
+
 
   const handleSaveDatabase = async (databaseName) => {
     try {
@@ -730,7 +636,7 @@ const [settings, setSettings] = useState({}); // Для хранения нас�
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updatedSettings),
-    })
+    }) 
     .then(response => response.text())
     .then(result => {
       console.log('Настройки обновлены:', result);
