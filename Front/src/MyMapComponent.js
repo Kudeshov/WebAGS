@@ -7,6 +7,7 @@
   import { FeatureGroup } from 'react-leaflet';
   import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
   import { HeatmapLayer } from 'react-leaflet-heatmap-layer-v3';
+
   import { getColorT, calculateScaledThresholds } from './colorUtils';
   import RectangularSelection from './RectangularSelection';
 /*   import { ReactComponent as RectangleIcon } from './icons/rectangle-landscape.svg'; */
@@ -715,7 +716,7 @@
   useEffect(() => {
     if (mapInstance?.selectionModeControl) {
       const container = mapInstance.selectionModeControl.getContainer();
-      if (container) {
+       if (container) {
         container.innerHTML = getSvgContent(selectMode);
         container.title = updateTitle(selectMode);
       }

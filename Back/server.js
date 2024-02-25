@@ -465,7 +465,7 @@ app.post('/start-flight-simulation', (req, res) => {
         flightSimulations[_id] = {
           interval: setInterval(() => {
             // Добавляем проверку на существование flightSimulations[_id] перед доступом к iterations
-            if (flightSimulations[_id] && flightSimulations[_id].iterations < 500) {
+            if (flightSimulations[_id] && flightSimulations[_id].iterations < 50) {
               generateMeasurementData(db, _id);
               flightSimulations[_id].iterations++;
             } else {
@@ -487,15 +487,18 @@ app.post('/start-flight-simulation', (req, res) => {
                 P2: null,
                 P3: null
               };
+
+              wss.clients.forEach(client => {
+                if (client.readyState === WebSocket.OPEN) {
+                  client.send(JSON.stringify({ type: 'flightEnded', _id, message: 'Симуляция полета завершена' }));
+                }
+              });
+
               console.log(`Симуляция полета ${_id} достигла лимита итераций и была остановлена.`);
             }
           }, 1000),
           iterations: 0
         };
-
-/*         flightSimulations[_id] = setInterval(() => {
-          generateMeasurementData(db, _id);
-        }, 1000); */
 
         onlineFlightStatus = {
           _id,
@@ -530,15 +533,12 @@ app.post('/stop-flight-simulation', (req, res) => {
     // Останавливаем интервал, используя сохранённый идентификатор
     clearInterval(flightSimulations[_id].interval);
 
-    //clearInterval(flightSimulations[_id]);
     delete flightSimulations[_id];
 
     onlineFlightStatus = {
       _id: null,
       active: false,
-  
       dbName: null,
-  
       description: null,
       winLow: null,
       winHigh: null,
@@ -553,6 +553,13 @@ app.post('/stop-flight-simulation', (req, res) => {
 
     console.log(`Эмуляция полета ${_id} была остановлена вручную.`);
     res.json({ message: "Эмуляция полета остановлена", _id });
+
+    wss.clients.forEach(client => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(JSON.stringify({ type: 'flightEnded', _id, message: 'Симуляция полета остановлена вручную' }));
+      }
+    });
+
   } else {
 
     console.log( "Эмуляция полета  не найдена", _id);
@@ -563,21 +570,6 @@ app.post('/stop-flight-simulation', (req, res) => {
 app.get('/api/online-flight-status', (req, res) => {
   res.json(onlineFlightStatus);
 });
-
-function formatDateTimeISO(date) {
-  const pad = (number) => number.toString().padStart(2, '0');
-
-  const year = date.getFullYear();
-  const month = pad(date.getMonth() + 1); // Месяцы в JavaScript начинаются с 0
-  const day = pad(date.getDate());
-  const hours = pad(date.getHours());
-  const minutes = pad(date.getMinutes());
-  const seconds = pad(date.getSeconds());
-  const milliseconds = date.getMilliseconds().toString().padStart(3, '0'); // Убедитесь, что миллисекунды трехзначные
-
-  // Форматирование строки в требуемый формат
-  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}.${milliseconds}`;
-}
 
 function createFlightRecord(db, dbName, flightName, winLow, winHigh, callback) {
   //const dateTime = formatDateTimeISO(new Date());
@@ -613,8 +605,6 @@ function toECEF(lat, lon, alt) {
     z: Math.round(Z * 100)  // Округляем и умножаем на 100
   };
 }
-
-
 
 const stepSizeLat = 0.00005; // шаг изменения широты
 const stepSizeLon = 0.0001; // шаг изменения долготы
