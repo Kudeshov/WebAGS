@@ -136,15 +136,21 @@ const OnlineIndicator = () => {
   }
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', color }}>
-      {onlineFlightId && <div><HelicopterIcon style={{fill: /* onlineFlightId?"lightgray": */"white", width: 28, height: 28 }} />   
-      <span>{message}</span></div>}
-    </div>
-  );
+    <span style={{ marginLeft: '70px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', color}}>
+      {onlineFlightId && 
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <PlaneIcon style={{fill: "white", width: 24, height: 24 }} />   
+          <span style={{ marginLeft: '10px' }}>{message}</span>
+        </div>
+        }
+      </div>
+    </span>
+);
 };
 
   const handleCoeffChange = (value, index, arrayName) => {
-    const newCoeffs = [...settings[arrayName]]; // Копируем текущий массив
+    const newCoeffs = [...settings[arrayName]]; // Копируем текущий массив 
     newCoeffs[index] = parseFloat(value); // Обновляем конкретный коэффициент по индексу
     setSettings({...settings, [arrayName]: newCoeffs}); // Обновляем состояние настроек
   };
@@ -172,6 +178,7 @@ const OnlineIndicator = () => {
         // Установка обработчиков событий WebSocket
         ws.onopen = () => {
           console.log('WebSocket соединение установлено');
+          setLastDataTimestamp(Date.now());
           setWebsocketConnected(true);
         };
 
