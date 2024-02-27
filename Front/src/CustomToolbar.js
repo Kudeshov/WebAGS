@@ -27,6 +27,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   const { selectedCollection, setSelectedCollection } = useContext(FlightDataContext);
   const { selectedDatabase, setSelectedDatabase } = useContext(FlightDataContext);
   const { onlineMeasurements, setOnlineMeasurements } = useContext(FlightDataContext);
+  const { databaseName, setDatabaseName} = useContext(FlightDataContext);
 
   
   const [filterMenuAnchorE2, setDatabaseMenuAnchorE2] = useState(null);
@@ -34,7 +35,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
 
   const [flightOptions, setFlightOptions] = useState([]);
   const [collectionOptions, setCollectionOptions] = useState([]);
-  const {setValidMeasurements } = useContext(FlightDataContext);
+  const {validMeasurements, setValidMeasurements } = useContext(FlightDataContext);
   const {setMeasurements } = useContext(FlightDataContext);
   const [selectedOnlineDB, setSelectedOnlineDB] = useState(null);
   
@@ -264,7 +265,7 @@ const OnlineIndicator = () => {
       //setSelectedDatabase(selectedOnlineDB);
 
       if (data && data.onlineFlightStatus) {
-        console.log('Полет запущен:', data.onlineFlightStatus);
+        console.log('Полет запущен:', selectedOnlineDB);
         setOnlineFlightId(data.onlineFlightStatus._id); // Сохраняем ID полета
         setSelectedDatabase(selectedOnlineDB);
         setSelectedCollection(data.onlineFlightStatus); // Предполагая, что это корректные данные для вашего контекста
@@ -462,6 +463,7 @@ const OnlineIndicator = () => {
       if (response.ok) {
         handleSnackbarOpen(`Файл базы данных ${file.name} загружен`);
         // Вызываем setSelectedDatabase с именем файла без расширения
+        console.log('3',fileNameWithoutExtension);
         setSelectedDatabase(fileNameWithoutExtension);
       } else {
         // Отображение сообщения об ошибке от сервера
@@ -573,6 +575,8 @@ const OnlineIndicator = () => {
  
   const handleFlightSelect = (dbName) => {
     setSelectedCollection(null); // Установим в null перед получением новых коллекций
+    console.log('2',dbName);
+    setDatabaseName(dbName);
     setSelectedDatabase(dbName);
     // Закрыть меню после выбора
     setDatabaseMenuAnchorE2(null);
@@ -1058,16 +1062,20 @@ const [settings, setSettings] = useState({}); // Для хранения нас�
           onClick={saveMapAsImage}
         >
           <Tooltip title="Сохранить экран карты">
-            <CameraIcon style={{ fill: "white", width: 24, height: 24 }} />
+            <CameraIcon 
+            style={{ fill: "white", width: 24, height: 24 }} />
           </Tooltip>
         </IconButton>
 
         <IconButton
           color="inherit"
+          disabled={validMeasurements.length === 0}
           onClick={saveDataToFile}
         >
           <Tooltip title="Сохранить данные">
-            <DownloadIcon style={{ fill: "white", width: 24, height: 24 }} />
+            <DownloadIcon
+            
+            style={{ fill: validMeasurements.length === 0?"lightgray": "white", width: 24, height: 24 }} />
           </Tooltip>
         </IconButton>
        <OnlineIndicator/> 
