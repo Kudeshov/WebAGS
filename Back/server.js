@@ -14,8 +14,6 @@ let config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
 
 app.use(express.json());
 
-//const flightsDirectory = './flights'; // Укажите путь к папке с файлами
-
 // Получение всех настроек
 app.get('/api/settings', (req, res) => {
   fs.readFile(configPath, 'utf8', (err, data) => {
@@ -411,8 +409,6 @@ app.get('/api/data/:dbname/:collectionId', (req, res) => {
   });
 });
 
-app.use(express.json());
-
 // Предполагается, что config.flightsDirectory определена ранее в вашем коде
 function ensureDatabaseExists(newDbName) {
   return new Promise((resolve, reject) => {
@@ -465,7 +461,7 @@ app.post('/start-flight-simulation', (req, res) => {
         flightSimulations[_id] = {
           interval: setInterval(() => {
             // Добавляем проверку на существование flightSimulations[_id] перед доступом к iterations
-            if (flightSimulations[_id] && flightSimulations[_id].iterations < 50) {
+            if (flightSimulations[_id] && flightSimulations[_id].iterations < 500) {
               generateMeasurementData(db, _id);
               flightSimulations[_id].iterations++;
             } else {

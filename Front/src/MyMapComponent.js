@@ -1,5 +1,5 @@
-  import React, { useEffect, useState, useRef, useContext } from 'react';
-  import { MapContainer, TileLayer, CircleMarker, LayersControl, useMap, GeoJSON } from 'react-leaflet';
+  import React, { useEffect, useState, useRef, useContext, useCallback  } from 'react';
+  import { MapContainer, TileLayer, CircleMarker, LayersControl, useMap } from 'react-leaflet';
   import * as turf from '@turf/turf';  
   import 'leaflet/dist/leaflet.css';
   import L from 'leaflet';
@@ -7,7 +7,7 @@
   import { FeatureGroup } from 'react-leaflet';
   import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
   import { HeatmapLayer } from 'react-leaflet-heatmap-layer-v3';
-  import { createGradientT, getColorT, calculateScaledThresholds } from './colorUtils';
+  import { getColorT, calculateScaledThresholds } from './colorUtils';
   import RectangularSelection from './RectangularSelection';
 /*   import { ReactComponent as RectangleIcon } from './icons/rectangle-landscape.svg'; */
   import { FlightDataContext } from './FlightDataContext';
@@ -112,12 +112,11 @@
     const isobandLayerRef = useRef(null);
     const [selectMode, setSelectMode] = useState(false);    
     const { selectedPoints, setSelectedPoints } = useContext(FlightDataContext);
-    const { selectionSource, setSelectionSource } = useContext(FlightDataContext);
-    const {onlineFlightId, setOnlineFlightId} = useContext(FlightDataContext); // Состояние для хранения ID онлайн полета
+    const { setSelectionSource } = useContext(FlightDataContext);
+/*     const {onlineFlightId, setOnlineFlightId} = useContext(FlightDataContext); // Состояние для хранения ID онлайн полета
     const onlineMeasurementsLayerRef = useRef(null);
-    const { onlineMeasurements } = useContext(FlightDataContext);
+    const { onlineMeasurements } = useContext(FlightDataContext); */
     const { globalSettings } = useContext(FlightDataContext);
-
 
     const handlePointClick = (event, measurement) => {
       const nativeEvent = event.originalEvent || event;
@@ -190,7 +189,7 @@
       }
     }, [selectedPoints]); // This useEffect should depend on selectedPoints array
 
-    const calculateAverageSpectrum = (selectedPoints) => {
+    const calculateAverageSpectrum = useCallback((selectedPoints) => {
       if (selectedPoints.length === 0 || !selectedCollection) {
         return [];
       }
@@ -221,7 +220,7 @@
         value: value / selectedPoints.length
       }));
       return avgSpectrum;
-    };
+    }, [selectedCollection]);
     
     useEffect(() => {
       // Вызывается каждый раз при изменении selectedPoints
@@ -235,7 +234,7 @@
           );
         }
       }
-    }, [selectedPoints]);
+    }, [selectedPoints, calculateAverageSpectrum, selectedCollection]);
     
 
     useEffect(() => {
@@ -441,11 +440,10 @@
           Мощность дозы ГМ1: ${averageMeasurement.gmdose1} мкЗв/час`        
         }
       }
-    }, [averageMeasurement]);
+    }, [averageMeasurement, averageDiapasone, selectedPoints.length]);
 
-    const legendControlRef = useRef(null);
 
-    const updateLegend = (thresholds, minValue, maxValue) => {
+   /*  const updateLegend = (thresholds, minValue, maxValue) => {
       if (legendControlRef.current) {
         const div = legendControlRef.current.getContainer();
         const gradientStyle = `background: linear-gradient(to top, ${createGradientT(thresholds, minValue, maxValue)});`;
@@ -462,7 +460,7 @@
           </div>
         `;
       }
-    };
+    }; */
 
     const [previousValidMeasurements, setPreviousValidMeasurements] = useState();
     const [previousValidMeasurementsBand, setPreviousValidMeasurementsBand] = useState();
@@ -555,7 +553,7 @@
           isolineLayerRef.current = null;
         }
       }
-    }, [isIsolineLayerActive, cachedIsolines, mapInstance, colorThresholds]);    
+    }, [isIsolineLayerActive, cachedIsolines, mapInstance, colorThresholds, maxDoseValue, minDoseValue]);    
 
     useEffect(() => {
       if (isIsobandLayerActive && mapInstance) {
@@ -599,7 +597,7 @@
           isobandLayerRef.current = null;
         }
       }
-    }, [isIsobandLayerActive, cachedIsobands, mapInstance, colorThresholds]);
+    }, [isIsobandLayerActive, cachedIsobands, mapInstance, colorThresholds, maxDoseValue, minDoseValue]);
   
 
     useEffect(() => {
@@ -788,7 +786,6 @@
         }}
         id="map" 
         center={[globalSettings.latInit, globalSettings.lonInit]}
-        //center={[55, 37]}
         zoom={18} 
         style={{ width: '100%', height: 'calc(100vh - 64px)' }}> {/* Убедитесь, что высота вычисляется правильно */}
 
