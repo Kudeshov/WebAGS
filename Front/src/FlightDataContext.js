@@ -15,6 +15,7 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
   const [selectedCollection, setSelectedCollection] = useState(null);
   const [measurements, setMeasurements] = useState([]);
   const [onlineMeasurements, setOnlineMeasurements] = useState([]);
+  const [databaseName, setDatabaseName] = useState('');
 
   const [validMeasurements, setValidMeasurements] = useState([]);
   const [selectedPoints, setSelectedPoints] = useState([]);
@@ -77,9 +78,11 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
     v3: 3,
   });
 
-
+  const date = new Date();
+  const formatDate = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
+  const formatTime = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`;  const saveDataToFile = useCallback(() => {
   const optionsCSV = {
-    filename: 'exported_data',
+    filename: `${databaseName}_${formatDate}_${formatTime}`,
     fieldSeparator: ';',
     quoteStrings: '"',
     decimalSeparator: '.',
@@ -90,8 +93,7 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
     headers: ['Дата и время', 'Широта', 'Долгота', 'Высота GPS', 'Барометрическая высота', 'Мощность дозы по окну', 'Доза']
   };
 
-  // Функция для сохранения данных в файл
-  const saveDataToFile = useCallback(() => {
+  
     const formattedData = validMeasurements.map(item => ({
       datetime: convertDateTime(item.datetime),
       lat: item.lat,
@@ -195,6 +197,7 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
           console.log('statusData', statusData);
           
           setOnlineFlightId(statusData._id); // Сохраняем ID активного онлайн-полета
+          console.log('1',statusData.dbName);
           setSelectedDatabase(statusData.dbName); // Устанавливаем активную базу данных
           setSelectedCollection(statusData);
           // Загружаем данные текущего онлайн-полета
@@ -305,7 +308,9 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
       setOnlineFlightId,
       globalSettings,
       setGlobalSettings,
-      saveDataToFile
+      saveDataToFile,
+      databaseName,
+      setDatabaseName
     }}>
       {children}
     </FlightDataContext.Provider>
