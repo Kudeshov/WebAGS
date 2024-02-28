@@ -177,6 +177,7 @@ const OnlineIndicator = () => {
             setSnackbarMessage('Полет завершен в штатном режиме');
             setSnackbarOpen(true); // Открываем Snackbar с сообщением
             setOnlineFlightId(null); // Сброс ID симуляции
+            setSimulationData('');
             if (websocket) {
               websocket.close(); // Закрытие WebSocket соединения
               setWebsocket(null);
@@ -338,6 +339,7 @@ const OnlineIndicator = () => {
       if(response.ok) {
         // Действия после успешного останова симуляции
         setOnlineFlightId(null); // Сброс ID симуляции
+        setSimulationData('');
         if (websocket) {
           websocket.close();
           setWebsocket(null);
@@ -348,6 +350,7 @@ const OnlineIndicator = () => {
         console.error('Ошибка остановки полета: HTTP-статус', response.status);
         setSnackbarMessage('Полет уже остановлен');
         setOnlineFlightId(null); // Сброс ID симуляции
+        setSimulationData('');
         if (websocket) {
           websocket.close();
           setWebsocket(null);
@@ -358,6 +361,7 @@ const OnlineIndicator = () => {
       console.error('Ошибка остановки эмуляции:', error);
       setSnackbarMessage('Ошибка остановки полета: ', error);
       setOnlineFlightId(null); // Сброс ID симуляции
+      setSimulationData('');
       if (websocket) {
         websocket.close();
         setWebsocket(null);
