@@ -211,7 +211,10 @@ const OnlineIndicator = () => {
           console.log('WebSocket соединение закрыто');
           setTimeout(() => {
               console.log('Попытка переподключения...');
-              ws = new WebSocket('ws://localhost:3001');
+              const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+              const wsHost = process.env.REACT_APP_WEBSOCKET_HOST || window.location.host;
+              console.log(wsProtocol, wsHost);
+              let ws = new WebSocket(`${wsProtocol}//${wsHost}`);
               connectWebSocket(); // Попытка переподключения
           }, 1000); // Переподключение через 1 секунду
         };
