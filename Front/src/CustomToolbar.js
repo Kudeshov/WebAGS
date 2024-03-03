@@ -39,16 +39,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   const {setMeasurements } = useContext(FlightDataContext);
   const [selectedOnlineDB, setSelectedOnlineDB] = useState(null);
   
-  
   const { setGlobalSettings } = useContext(FlightDataContext);
-  const [setOpenConfirmDialog] = useState(false);
-/*   const [setCurrentColorThresholds ] = useState({
-    v0: 0,
-    v1: 0,
-    v2: 0,
-    v3: 0,
-  }); */
-
 
   const { saveMapAsImage } = useContext(FlightDataContext);
   const { saveDataToFile } = useContext(FlightDataContext);
@@ -74,51 +65,51 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   const [websocketConnected, setWebsocketConnected] = useState(false);
   const [lastDataTimestamp, setLastDataTimestamp] = useState(Date.now());
 
-// Проверка на отсутствие данных в течение заданного времени (например, 30 секунд)
-useEffect(() => {
-  const interval = setInterval(() => {
-    if (Date.now() - lastDataTimestamp > 30000) { // 30 секунд
-      // Если данных нет более 30 секунд
-      if (websocketConnected) {
-        // Соединение есть, но данных нет
-        setSnackbarMessage('Отсутствуют данные более 30 секунд');
-      }
-    }
-  }, 10000); // Проверяем каждые 10 секунд
-
-  return () => clearInterval(interval);
-}, [lastDataTimestamp, websocketConnected]);
-
-// Индикатор в тулбаре
-const OnlineIndicator = () => {
-  let color = 'red'; // Отсутствие соединения
-  let message = 'Соединение отсутствует';
-  //let color = 'white'; 
-  //let message = '';
-
-  if (websocketConnected) {
-    color = 'lightgreen';
-    message = 'Онлайн-полет активен';
-  }
-
-  if (Date.now() - lastDataTimestamp > 30000) { // 30 секунд без данных
-    color = 'yellow';
-    message = 'Отсутствуют данные более 30 секунд';
-  }
-
-  return (
-    <span style={{ marginLeft: '70px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', color}}>
-      {onlineFlightId && 
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          <PlaneIcon style={{fill: "white", width: 24, height: 24 }} />   
-          <span style={{ marginLeft: '10px' }}>{message}</span>
-        </div>
+  // Проверка на отсутствие данных в течение заданного времени (например, 30 секунд)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (Date.now() - lastDataTimestamp > 30000) { // 30 секунд
+        // Если данных нет более 30 секунд
+        if (websocketConnected) {
+          // Соединение есть, но данных нет
+          setSnackbarMessage('Отсутствуют данные более 30 секунд');
         }
-      </div>
-    </span>
-);
-};
+      }
+    }, 10000); // Проверяем каждые 10 секунд
+
+    return () => clearInterval(interval);
+  }, [lastDataTimestamp, websocketConnected]);
+
+  // Индикатор в тулбаре
+  const OnlineIndicator = () => {
+    let color = 'red'; // Отсутствие соединения
+    let message = 'Соединение отсутствует';
+    //let color = 'white'; 
+    //let message = '';
+
+    if (websocketConnected) {
+      color = 'lightgreen';
+      message = 'Онлайн-полет активен';
+    }
+
+    if (Date.now() - lastDataTimestamp > 30000) { // 30 секунд без данных
+      color = 'yellow';
+      message = 'Отсутствуют данные более 30 секунд';
+    }
+
+    return (
+      <span style={{ marginLeft: '70px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', color}}>
+        {onlineFlightId && 
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <PlaneIcon style={{fill: "white", width: 24, height: 24 }} />   
+            <span style={{ marginLeft: '10px' }}>{message}</span>
+          </div>
+          }
+        </div>
+      </span>
+  );
+  };
 
   const handleCoeffChange = (value, index, arrayName) => {
     const newCoeffs = [...settings[arrayName]]; // Копируем текущий массив 
@@ -148,9 +139,6 @@ const OnlineIndicator = () => {
     const wsHost = process.env.REACT_APP_WEBSOCKET_HOST || window.location.host;
     console.log(wsProtocol, wsHost);
     let ws = new WebSocket(`${wsProtocol}//${wsHost}`);
-  
-//    let ws = new WebSocket('ws://localhost:3001');
-
     const connectWebSocket = () => {
         // Установка обработчиков событий WebSocket
         ws.onopen = () => {
@@ -506,13 +494,6 @@ const OnlineIndicator = () => {
       });
   }, []);
 
-/*   useEffect(() => {
-    const newThresholds = calculateColorThresholds(minDoseValue, maxDoseValue);
-    setCurrentColorThresholds(newThresholds);
-    setMinDoseValueR(parseFloat(newThresholds.v0));
-    setMaxDoseValueR(parseFloat(newThresholds.v3));
-  }, [minDoseValue, maxDoseValue]);
- */
   useEffect(() => {
     if (!selectedDatabase) return;
     fetch(`/api/collection/${selectedDatabase}`)
@@ -586,12 +567,6 @@ const OnlineIndicator = () => {
     setDatabaseMenuAnchorCollection(null);
   };
 
-  
-  
-  
-
-
-
   const handleSaveDatabase = async (databaseName) => {
     try {
       // Перед началом загрузки, установите isLoading в true
@@ -628,54 +603,48 @@ const OnlineIndicator = () => {
       // Обработка ошибки (например, отображение уведомления пользователю)
     }
   };
-const handleCloseConfirmDialog = () => {
-  setOpenConfirmDialog(false);
-};
 
-const handleDeleteDatabase = async () => {
-  try {
-      handleDatabaseMenuClose(); // Закрыть меню базы данных при начале удаления
-      const response = await fetch(`/api/deleteDatabase/${databaseToDelete}`, {
-          method: 'DELETE',
-      });
-      const textResponse = await response.text(); // Получение текста ответа
+  const handleDeleteDatabase = async () => {
+    try {
+        handleDatabaseMenuClose(); // Закрыть меню базы данных при начале удаления
+        const response = await fetch(`/api/deleteDatabase/${databaseToDelete}`, {
+            method: 'DELETE',
+        });
+        const textResponse = await response.text(); // Получение текста ответа
 
-      if (response.ok) {
-          handleSnackbarOpen(`База данных '${databaseToDelete}' успешно удалена.`);
-      } else {
-          // Отображение сообщения об ошибке от сервера
-          handleSnackbarOpen(textResponse);
-      }
-  } catch (error) {
-      handleSnackbarOpen('Ошибка при удалении файла');
-      console.error('Ошибка при удалении файла:', error);
-  } finally {
-      //setDatabaseMenuAnchorE2(null); // Закрыть меню после отправки файла
-      handleCloseConfirmDialog(); // Закрыть диалог подтверждения
-  }
-};
+        if (response.ok) {
+            handleSnackbarOpen(`База данных '${databaseToDelete}' успешно удалена.`);
+        } else {
+            // Отображение сообщения об ошибке от сервера
+            handleSnackbarOpen(textResponse);
+        }
+    } catch (error) {
+        handleSnackbarOpen('Ошибка при удалении файла');
+        console.error('Ошибка при удалении файла:', error);
+    }
+  };
 
-// Состояние для отслеживания текущего ввода в Autocomplete
-const [dbInputValue, setDbInputValue] = useState('');
+  // Состояние для отслеживания текущего ввода в Autocomplete
+  const [dbInputValue, setDbInputValue] = useState('');
 
-const handleInputChange = (event, newInputValue) => {
-  setDbInputValue(newInputValue);
-};
+  const handleInputChange = (event, newInputValue) => {
+    setDbInputValue(newInputValue);
+  };
 
-// Функция проверки валидности введенных данных
-const isStartFlightButtonDisabled = () => {
-  // Обеспечиваем, что переменные будут строками перед использованием trim()
-  const isDBSelectedOrInputValid = dbInputValue?.trim() || '';
-  const isFlightNameValid = onlineFlightName?.trim() || '';
-  const isWinLowValid = !isNaN(winLowValue) && parseInt(winLowValue, 10) > 0;
-  const isWinHighValid = !isNaN(winHighValue) && parseInt(winHighValue, 10) > 0;
-  const isWindowRangeValid = isWinLowValid && isWinHighValid && parseInt(winLowValue, 10) < parseInt(winHighValue, 10);
+  // Функция проверки валидности введенных данных
+  const isStartFlightButtonDisabled = () => {
+    // Обеспечиваем, что переменные будут строками перед использованием trim()
+    const isDBSelectedOrInputValid = dbInputValue?.trim() || '';
+    const isFlightNameValid = onlineFlightName?.trim() || '';
+    const isWinLowValid = !isNaN(winLowValue) && parseInt(winLowValue, 10) > 0;
+    const isWinHighValid = !isNaN(winHighValue) && parseInt(winHighValue, 10) > 0;
+    const isWindowRangeValid = isWinLowValid && isWinHighValid && parseInt(winLowValue, 10) < parseInt(winHighValue, 10);
 
-  return !isDBSelectedOrInputValid || !isFlightNameValid || !isWindowRangeValid;
-};
+    return !isDBSelectedOrInputValid || !isFlightNameValid || !isWindowRangeValid;
+  };
 
 
-const [settings, setSettings] = useState({}); // Для хранения настроек из config.json
+  const [settings, setSettings] = useState({}); // Для хранения настроек из config.json
 
   // Функция для загрузки настроек при открытии диалога
   const fetchSettings = () => {
@@ -873,187 +842,187 @@ const [settings, setSettings] = useState({}); // Для хранения нас�
         </IconButton>
 
         <Dialog open={settingsDialogOpen} onClose={handleSettingsDialogClose} aria-labelledby="settings-dialog-title">
-  <DialogTitle id="settings-dialog-title">Настройки</DialogTitle>
-  {isSettingsLoading ? (
-    <DialogContent>
-      <CircularProgress />
-    </DialogContent>
-  ) : (
-    <DialogContent>
+          <DialogTitle id="settings-dialog-title">Настройки</DialogTitle>
+          {isSettingsLoading ? (
+            <DialogContent>
+              <CircularProgress />
+            </DialogContent>
+          ) : (
+            <DialogContent>
+                    <TextField
+              margin="dense"
+              id="NSPCHANNELS"
+              label="Количество спектральных каналов"
+              type="number"
+              fullWidth
+              size = "small"
+              variant="outlined"
+              value={settings.NSPCHANNELS}
+              onChange={(e) => setSettings({...settings, NSPCHANNELS: e.target.value})}
+            />
             <TextField
-      margin="dense"
-      id="NSPCHANNELS"
-      label="Количество спектральных каналов"
-      type="number"
-      fullWidth
-      size = "small"
-      variant="outlined"
-      value={settings.NSPCHANNELS}
-      onChange={(e) => setSettings({...settings, NSPCHANNELS: e.target.value})}
-    />
-    <TextField
-      margin="dense"
-      id="SPECDEFTIME"
-      label="Частота (скважность) измерений, с"
-      type="number"
-      fullWidth
-      size = "small"
-      variant="outlined"
-      value={settings.SPECDEFTIME}
-      onChange={(e) => setSettings({...settings, SPECDEFTIME: e.target.value})}
-    />
-    <TextField
-      margin="dense"
-      id="winLow"
-      label="Нижняя граница окна"
-      type="number"
-      fullWidth
-      size = "small"
-      variant="outlined"
-      value={settings.winLow}
-      onChange={(e) => setSettings({...settings, winLow: e.target.value})}
-    />
-    <TextField
-      margin="dense"
-      id="winHigh"
-      label="Верхняя граница окна"
-      type="number"
-      fullWidth
-      size = "small"
-      variant="outlined"
-      value={settings.winHigh}
-      onChange={(e) => setSettings({...settings, winHigh: e.target.value})}
-    />
-    <TextField
-      margin="dense"
-      id="MAX_ALLOWED_HEIGHT"
-      label="Максимально допустимая высота"
-      type="number"
-      fullWidth
-      size = "small"
-      variant="outlined"
-      value={settings.MAX_ALLOWED_HEIGHT}
-      onChange={(e) => setSettings({...settings, MAX_ALLOWED_HEIGHT: e.target.value})}
-    />
-    <TextField
-      margin="dense"
-      id="flightsDirectory"
-      label="Каталог файлов полетов"
-      fullWidth
-      size = "small"
-      variant="outlined"
-      value={settings.flightsDirectory}
-      onChange={(e) => setSettings({...settings, flightsDirectory: e.target.value})}
-    />
-    <TextField
-      margin="dense"
-      id="latInit"
-      label="Исходная широта"
-      type="number"
-      fullWidth
-      size = "small"
-      variant="outlined"
-      value={settings.latInit}
-      onChange={(e) => setSettings({...settings, latInit: e.target.value})}
-    />
-    <TextField
-      margin="dense"
-      id="lonInit"
-      label="Исходная долгота"
-      type="number"
-      fullWidth
-      size = "small"
-      variant="outlined"
-      value={settings.lonInit}
-      onChange={(e) => setSettings({...settings, lonInit: e.target.value})}
-    />
-    <TextField
-      margin="dense"
-      id="altInit"
-      label="Исходная высота"
-      type="number"
-      fullWidth
-      size = "small"
-      variant="outlined"
-      value={settings.altInit}
-      onChange={(e) => setSettings({...settings, altInit: e.target.value})}
-    />
-      <TextField
-        margin="dense"
-        id="gm1Coeff"
-        label="Коэффициент пересчета ГМ1"
-        type="number"
-        fullWidth
-        size="small"
-        variant="outlined"
-        value={settings.gm1Coeff}
-        onChange={(e) => setSettings({...settings, gm1Coeff: e.target.value})}
-      />
+              margin="dense"
+              id="SPECDEFTIME"
+              label="Частота (скважность) измерений, с"
+              type="number"
+              fullWidth
+              size = "small"
+              variant="outlined"
+              value={settings.SPECDEFTIME}
+              onChange={(e) => setSettings({...settings, SPECDEFTIME: e.target.value})}
+            />
+            <TextField
+              margin="dense"
+              id="winLow"
+              label="Нижняя граница окна"
+              type="number"
+              fullWidth
+              size = "small"
+              variant="outlined"
+              value={settings.winLow}
+              onChange={(e) => setSettings({...settings, winLow: e.target.value})}
+            />
+            <TextField
+              margin="dense"
+              id="winHigh"
+              label="Верхняя граница окна"
+              type="number"
+              fullWidth
+              size = "small"
+              variant="outlined"
+              value={settings.winHigh}
+              onChange={(e) => setSettings({...settings, winHigh: e.target.value})}
+            />
+            <TextField
+              margin="dense"
+              id="MAX_ALLOWED_HEIGHT"
+              label="Максимально допустимая высота"
+              type="number"
+              fullWidth
+              size = "small"
+              variant="outlined"
+              value={settings.MAX_ALLOWED_HEIGHT}
+              onChange={(e) => setSettings({...settings, MAX_ALLOWED_HEIGHT: e.target.value})}
+            />
+            <TextField
+              margin="dense"
+              id="flightsDirectory"
+              label="Каталог файлов полетов"
+              fullWidth
+              size = "small"
+              variant="outlined"
+              value={settings.flightsDirectory}
+              onChange={(e) => setSettings({...settings, flightsDirectory: e.target.value})}
+            />
+            <TextField
+              margin="dense"
+              id="latInit"
+              label="Исходная широта"
+              type="number"
+              fullWidth
+              size = "small"
+              variant="outlined"
+              value={settings.latInit}
+              onChange={(e) => setSettings({...settings, latInit: e.target.value})}
+            />
+            <TextField
+              margin="dense"
+              id="lonInit"
+              label="Исходная долгота"
+              type="number"
+              fullWidth
+              size = "small"
+              variant="outlined"
+              value={settings.lonInit}
+              onChange={(e) => setSettings({...settings, lonInit: e.target.value})}
+            />
+            <TextField
+              margin="dense"
+              id="altInit"
+              label="Исходная высота"
+              type="number"
+              fullWidth
+              size = "small"
+              variant="outlined"
+              value={settings.altInit}
+              onChange={(e) => setSettings({...settings, altInit: e.target.value})}
+            />
+              <TextField
+                margin="dense"
+                id="gm1Coeff"
+                label="Коэффициент пересчета ГМ1"
+                type="number"
+                fullWidth
+                size="small"
+                variant="outlined"
+                value={settings.gm1Coeff}
+                onChange={(e) => setSettings({...settings, gm1Coeff: e.target.value})}
+              />
 
-      <TextField
-        margin="dense"
-        id="gm2Coeff"
-        label="Коэффициент пересчета ГМ2"
-        type="number"
-        fullWidth
-        size="small"
-        variant="outlined"
-        value={settings.gm2Coeff}
-        onChange={(e) => setSettings({...settings, gm2Coeff: e.target.value})}
-      />
+              <TextField
+                margin="dense"
+                id="gm2Coeff"
+                label="Коэффициент пересчета ГМ2"
+                type="number"
+                fullWidth
+                size="small"
+                variant="outlined"
+                value={settings.gm2Coeff}
+                onChange={(e) => setSettings({...settings, gm2Coeff: e.target.value})}
+              />
 
-      <TextField
-        margin="dense"
-        id="winCoeff"
-        label="Коэффициент пересчета Cs (1 окно)"
-        type="number"
-        fullWidth
-        size="small"
-        variant="outlined"
-        value={settings.winCoeff}
-        onChange={(e) => setSettings({...settings, winCoeff: e.target.value})}
-      />
-    {/* Для массивов можно использовать сериализацию в JSON или отдельные поля */}
-    <div>
-      <div>Коэффициенты полинома для уровня энергии менее 550 кэВ</div>
-      {settings.coeffs_below_550 && settings.coeffs_below_550.map((coeff, index) => (
-        <TextField
-          key={`coeff-below-${index}`}
-          margin="dense"
-          id={`coeff-below-${index}`}
-          label={`Коэфф ${index + 1} (<= 550 кэВ)`}
-          fullWidth
-          size = "small"
-          variant="outlined"
-          value={coeff}
-          onChange={(e) => handleCoeffChange(e.target.value, index, 'coeffs_below_550')}
-        />
-      ))}
-    </div>
-    <div>
-      <div>Коэффициенты полинома для уровня энергии более 550 кэВ</div>
-      
-      {settings.coeffs_above_550 && settings.coeffs_above_550.map((coeff, index) => (
-        <TextField
-          key={`coeff-above-${index}`}
-          margin="dense"
-          id={`coeff-above-${index}`}
-          label={`Коэфф ${index + 1} (> 550 кэВ)`}
-          fullWidth
-          size = "small"
-          variant="outlined"
-          value={coeff}
-          onChange={(e) => handleCoeffChange(e.target.value, index, 'coeffs_above_550')}
-        />
-      ))}
-    </div>
-    </DialogContent>
-  )}
-  <DialogActions>
-    <Button onClick={handleSettingsDialogClose}>Отмена</Button>
-    <Button onClick={() => handleSaveSettings(settings)} disabled={isSettingsLoading}>Сохранить</Button>
-  </DialogActions>
-</Dialog>
+              <TextField
+                margin="dense"
+                id="winCoeff"
+                label="Коэффициент пересчета Cs (1 окно)"
+                type="number"
+                fullWidth
+                size="small"
+                variant="outlined"
+                value={settings.winCoeff}
+                onChange={(e) => setSettings({...settings, winCoeff: e.target.value})}
+              />
+            {/* Для массивов можно использовать сериализацию в JSON или отдельные поля */}
+            <div>
+              <div>Коэффициенты полинома для уровня энергии менее 550 кэВ</div>
+              {settings.coeffs_below_550 && settings.coeffs_below_550.map((coeff, index) => (
+                <TextField
+                  key={`coeff-below-${index}`}
+                  margin="dense"
+                  id={`coeff-below-${index}`}
+                  label={`Коэфф ${index + 1} (<= 550 кэВ)`}
+                  fullWidth
+                  size = "small"
+                  variant="outlined"
+                  value={coeff}
+                  onChange={(e) => handleCoeffChange(e.target.value, index, 'coeffs_below_550')}
+                />
+              ))}
+            </div>
+            <div>
+              <div>Коэффициенты полинома для уровня энергии более 550 кэВ</div>
+              
+              {settings.coeffs_above_550 && settings.coeffs_above_550.map((coeff, index) => (
+                <TextField
+                  key={`coeff-above-${index}`}
+                  margin="dense"
+                  id={`coeff-above-${index}`}
+                  label={`Коэфф ${index + 1} (> 550 кэВ)`}
+                  fullWidth
+                  size = "small"
+                  variant="outlined"
+                  value={coeff}
+                  onChange={(e) => handleCoeffChange(e.target.value, index, 'coeffs_above_550')}
+                />
+              ))}
+            </div>
+            </DialogContent>
+          )}
+          <DialogActions>
+            <Button onClick={handleSettingsDialogClose}>Отмена</Button>
+            <Button onClick={() => handleSaveSettings(settings)} disabled={isSettingsLoading}>Сохранить</Button>
+          </DialogActions>
+        </Dialog>
 
         <IconButton
           color="inherit"
@@ -1085,9 +1054,7 @@ const [settings, setSettings] = useState({}); // Для хранения нас�
               {simulationData && <><span>{simulationData}</span><span> | </span></>}
               <span>{selectedDatabase ? selectedDatabase : ''} | </span>
               <span>{selectedCollection?.description} | </span>
-              <span>{convertDateTime(selectedCollection?.dateTime)} </span>
-{/*               <span>P0: {selectedCollection?.P0} | </span>
-              <span>P1: {selectedCollection?.P1}</span>    */}     
+              <span>{convertDateTime(selectedCollection?.dateTime)} </span>   
             </div>
           ) : (
             <div style={{ color: 'white', fontSize: 'small' }}>
