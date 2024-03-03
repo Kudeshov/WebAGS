@@ -113,10 +113,8 @@
     const [selectMode, setSelectMode] = useState(false);    
     const { selectedPoints, setSelectedPoints } = useContext(FlightDataContext);
     const { setSelectionSource } = useContext(FlightDataContext);
-/*     const {onlineFlightId, setOnlineFlightId} = useContext(FlightDataContext); // Состояние для хранения ID онлайн полета
-    const onlineMeasurementsLayerRef = useRef(null);
-    const { onlineMeasurements } = useContext(FlightDataContext); */
     const { globalSettings } = useContext(FlightDataContext);
+    const { selectedDatabase } = useContext(FlightDataContext);
 
     const handlePointClick = (event, measurement) => {
       const nativeEvent = event.originalEvent || event;
@@ -237,6 +235,7 @@
     }, [selectedPoints, calculateAverageSpectrum, selectedCollection]);
     
 
+
     useEffect(() => {
       if (selectedPoints.length > 0) {
         let minDose = Infinity, maxDose = -Infinity;
@@ -344,6 +343,24 @@
       }
     }, [chartOpen]);
 
+    const selectedDatabaseRef = useRef(selectedDatabase);
+
+    // Обновляем ссылку при каждом изменении selectedDatabase
+    useEffect(() => {
+      selectedDatabaseRef.current = selectedDatabase;
+    }, [selectedDatabase]);
+
+      // Функция для формирования имени файла
+      const generateFileName = useCallback(() => {
+        const date = new Date();
+        const formatDate = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
+        const formatTime = `${date.getHours().toString().padStart(2, '0')}${date.getMinutes().toString().padStart(2, '0')}${date.getSeconds().toString().padStart(2, '0')}`;
+        const dbName = selectedDatabaseRef.current; // Используем значение из ссылки
+        if (dbName) {
+          return `${dbName}_${formatDate}_${formatTime}`;
+        }
+        return `map_${formatDate}_${formatTime}`;
+      }, []);
     
     function createInfoControl(map, panelRef) {
       var control = L.control({ position: 'bottomright' });
@@ -363,7 +380,7 @@
         title: 'Моя карта',
         position: 'topright',
         sizeModes: ['Current', 'A4Landscape', 'A4Portrait'],
-        filename: 'myMap',
+        filename: generateFileName(),
         exportOnly: true,
         hideControlContainer: true,
         hidden: true // Скрываем кнопку на карте
@@ -371,7 +388,13 @@
 
   
       // Задаем функцию в контекст
-      setSaveMapAsImage(() => () => printPlugin.printMap('CurrentSize', 'myMap'));
+      //setSaveMapAsImage(() => () => printPlugin.printMap('CurrentSize', generateFileName()));
+
+      setSaveMapAsImage(() => () => {
+        // Устанавливаем актуальное имя файла непосредственно перед сохранением
+        printPlugin.options.filename = generateFileName();
+        printPlugin.printMap('CurrentSize', printPlugin.options.filename);
+      });
     }
 
     function createSpectrumControl(map) {

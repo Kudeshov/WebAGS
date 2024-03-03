@@ -466,7 +466,11 @@ app.post('/start-flight-simulation', (req, res) => {
               flightSimulations[_id].iterations++;
             } else {
               // В случае если flightSimulations[_id] уже не существует, очищаем интервал без ошибок
-              clearInterval(flightSimulations[_id]?.interval);
+              if (flightSimulations[_id]) {
+                clearInterval(flightSimulations[_id].interval);
+                delete flightSimulations[_id];
+              }
+              //clearInterval(flightSimulations[_id]?.interval);
               delete flightSimulations[_id];
               onlineFlightStatus = {
                 _id: null,
@@ -492,7 +496,7 @@ app.post('/start-flight-simulation', (req, res) => {
 
               console.log(`Симуляция полета ${_id} достигла лимита итераций и была остановлена.`);
             }
-          }, 1000),
+          }, Math.round(config.SPECDEFTIME * 1000)),
           iterations: 0
         };
 

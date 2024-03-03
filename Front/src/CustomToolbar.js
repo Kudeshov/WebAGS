@@ -74,21 +74,6 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   const [websocketConnected, setWebsocketConnected] = useState(false);
   const [lastDataTimestamp, setLastDataTimestamp] = useState(Date.now());
 
-// Обновление статуса соединения WebSocket
-/* useEffect(() => {
-  if (websocket) {
-    websocket.onopen = () => {
-      setWebsocketConnected(true);
-    };
-    websocket.onclose = () => {
-      setWebsocketConnected(false);
-    };
-    websocket.onmessage = (event) => {
-      setLastDataTimestamp(Date.now()); // Обновляем временную метку при получении данных
-    };
-  }
-}, [websocket]); */
-
 // Проверка на отсутствие данных в течение заданного времени (например, 30 секунд)
 useEffect(() => {
   const interval = setInterval(() => {
@@ -137,7 +122,7 @@ const OnlineIndicator = () => {
 
   const handleCoeffChange = (value, index, arrayName) => {
     const newCoeffs = [...settings[arrayName]]; // Копируем текущий массив 
-    newCoeffs[index] = parseFloat(value); // Обновляем конкретный коэффициент по индексу
+    newCoeffs[index] = value; //parseFloat(value); // Обновляем конкретный коэффициент по индексу
     setSettings({...settings, [arrayName]: newCoeffs}); // Обновляем состояние настроек
   };
 
@@ -158,7 +143,13 @@ const OnlineIndicator = () => {
   };
 
   const setupWebSocket = (onlineFlightId) => {
-    let ws = new WebSocket('ws://localhost:3001');
+
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsHost = process.env.REACT_APP_WEBSOCKET_HOST || window.location.host;
+    console.log(wsProtocol, wsHost);
+    let ws = new WebSocket(`${wsProtocol}//${wsHost}`);
+  
+//    let ws = new WebSocket('ws://localhost:3001');
 
     const connectWebSocket = () => {
         // Установка обработчиков событий WebSocket
@@ -178,6 +169,7 @@ const OnlineIndicator = () => {
             setSnackbarMessage('Полет завершен в штатном режиме');
             setSnackbarOpen(true); // Открываем Snackbar с сообщением
             setOnlineFlightId(null); // Сброс ID симуляции
+            setSimulationData('');
             if (websocket) {
               websocket.close(); // Закрытие WebSocket соединения
               setWebsocket(null);
@@ -219,7 +211,10 @@ const OnlineIndicator = () => {
           console.log('WebSocket соединение закрыто');
           setTimeout(() => {
               console.log('Попытка переподключения...');
-              ws = new WebSocket('ws://localhost:3001');
+              const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+              const wsHost = process.env.REACT_APP_WEBSOCKET_HOST || window.location.host;
+              console.log(wsProtocol, wsHost);
+              let ws = new WebSocket(`${wsProtocol}//${wsHost}`);
               connectWebSocket(); // Попытка переподключения
           }, 1000); // Переподключение через 1 секунду
         };
@@ -339,6 +334,7 @@ const OnlineIndicator = () => {
       if(response.ok) {
         // Действия после успешного останова симуляции
         setOnlineFlightId(null); // Сброс ID симуляции
+        setSimulationData('');
         if (websocket) {
           websocket.close();
           setWebsocket(null);
@@ -349,6 +345,7 @@ const OnlineIndicator = () => {
         console.error('Ошибка остановки полета: HTTP-статус', response.status);
         setSnackbarMessage('Полет уже остановлен');
         setOnlineFlightId(null); // Сброс ID симуляции
+        setSimulationData('');
         if (websocket) {
           websocket.close();
           setWebsocket(null);
@@ -359,6 +356,7 @@ const OnlineIndicator = () => {
       console.error('Ошибка остановки эмуляции:', error);
       setSnackbarMessage('Ошибка остановки полета: ', error);
       setOnlineFlightId(null); // Сброс ID симуляции
+      setSimulationData('');
       if (websocket) {
         websocket.close();
         setWebsocket(null);
@@ -701,7 +699,7 @@ const [settings, setSettings] = useState({}); // Для хранения нас�
     const updatedSettings = {
       ...settings,
       NSPCHANNELS: parseInt(settings.NSPCHANNELS), // Преобразование в целое число 
-      SPECDEFTIME: parseInt(settings.SPECDEFTIME), // Преобразование в целое число
+      SPECDEFTIME: parseFloat(settings.SPECDEFTIME), // Преобразование в целое число
       winLow: parseInt(settings.winLow), // Преобразование в целое число
       winHigh: parseInt(settings.winHigh), // Преобразование в целое число
       MAX_ALLOWED_HEIGHT: settings.MAX_ALLOWED_HEIGHT, // Преобразование в целое число
