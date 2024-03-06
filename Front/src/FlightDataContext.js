@@ -169,13 +169,14 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
             setLocalHeightTo(maxHeight);    
             setLocalHeightFrom(minHeight);
             setLocalHeightTo(maxHeight);
+
           }
           setMeasurements(data);
         }).finally(() => {
           setIsLoadingFlight(false); // Заканчиваем загрузку
         });
     }
-  }, [selectedDatabase, selectedCollection/* , onlineFlightId, onHeightFilterActive, onColorOverrideActive */]);
+  }, [selectedDatabase, selectedCollection]);
   
   useEffect(() => {
     fetchMeasurements();

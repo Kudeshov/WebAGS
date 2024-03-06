@@ -363,7 +363,8 @@ async function handleOnlineFlights(db, collectionId) {
         const windose = getDose(row.winCount, coords.alt, false, 1, config.gm1Coeff, config.gm2Coeff, config.winCoeff); 
         const gmDose1 = getDose(0, coords.alt, true, 1, config.gm1Coeff, config.gm2Coeff, config.winCoeff); 
         const gmDose2 = getDose(0, coords.alt, true, 2, config.gm1Coeff, config.gm2Coeff, config.winCoeff);
-
+        // Округление высоты до сантиметра
+        const heightRounded = Math.round(row.rHeight * 100) / 100;
         return {
             id: row._id,
             flightId: row.flightId,
@@ -371,7 +372,7 @@ async function handleOnlineFlights(db, collectionId) {
             lat: coords.lat,
             lon: coords.lon,
             alt: coords.alt,
-            height: row.rHeight,
+            height: heightRounded,
             countw: row.winCount,
             dosew: windose,
             dose: windose, // Возможно, здесь следует использовать другое значение в зависимости от контекста
@@ -725,8 +726,13 @@ function generateMeasurementData(db, flightId) {
   }
 
   // Высота остается постоянной или изменяется в небольшом диапазоне
-  alt += (Math.random() - 0.5) * 2;
- 
+  alt += (Math.random() - 0.5);
+
+   // Гарантируем, что высота не станет отрицательной
+   if (alt < 0) {
+    alt = 0.5;
+  }
+
   const ecefCoords = toECEF(lat+randomErrorLat, lon+randomErrorLon, alt);
 
   //const winCount = Math.floor(Math.random() * (100 - 20 + 1)) + 20;
