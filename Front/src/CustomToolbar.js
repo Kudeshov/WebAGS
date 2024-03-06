@@ -13,7 +13,7 @@ import { ReactComponent as CogIcon } from './icons/cog.svg';
 import Tooltip from '@mui/material/Tooltip';
 import { useTheme } from '@mui/material/styles';
 import { AppBar, Grid, Toolbar, IconButton, Menu, MenuItem, ListSubheader, Dialog, DialogTitle, 
-         Autocomplete, DialogContent, DialogContentText, DialogActions, FormControlLabel, TextField, Button, Checkbox } from '@mui/material';
+         Autocomplete, DialogContent, DialogContentText, DialogActions, FormControlLabel, TextField, Button, Checkbox, Tab, Tabs, Box  } from '@mui/material';
 import { FlightDataContext } from './FlightDataContext';
 import Snackbar from '@mui/material/Snackbar';
 import Divider from '@mui/material/Divider';
@@ -694,6 +694,202 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
     .catch(error => console.error('Ошибка при обновлении настроек:', error));
   };
 
+  const [activeTab, setActiveTab] = useState(0);
+
+  const handleChangeTab = (event, newValue) => {
+    setActiveTab(newValue);
+  };
+
+  const tabPanelContent = (index) => {
+    switch(index) {
+      case 0: // Расчет МЭД(в точке детектора)
+        return (
+          <>
+            <div>Коэффициенты полинома для уровня энергии менее 550 кэВ</div>
+            {settings.coeffs_below_550 && settings.coeffs_below_550.map((coeff, index) => (
+              <TextField
+                key={`coeff-below-${index}`}
+                margin="dense"
+                id={`coeff-below-${index}`}
+                label={`Коэфф ${index + 1} (<= 550 кэВ)`}
+                fullWidth
+                size="small"
+                variant="outlined"
+                value={coeff}
+                onChange={(e) => handleCoeffChange(e.target.value, index, 'coeffs_below_550')}
+              />
+            ))}
+  
+            <div>Коэффициенты полинома для уровня энергии более 550 кэВ</div>
+            {settings.coeffs_above_550 && settings.coeffs_above_550.map((coeff, index) => (
+              <TextField
+                key={`coeff-above-${index}`}
+                margin="dense"
+                id={`coeff-above-${index}`}
+                label={`Коэфф ${index + 1} (> 550 кэВ)`}
+                fullWidth
+                size="small"
+                variant="outlined"
+                value={coeff}
+                onChange={(e) => handleCoeffChange(e.target.value, index, 'coeffs_above_550')}
+              />
+            ))}
+          </>
+        );
+      case 1: // Расчет МЭД(по спектрометрическому окну)
+        return (
+          <>
+            <TextField
+              margin="dense"
+              id="winLow"
+              label="Нижняя граница окна"
+              type="number"
+              fullWidth
+              size="small"
+              variant="outlined"
+              value={settings.winLow}
+              onChange={(e) => setSettings({...settings, winLow: e.target.value})}
+            />
+            <TextField
+              margin="dense"
+              id="winHigh"
+              label="Верхняя граница окна"
+              type="number"
+              fullWidth
+              size="small"
+              variant="outlined"
+              value={settings.winHigh}
+              onChange={(e) => setSettings({...settings, winHigh: e.target.value})}
+            />
+            <TextField
+              margin="dense"
+              id="winCoeff"
+              label="Коэффициент пересчета Cs (1 окно)"
+              type="number"
+              fullWidth
+              size="small"
+              variant="outlined"
+              value={settings.winCoeff}
+              onChange={(e) => setSettings({...settings, winCoeff: e.target.value})}
+            />
+          </>
+        );
+      case 2: // Расчет МЭД(по счетчикам Гейгера)
+        return (
+          <>
+            <TextField
+              margin="dense"
+              id="gm1Coeff"
+              label="Коэффициент пересчета ГМ1"
+              type="number"
+              fullWidth
+              size="small"
+              variant="outlined"
+              value={settings.gm1Coeff}
+              onChange={(e) => setSettings({...settings, gm1Coeff: e.target.value})}
+            />
+            <TextField
+              margin="dense"
+              id="gm2Coeff"
+              label="Коэффициент пересчета ГМ2"
+              type="number"
+              fullWidth
+              size="small"
+              variant="outlined"
+              value={settings.gm2Coeff}
+              onChange={(e) => setSettings({...settings, gm2Coeff: e.target.value})}
+            />
+            {/* Дополните сюда поля для рабочих диапазонов ГМ1 и ГМ2, если у вас есть соответствующие данные и функции обработки */}
+          </>
+        );
+      case 3: // Прочее
+        return (
+          <>
+            <TextField
+              margin="dense"
+              id="NSPCHANNELS"
+              label="Количество спектральных каналов"
+              type="number"
+              fullWidth
+              size="small"
+              variant="outlined"
+              value={settings.NSPCHANNELS}
+              onChange={(e) => setSettings({...settings, NSPCHANNELS: e.target.value})}
+            />
+            <TextField
+              margin="dense"
+              id="SPECDEFTIME"
+              label="Частота (скважность) измерений, с"
+              type="number"
+              fullWidth
+              size="small"
+              variant="outlined"
+              value={settings.SPECDEFTIME}
+              onChange={(e) => setSettings({...settings, SPECDEFTIME: e.target.value})}
+            />
+             <TextField
+              margin="dense"
+              id="MAX_ALLOWED_HEIGHT"
+              label="Максимально допустимая высота"
+              type="number"
+              fullWidth
+              size = "small"
+              variant="outlined"
+              value={settings.MAX_ALLOWED_HEIGHT}
+              onChange={(e) => setSettings({...settings, MAX_ALLOWED_HEIGHT: e.target.value})}
+            />
+            <TextField
+              margin="dense"
+              id="flightsDirectory"
+              label="Каталог файлов полетов"
+              fullWidth
+              size = "small"
+              variant="outlined"
+              value={settings.flightsDirectory}
+              onChange={(e) => setSettings({...settings, flightsDirectory: e.target.value})}
+            />
+            <TextField
+              margin="dense"
+              id="latInit"
+              label="Исходная широта"
+              type="number"
+              fullWidth
+              size = "small"
+              variant="outlined"
+              value={settings.latInit}
+              onChange={(e) => setSettings({...settings, latInit: e.target.value})}
+            />
+            <TextField
+              margin="dense"
+              id="lonInit"
+              label="Исходная долгота"
+              type="number"
+              fullWidth
+              size = "small"
+              variant="outlined"
+              value={settings.lonInit}
+              onChange={(e) => setSettings({...settings, lonInit: e.target.value})}
+            />
+            <TextField
+              margin="dense"
+              id="altInit"
+              label="Исходная высота"
+              type="number"
+              fullWidth
+              size = "small"
+              variant="outlined"
+              value={settings.altInit}
+              onChange={(e) => setSettings({...settings, altInit: e.target.value})}
+            />
+             
+          </>
+        );
+      default:
+        return 'Unknown tab';
+    }
+  };
+  
+
   return (
     <AppBar position="static" sx={{ height: '64px' }}>
         <Toolbar >
@@ -1051,6 +1247,36 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
             <Button onClick={() => handleSaveSettings(settings)} disabled={isSettingsLoading}>Сохранить</Button>
           </DialogActions>
         </Dialog>
+
+
+
+        
+
+ 
+    <Dialog open={settingsDialogOpen} onClose={handleSettingsDialogClose} aria-labelledby="settings-dialog-title" fullWidth maxWidth="md">
+      <DialogTitle id="settings-dialog-title">Настройки</DialogTitle>
+      <Tabs value={activeTab} variant="scrollable" 
+ onChange={handleChangeTab} aria-label="Настройки вкладок">
+        <Tab label="Расчет МЭД(в точке детектора)" />
+        <Tab label="Расчет МЭД(по  окну)" />
+        <Tab label="Расчет МЭД(по счетчикам Гейгера)" />
+        <Tab label="Прочее" />
+      </Tabs>
+      <DialogContent>
+        {isSettingsLoading ? (
+          <CircularProgress />
+        ) : (
+          <Box p={3}>
+            {tabPanelContent(activeTab)}
+          </Box>
+        )}
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={handleSettingsDialogClose}>Отмена</Button>
+        <Button onClick={() => handleSaveSettings(settings)} disabled={isSettingsLoading}>Сохранить</Button>
+      </DialogActions>
+    </Dialog>
+  
 
         <IconButton
           color="inherit"

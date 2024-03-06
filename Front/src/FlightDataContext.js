@@ -200,7 +200,7 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
 
           const apiUrl = `/api/data/${statusData.dbName}/${statusData?._id || null}`;
 
-          const measurementsResponse = await fetch(apiUrl);//'/api/online-measurements');
+          const measurementsResponse = await fetch(apiUrl); 
           const measurementsData = await measurementsResponse.json();
           console.log('Загружаем данные текущего онлайн-полета', measurementsData);
           setOnlineMeasurements(measurementsData); // Сохраняем данные измерений онлайн-полета
