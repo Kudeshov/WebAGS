@@ -19,7 +19,7 @@ import Snackbar from '@mui/material/Snackbar';
 import Divider from '@mui/material/Divider';
 import CircularProgress from '@mui/material/CircularProgress';
 import Backdrop from '@mui/material/Backdrop';
-import { convertDateTime, convertToTime } from './dateUtils';
+import { convertDateTimeWithoutSeconds, convertDateTime, convertToTime } from './dateUtils';
 
 const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, onHeightFilterActive, heightFilterActive,
     handleThreeDToggle, threeDActive, settingsOpen,}) => {
@@ -84,8 +84,6 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   const OnlineIndicator = () => {
     let color = 'red'; // Отсутствие соединения
     let message = 'Соединение отсутствует';
-    //let color = 'white'; 
-    //let message = '';
 
     if (websocketConnected) {
       color = 'lightgreen';
@@ -151,6 +149,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
         ws.onmessage = (event) => {
           const data = JSON.parse(event.data);
           console.log(data);
+          setWebsocketConnected(true);
           // Проверка на сообщение о завершении полета
           if (data.type && data.type === 'flightEnded') {
             console.log('Полет завершен:', data.flightId);
@@ -780,23 +779,52 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
           open={Boolean(filterMenuAnchorCollection)}
           onClose={handleCollectionMenuClose}
           MenuListProps={{
-            subheader: <ListSubheader>Полет</ListSubheader>,
+            subheader: <ListSubheader>Офлайн полеты</ListSubheader>,
           }}
         >
-          {/* Маппинг массива коллекций в элементы меню */}
-          {collectionOptions.map((collection, index) => (
+          {/* Отображение офлайн полетов */}
+          {collectionOptions.filter(collection => !collection.is_online).map((collection, index) => (
             <MenuItem       
-            key={collection._id} 
-            onClick={() => handleCollectionSelect(collection)}
-            disabled={onlineFlightId !== null} // Блокировка выбора коллекции при активном онлайн-полете
-          >
-              {collection.description} 
+              key={collection._id} 
+              onClick={() => handleCollectionSelect(collection)}
+              disabled={onlineFlightId !== null}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                <span style={{ fontWeight: 'normal' }}>{collection.description}</span>
+                <span style={{ color: '#aaa', fontSize: '0.8rem' }}>
+                  {convertDateTimeWithoutSeconds(collection?.dateTime)}
+                </span>
+              </div>
             </MenuItem>
           ))}
-          <Divider />
-          <MenuItem onClick={handleStartFlightDialogOpen} disabled={onlineFlightId !== null}>Начать онлайн-полет</MenuItem>
+          {collectionOptions.some(collection => !collection.is_online) && <Divider />}
 
-          <MenuItem onClick={handleStopFlight} disabled={onlineFlightId === null}> Остановить онлайн-полет</MenuItem>
+          {/* Разделитель, если есть офлайн полеты */}
+          {collectionOptions.some(collection => collection.is_online) && (
+            <>
+              <ListSubheader>Онлайн полеты</ListSubheader>
+              <Divider />
+              {collectionOptions.filter(collection => collection.is_online).map((collection, index) => (
+                <MenuItem       
+                  key={collection._id} 
+                  onClick={() => handleCollectionSelect(collection)}
+                  disabled={onlineFlightId !== null}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                    <span style={{ fontWeight: 'normal' }}>{collection.description}</span>
+                    <span style={{ color: '#aaa', fontSize: '0.8rem' }}>
+                      {convertDateTimeWithoutSeconds(collection?.dateTime)}
+                    </span>
+                  </div>
+                </MenuItem>
+              ))}
+              <Divider />
+            </>
+          )}
+
+          {/* Управление онлайн полетами */}
+          <MenuItem onClick={handleStartFlightDialogOpen} disabled={onlineFlightId !== null}>Начать онлайн-полет</MenuItem>
+          <MenuItem onClick={handleStopFlight} disabled={onlineFlightId === null}>Остановить онлайн-полет</MenuItem>
         </Menu>
  
         <div style={{
@@ -1045,8 +1073,8 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
             style={{ fill: validMeasurements.length === 0?"lightgray": "white", width: 24, height: 24 }} />
           </Tooltip>
         </IconButton>
+
        <OnlineIndicator/> 
-       
 
         <div style={{ flexGrow: 1, display: 'flex', justifyContent: 'flex-end' }}>
           {selectedCollection ? (

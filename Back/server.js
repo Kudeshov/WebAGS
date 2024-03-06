@@ -149,6 +149,9 @@ const b2 = b * b;
 const e = Math.sqrt((a2 - b2) / a2);
 const e1 = Math.sqrt((a2 - b2) / b2);
 
+const ONLINE_FLIGHT_ID_THRESHOLD = 1000000; // Определенное значение для различия между офлайн и онлайн полетами
+
+
 function toLLA(x, y, z) {
   if (Math.abs(x) < 100 || Math.abs(y) < 100) {
     return { lat: -1, lon: -1 };
@@ -268,23 +271,55 @@ app.delete('/api/deleteDatabase/:dbname', (req, res) => {
 app.get('/api/collection/:dbname', (req, res) => {
   const dbname = req.params.dbname;
   console.log('БД ', dbname);
-  if (!dbname) 
+  if (!dbname || dbname == 'null') {
+    res.status(400).send('Invalid database name');
     return;
-  if (dbname=='null') 
-    return;
-  const db_current = new sqlite3.Database(config.flightsDirectory+'/'+dbname+'.sqlite', (err) => {
+  }
+
+  const dbPath = `${config.flightsDirectory}/${dbname}.sqlite`;
+  const db = new sqlite3.Database(dbPath, (err) => {
     if (err) {
       console.error(err.message);
+      res.status(500).send('Error connecting to database');
+      return;
     }
-    console.log('Connected to the database '+dbname);
-  });
-  const sql = 'SELECT * FROM collection';
-  db_current.all(sql, [], (err, rows) => {
-    if (err) {
-      throw err;
-    }
-    const results = rows;
-    res.json(results);
+    console.log('Connected to the database ' + dbname);
+
+    // Проверка наличия таблицы online_collection
+    db.get("SELECT name FROM sqlite_master WHERE type='table' AND name='online_collection';", [], (err, row) => {
+      if (err) {
+        console.error(err.message);
+        res.status(500).send('Error checking for online_collection table');
+        return;
+      }
+
+      const hasOnlineCollection = !!row;
+      const collectionQuery = 'SELECT _id, dateTime, detector, hasCalibr, P0, P1, P2, P3, description, 0 as is_online FROM collection';
+      const onlineCollectionQuery = hasOnlineCollection ? 'SELECT _id, dateTime, NULL as detector, NULL as hasCalibr, NULL as P0, NULL as P1, NULL as P2, NULL as P3, description, 1 as is_online FROM online_collection' : null;
+
+      // Собрать данные из обеих таблиц, если обе существуют
+      const queriesToRun = [collectionQuery];
+      if (onlineCollectionQuery) queriesToRun.push(onlineCollectionQuery);
+
+      Promise.all(queriesToRun.map(query => new Promise((resolve, reject) => {
+        db.all(query, [], (err, rows) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(rows);
+          }
+        });
+      })))
+      .then(results => {
+        // Объединение результатов из обеих таблиц
+        const combinedResults = results.flat();
+        res.json(combinedResults);
+      })
+      .catch(error => {
+        console.error(error.message);
+        res.status(500).send('Error querying collections');
+      });
+    });
   });
 });
 
@@ -303,51 +338,69 @@ app.get('/api/flights', (req, res) => {
   });
 });
 
-app.get('/api/data/:dbname/:collectionId', (req, res) => {
-  const dbname = req.params.dbname;
-  const collectionId = req.params.collectionId;
-  console.log(dbname, ' ', collectionId);
-
-  if (!dbname || dbname === 'null' || !collectionId || collectionId === 'null') {
-    res.status(400).send('Invalid database name or collection ID');
-    return;
-  }
-
-  const db_current = new sqlite3.Database(`${config.flightsDirectory}/${dbname}.sqlite`, (err) => {
-    if (err) {
-      console.error(err.message);
-      return;
-    }
-    console.log(`Connected to the database ${dbname}`);
+async function openDatabase(path) {
+  return new Promise((resolve, reject) => {
+    const db = new sqlite3.Database(path, (err) => {
+      if (err) reject(err);
+      else resolve(db);
+    });
   });
+}
 
-  // Получение коэффициентов из таблицы arms_settings
-  db_current.get("SELECT gm1Coeff, gm2Coeff, winCoeff FROM arms_settings LIMIT 1", [], (err, settings) => {
-    if (err) {
-      console.error(err.message);
-      res.status(500).send('Error querying the arms_settings');
-      return;
-    }
-
-    if (!settings) {
-      res.status(404).send('Settings not found');
-      return;
-    }
-
-    console.log(settings);
-
-
-    // Запрос для получения калибровочных коэффициентов
-    const sqlCalibration = `SELECT P0, P1 FROM collection WHERE _id = ?`;
-    db_current.get(sqlCalibration, [collectionId], (err, calibration) => {
+async function handleOnlineFlights(db, collectionId) {
+  return new Promise((resolve, reject) => {
+    const sql = `SELECT * FROM online_measurement WHERE flightId = ? ORDER BY _id DESC`;
+    db.all(sql, [collectionId], (err, rows) => {
       if (err) {
         console.error(err.message);
-        res.status(500).send('Error querying the calibration data');
+        reject('Ошибка при выполнении запроса к базе данных');
+      }
+
+      const transformedData = rows.map(row => {
+        const coords = toLLA(row.gpsX, row.gpsY, row.gpsZ);
+
+        // Предполагается, что функции toLLA и getDose уже определены
+        const windose = getDose(row.winCount, coords.alt, false, 1, config.gm1Coeff, config.gm2Coeff, config.winCoeff); 
+        const gmDose1 = getDose(0, coords.alt, true, 1, config.gm1Coeff, config.gm2Coeff, config.winCoeff); 
+        const gmDose2 = getDose(0, coords.alt, true, 2, config.gm1Coeff, config.gm2Coeff, config.winCoeff);
+
+        return {
+            id: row._id,
+            flightId: row.flightId,
+            datetime: row.dateTime,
+            lat: coords.lat,
+            lon: coords.lon,
+            alt: coords.alt,
+            height: row.rHeight,
+            countw: row.winCount,
+            dosew: windose,
+            dose: windose, // Возможно, здесь следует использовать другое значение в зависимости от контекста
+            geiger1: row.geiger1,
+            geiger2: row.geiger2,
+            gmdose1: gmDose1,
+            gmdose2: gmDose2,
+            spectrum: [] // Предполагается, что это место заполняется, если есть данные спектра
+        };
+      });
+
+      resolve(transformedData);
+    });
+  });
+}
+
+async function handleOfflineFlights(db, collectionId) {
+  return new Promise((resolve, reject) => {
+    // Запрос для получения калибровочных коэффициентов
+    const sqlCalibration = `SELECT P0, P1 FROM collection WHERE _id = ?`;
+    db.get(sqlCalibration, [collectionId], async (err, calibration) => {
+      if (err) {
+        console.error(err.message);
+        reject('Error querying the calibration data');
         return;
       }
 
       if (!calibration) {
-        res.status(404).send('Calibration data not found');
+        reject('Calibration data not found');
         return;
       }
 
@@ -356,18 +409,19 @@ app.get('/api/data/:dbname/:collectionId', (req, res) => {
       let doseRateConversionFactors = calculateConversionFactors(eP0, eP1);
 
       const B = parseInt(collectionId, 10) + 0xFFFF;
-      const sql = `SELECT * FROM measurement WHERE (_id >= ${collectionId}) AND (_id <= ${B})`;
+      const sql = `SELECT * FROM measurement WHERE (_id >= ?) AND (_id <= ?)`;
 
-      db_current.all(sql, [], (err, rows) => {
+      db.all(sql, [collectionId, B], (err, rows) => {
         if (err) {
           console.error(err.message);
+          reject('Error performing the query on the database');
           return;
         }
 
         const results = rows.map(row => {
           let coords = toLLA(row.gpsX, row.gpsY, row.gpsZ);
 
-          if(row.spectrum === undefined) {
+          if (row.spectrum === undefined) {
             console.error("spectrum is undefined for row: ", row);
             return null;
           }
@@ -383,7 +437,7 @@ app.get('/api/data/:dbname/:collectionId', (req, res) => {
           const windose = getDose(countInWindow, row.rHeight, false, 1, config.gm1Coeff, config.gm2Coeff, config.winCoeff); 
           const gmDose1 = getDose(row.geiger1, row.rHeight, true, 1, config.gm1Coeff, config.gm2Coeff, config.winCoeff); 
           const gmDose2 = getDose(row.geiger2, row.rHeight, true, 2, config.gm1Coeff, config.gm2Coeff, config.winCoeff);
-          const height = row.rHeight > config.MAX_ALLOWED_HEIGHT ? 0 : row.rHeight; // Задаем высоту равную 0, если она превышает config.MAX_ALLOWED_HEIGHT
+          const height = row.rHeight > config.MAX_ALLOWED_HEIGHT ? 0 : row.rHeight; // Обработка условия для высоты
 
           return {
             id: row._id,
@@ -391,7 +445,7 @@ app.get('/api/data/:dbname/:collectionId', (req, res) => {
             lat: coords.lat,
             lon: coords.lon,
             alt: coords.alt,
-            height: height,
+            height,
             countw: countInWindow,
             dosew: windose,
             dose: spectrum.calculateTotalDose(eP0, eP1, doseRateConversionFactors),
@@ -399,14 +453,39 @@ app.get('/api/data/:dbname/:collectionId', (req, res) => {
             geiger2: row.geiger2,
             gmdose1: gmDose1,
             gmdose2: gmDose2,
-            spectrum: spectrum
+            spectrum: spectrum 
           };
         }).filter(item => item !== null);
 
-        res.json(results);
+        resolve(results);
       });
     });
   });
+}
+
+app.get('/api/data/:dbname/:collectionId', async (req, res) => {
+  const { dbname, collectionId } = req.params;
+
+  if (!dbname || dbname === 'null' || !collectionId || collectionId === 'null') {
+    return res.status(400).send('Invalid database name or collection ID');
+  }
+
+  try {
+    const db = await openDatabase(`${config.flightsDirectory}/${dbname}.sqlite`);
+    console.log(`Connected to the database ${dbname}`);
+    
+    let transformedData;
+    if (parseInt(collectionId, 10) < ONLINE_FLIGHT_ID_THRESHOLD) {
+      transformedData = await handleOnlineFlights(db, collectionId);
+    } else {
+      transformedData = await handleOfflineFlights(db, collectionId);
+    }
+
+    res.json(transformedData);
+  } catch (error) {
+    console.error(error.message);
+    res.status(500).send('An error occurred while processing your request');
+  }
 });
 
 // Предполагается, что config.flightsDirectory определена ранее в вашем коде
@@ -676,13 +755,12 @@ function generateMeasurementData(db, flightId) {
   // Время создания записи
   const dateTime = new Date().toISOString();
   // Расчёты дозы
-
   const windose = getDose(winCount, alt, false, 1, config.gm1Coeff, config.gm2Coeff, config.winCoeff); // Используем функцию getDose для расчета дозы в окне
   const gmDose1 = getDose(0, alt, true, 1, config.gm1Coeff, config.gm2Coeff, config.winCoeff); // Примерный вызов для gmdose1 с предположением, что geiger1 = 0
   const gmDose2 = getDose(0, alt, true, 2, config.gm1Coeff, config.gm2Coeff, config.winCoeff); // Примерный вызов для gmdose2 с предположением, что geiger2 = 0
-if (windose>3) {
-    windose = 3
-  }
+  if (windose>3) {
+      windose = 3
+    }
   // SQL запрос на вставку
   const insertSql = `INSERT INTO online_measurement (flightId, dateTime, gpsX, gpsY, gpsZ, rHeight, srtmHeight, calcHeight, geiger1, geiger2, winCount) VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, 0, 0, ?)`;
 
@@ -725,69 +803,3 @@ if (windose>3) {
       });
   });
 }
-
-app.get('/api/online-measurements', (req, res) => {
-  // Проверяем, активен ли онлайн-полет
-  if (!onlineFlightStatus.active) {
-      return res.json([]); // Возвращаем пустой массив, если онлайн-полет не активен
-  }
-
-  // Открываем соединение с базой данных
-  const dbPath = path.join(config.flightsDirectory, `${onlineFlightStatus.dbName}.sqlite`);
-  const db = new sqlite3.Database(dbPath, sqlite3.OPEN_READONLY, (err) => {
-      if (err) {
-          console.error(err.message);
-          return res.status(500).send('Ошибка при подключении к базе данных');
-      }
-      console.log(`Connected to the ${onlineFlightStatus.dbName} database.`);
-  });
-
-  // Формируем и выполняем SQL-запрос для получения данных текущего онлайн полета
-  const sql = `SELECT * FROM online_measurement WHERE flightId = ? ORDER BY _id DESC`;
-
-  db.all(sql, [onlineFlightStatus._id], (err, rows) => {
-      if (err) {
-          console.error(err.message);
-          return res.status(500).send('Ошибка при выполнении запроса к базе данных');
-      }
-      // Преобразование полученных данных
-      const transformedData = rows.map(row => {
-          const coords = toLLA(row.gpsX, row.gpsY, row.gpsZ);
-
-          // Расчёты дозы
-          const windose = getDose(row.winCount, coords.alt, false, 1, config.gm1Coeff, config.gm2Coeff, config.winCoeff); // Используем функцию getDose для расчета дозы в окне
-          const gmDose1 = getDose(0, coords.alt, true, 1,config.gm1Coeff, config.gm2Coeff, config.winCoeff); // Примерный вызов для gmdose1 с предположением, что geiger1 = 0
-          const gmDose2 = getDose(0, coords.alt, true, 2, config.gm1Coeff, config.gm2Coeff, config.winCoeff); // Примерный вызов для gmdose2 с предположением, что geiger2 = 0
- 
-          return {
-              id: row._id,
-              flightId: row.flightId,
-              datetime: row.dateTime,
-              lat: coords.lat,
-              lon: coords.lon,
-              alt: coords.alt,
-              height: row.rHeight,
-              countw: row.winCount,
-              dosew: windose,
-              dose: windose,
-              geiger1: row.geiger1,
-              geiger2: row.geiger2,
-              gmdose1: gmDose1,
-              gmdose2: gmDose2,
-              spectrum: [] 
-          };
-      });
-      // Отправляем преобразованные данные
-      res.json(transformedData);
-  });
-
-  // Закрываем соединение с базой данных
-  db.close((err) => {
-      if (err) {
-          console.error(err.message);
-      }
-      console.log('Closed the database connection.');
-  });
-  
-});
-
