@@ -1018,8 +1018,8 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
               onClick={() => handleCollectionSelect(collection)}
               disabled={onlineFlightId !== null}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-                <span style={{ fontWeight: 'normal' }}>{collection.description}</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', width: '100%' }}>
+                <span style={{ fontWeight: 'normal', marginRight: '1rem' }}>{collection.description}</span>
                 <span style={{ color: '#aaa', fontSize: '0.8rem' }}>
                   {convertDateTimeWithoutSeconds(collection?.dateTime)}
                 </span>
@@ -1039,8 +1039,8 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
                   onClick={() => handleCollectionSelect(collection)}
                   disabled={onlineFlightId !== null}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-                    <span style={{ fontWeight: 'normal' }}>{collection.description}</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', width: '100%' }}>
+                    <span style={{ fontWeight: 'normal', marginRight: '1rem' }}>{collection.description}</span>
                     <span style={{ color: '#aaa', fontSize: '0.8rem' }}>
                       {convertDateTimeWithoutSeconds(collection?.dateTime)}
                     </span>
