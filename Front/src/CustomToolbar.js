@@ -739,36 +739,42 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
         return (
           <>
             <div>Коэффициенты полинома для уровня энергии менее 550 кэВ</div>
-            {settings.coeffs_below_550 && settings.coeffs_below_550.map((coeff, index) => (
-              <TextField
-                key={`coeff-below-${index}`}
-                margin="dense"
-                id={`coeff-below-${index}`}
-                label={`Коэфф ${index + 1} (<= 550 кэВ)`}
-                fullWidth
-                size="small"
-                variant="outlined"
-                value={coeff}
-                onChange={(e) => handleCoeffChange(e.target.value, index, 'coeffs_below_550')}
-              />
-            ))}
-  
+            <Grid container spacing={2}>
+              {settings.coeffs_below_550 && settings.coeffs_below_550.map((coeff, index) => (
+                <Grid item xs={2.4} key={`coeff-below-${index}`}> {/* xs={3} означает, что каждый элемент займет 1/4 ширины контейнера */}
+                  <TextField
+                    margin="dense"                  
+                    id={`coeff-below-${index}`}
+                    label={`Коэфф ${index + 1} (<= 550 кэВ)`}
+                    fullWidth
+                    size="small"
+                    variant="outlined"
+                    value={coeff}
+                    onChange={(e) => handleCoeffChange(e.target.value, index, 'coeffs_below_550')}
+                  />
+                </Grid>
+              ))}
+            </Grid>
+      
             <div>Коэффициенты полинома для уровня энергии более 550 кэВ</div>
-            {settings.coeffs_above_550 && settings.coeffs_above_550.map((coeff, index) => (
-              <TextField
-                key={`coeff-above-${index}`}
-                margin="dense"
-                id={`coeff-above-${index}`}
-                label={`Коэфф ${index + 1} (> 550 кэВ)`}
-                fullWidth
-                size="small"
-                variant="outlined"
-                value={coeff}
-                onChange={(e) => handleCoeffChange(e.target.value, index, 'coeffs_above_550')}
-              />
-            ))}
-          </>
-        );
+            <Grid container spacing={2}>
+              {settings.coeffs_above_550 && settings.coeffs_above_550.map((coeff, index) => (
+                <Grid item xs={2.4} key={`coeff-above-${index}`}> {/* Аналогично, используем xs={3} для распределения по 4 в ряд */}
+                  <TextField
+                    margin="dense"
+                    id={`coeff-above-${index}`}
+                    label={`Коэфф ${index + 1} (> 550 кэВ)`}
+                    fullWidth
+                    size="small"
+                    variant="outlined"
+                    value={coeff}
+                    onChange={(e) => handleCoeffChange(e.target.value, index, 'coeffs_above_550')}
+                  />
+                </Grid>
+              ))}
+            </Grid>
+            </>
+        )
       case 1: // Расчет МЭД(по спектрометрическому окну)
         return (
           <>
