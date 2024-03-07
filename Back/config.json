@@ -1,4 +1,5 @@
 {
+  "port": 3009,
   "NSPCHANNELS": 238,
   "SPECDEFTIME": 1,
   "winLow": 20,

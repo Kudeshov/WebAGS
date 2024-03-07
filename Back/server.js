@@ -4,13 +4,12 @@ const WebSocket = require('ws');
 const sqlite3 = require('sqlite3').verbose();
 const cors = require('cors');
 const app = express();
-const port = 3001;
 const fs = require('fs');
 const path = require('path');
 const configPath = path.join(__dirname, 'config.json');
-
 // Синхронное чтение и парсинг файла конфигурации
 let config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+const port = config.port; // Использование номера порта из config.json
 
 app.use(express.json());
 
