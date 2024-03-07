@@ -28,7 +28,6 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   const { selectedDatabase, setSelectedDatabase } = useContext(FlightDataContext);
   const { onlineMeasurements, setOnlineMeasurements } = useContext(FlightDataContext);
   const { databaseName, setDatabaseName} = useContext(FlightDataContext);
-
   
   const [filterMenuAnchorE2, setDatabaseMenuAnchorE2] = useState(null);
   const [filterMenuAnchorCollection, setDatabaseMenuAnchorCollection] = useState(null);
@@ -107,12 +106,6 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
         </div>
       </span>
   );
-  };
-
-  const handleCoeffChange = (value, index, arrayName) => {
-    const newCoeffs = [...settings[arrayName]]; // Копируем текущий массив 
-    newCoeffs[index] = value; //parseFloat(value); // Обновляем конкретный коэффициент по индексу
-    setSettings({...settings, [arrayName]: newCoeffs}); // Обновляем состояние настроек
   };
 
   const handleStartFlightDialogOpen = () => {
@@ -242,10 +235,6 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
     })
     .then(response => response.json())
     .then(data => {
-      //console.log('Полет начат:', data);
-     
-      //setSelectedDatabase(selectedOnlineDB);
-
       if (data && data.onlineFlightStatus) {
         console.log('Полет запущен:', selectedOnlineDB);
         setOnlineFlightId(data.onlineFlightStatus._id); // Сохраняем ID полета
@@ -367,8 +356,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   const handleDemoModeChange = (event) => {
     setIsDemoMode(event.target.checked);
   };
-  
-  
+    
   const handleOpenDeleteDialog = (databaseName) => {
     setDatabaseToDelete(databaseName);
     setDeleteDialogOpen(true);
@@ -413,8 +401,20 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   };
 
   // Функция для сохранения измененных настроек
-  const handleSaveSettings = (newSettings) => {
-    updateSettings(newSettings); // Отправляем измененные настройки на сервер
+  const handleSaveSettings = (settings) => {
+    if (!areAllCoeffsValid(settings)) {
+      alert('Один или несколько коэффициентов имеют неверный формат.');
+      return;
+    }
+
+    const updatedSettings = {
+      ...settings,
+      coeffs_below_550: convertCoeffsToNumbers(settings.coeffs_below_550),
+      coeffs_above_550: convertCoeffsToNumbers(settings.coeffs_above_550),
+      // Продолжить с остальными полями по аналогии
+    };
+
+    updateSettings(updatedSettings);
     setSettingsDialogOpen(false);
   };
   
@@ -553,7 +553,6 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
  
   const handleFlightSelect = (dbName) => {
     setSelectedCollection(null); // Установим в null перед получением новых коллекций
-    console.log('2',dbName);
     setDatabaseName(dbName);
     setSelectedDatabase(dbName);
     // Закрыть меню после выбора
@@ -638,12 +637,38 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
     const isWinLowValid = !isNaN(winLowValue) && parseInt(winLowValue, 10) > 0;
     const isWinHighValid = !isNaN(winHighValue) && parseInt(winHighValue, 10) > 0;
     const isWindowRangeValid = isWinLowValid && isWinHighValid && parseInt(winLowValue, 10) < parseInt(winHighValue, 10);
-
     return !isDBSelectedOrInputValid || !isFlightNameValid || !isWindowRangeValid;
   };
 
 
   const [settings, setSettings] = useState({}); // Для хранения настроек из config.json
+
+  const handleCoeffChange = (value, index, arrayName) => {
+    const newCoeffs = [...settings[arrayName]]; // Копируем текущий массив 
+    newCoeffs[index] = value; //parseFloat(value); // Обновляем конкретный коэффициент по индексу
+    setSettings({...settings, [arrayName]: newCoeffs}); // Обновляем состояние настроек
+  };
+
+  // Функция проверки корректности коэффициентов
+  const isValidCoeff = (coeff) => {
+    return !isNaN(parseFloat(coeff)) && isFinite(coeff);
+  };
+
+  // Функция проверки всех коэффициентов
+  const areAllCoeffsValid = (settings) => {
+    const arraysToCheck = ['coeffs_below_550', 'coeffs_above_550'];
+    return arraysToCheck.every(arrayName => 
+      settings[arrayName].every(isValidCoeff)
+    );
+  };
+
+  // Преобразование коэффициентов в числа
+  const convertCoeffsToNumbers = (coeffs) => {
+    return coeffs.map(coeff => {
+      const num = parseFloat(coeff);
+      return isNaN(num) ? coeff : num;
+    });
+  };
 
   // Функция для загрузки настроек при открытии диалога
   const fetchSettings = () => {
@@ -662,34 +687,42 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
       .finally(() => setIsSettingsLoading(false)); // Загрузка завершена
   };
 
-  // Функция для обновления настроек
-  const updateSettings = () => {
+  // Функция для обновления настроек теперь принимает параметр updatedSettings
+  const updateSettings = (updatedSettingsParam) => {
+    // Дополнительно проверяем, что переданные настройки не пусты
+    if (!updatedSettingsParam || Object.keys(updatedSettingsParam).length === 0) {
+      console.error('Ошибка: Настройки для обновления не предоставлены');
+      return;
+    }
+
     const updatedSettings = {
-      ...settings,
-      NSPCHANNELS: parseInt(settings.NSPCHANNELS), // Преобразование в целое число 
-      SPECDEFTIME: parseFloat(settings.SPECDEFTIME), // Преобразование в целое число
-      winLow: parseInt(settings.winLow), // Преобразование в целое число
-      winHigh: parseInt(settings.winHigh), // Преобразование в целое число
-      MAX_ALLOWED_HEIGHT: settings.MAX_ALLOWED_HEIGHT, // Преобразование в целое число
-      flightsDirectory: settings.flightsDirectory, // Строка остается строкой
-      latInit: parseFloat(settings.latInit), // Преобразование в число с плавающей запятой
-      lonInit: parseFloat(settings.lonInit), // Преобразование в число с плавающей запятой
-      altInit: parseInt(settings.altInit), // Преобразование в целое число
-      coeffs_below_550: settings.coeffs_below_550, // Массив остается массивом
-      coeffs_above_550: settings.coeffs_above_550, // Массив остается массивом
-      gm1Coeff: parseFloat(settings.gm1Coeff), // Преобразование в число с плавающей запятой
-      gm2Coeff: parseFloat(settings.gm2Coeff), // Преобразование в число с плавающей запятой
-      winCoeff: parseFloat(settings.winCoeff) // Преобразование в число с плавающей запятой
+      ...updatedSettingsParam,
+      NSPCHANNELS: parseInt(updatedSettingsParam.NSPCHANNELS, 10),
+      SPECDEFTIME: parseFloat(updatedSettingsParam.SPECDEFTIME),
+      winLow: parseInt(updatedSettingsParam.winLow, 10),
+      winHigh: parseInt(updatedSettingsParam.winHigh, 10),
+      MAX_ALLOWED_HEIGHT: parseInt(updatedSettingsParam.MAX_ALLOWED_HEIGHT, 10),
+      flightsDirectory: updatedSettingsParam.flightsDirectory,
+      latInit: parseFloat(updatedSettingsParam.latInit),
+      lonInit: parseFloat(updatedSettingsParam.lonInit),
+      altInit: parseInt(updatedSettingsParam.altInit, 10),
+      coeffs_below_550: updatedSettingsParam.coeffs_below_550.map(Number), // Преобразование всех элементов в числа
+      coeffs_above_550: updatedSettingsParam.coeffs_above_550.map(Number), // Аналогично
+      gm1Coeff: parseFloat(updatedSettingsParam.gm1Coeff),
+      gm2Coeff: parseFloat(updatedSettingsParam.gm2Coeff),
+      winCoeff: parseFloat(updatedSettingsParam.winCoeff)
     };
+
     fetch('/api/settings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updatedSettings),
-    }) 
+    })
     .then(response => response.text())
     .then(result => {
       console.log('Настройки обновлены:', result);
-      setGlobalSettings(updatedSettings); // Обновим глобальные настройки здесь
+      // Предполагается, что setGlobalSettings обновляет настройки в глобальном состоянии приложения
+      setGlobalSettings(updatedSettings); // Обновляем глобальные настройки
     })
     .catch(error => console.error('Ошибка при обновлении настроек:', error));
   };
@@ -1065,218 +1098,28 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
           </Tooltip>
         </IconButton>
 
-        <Dialog open={settingsDialogOpen} onClose={handleSettingsDialogClose} aria-labelledby="settings-dialog-title">
+        <Dialog open={settingsDialogOpen} onClose={handleSettingsDialogClose} aria-labelledby="settings-dialog-title" fullWidth maxWidth="md">
           <DialogTitle id="settings-dialog-title">Настройки</DialogTitle>
-          {isSettingsLoading ? (
-            <DialogContent>
+          <Tabs value={activeTab} variant="scrollable" onChange={handleChangeTab} aria-label="Настройки вкладок">
+            <Tab label="Расчет МЭД(в точке детектора)" />
+            <Tab label="Расчет МЭД(по  окну)" />
+            <Tab label="Расчет МЭД(по счетчикам Гейгера)" />
+            <Tab label="Прочее" />
+          </Tabs>
+          <DialogContent>
+            {isSettingsLoading ? (
               <CircularProgress />
-            </DialogContent>
-          ) : (
-            <DialogContent>
-                    <TextField
-              margin="dense"
-              id="NSPCHANNELS"
-              label="Количество спектральных каналов"
-              type="number"
-              fullWidth
-              size = "small"
-              variant="outlined"
-              value={settings.NSPCHANNELS}
-              onChange={(e) => setSettings({...settings, NSPCHANNELS: e.target.value})}
-            />
-            <TextField
-              margin="dense"
-              id="SPECDEFTIME"
-              label="Частота (скважность) измерений, с"
-              type="number"
-              fullWidth
-              size = "small"
-              variant="outlined"
-              value={settings.SPECDEFTIME}
-              onChange={(e) => setSettings({...settings, SPECDEFTIME: e.target.value})}
-            />
-            <TextField
-              margin="dense"
-              id="winLow"
-              label="Нижняя граница окна"
-              type="number"
-              fullWidth
-              size = "small"
-              variant="outlined"
-              value={settings.winLow}
-              onChange={(e) => setSettings({...settings, winLow: e.target.value})}
-            />
-            <TextField
-              margin="dense"
-              id="winHigh"
-              label="Верхняя граница окна"
-              type="number"
-              fullWidth
-              size = "small"
-              variant="outlined"
-              value={settings.winHigh}
-              onChange={(e) => setSettings({...settings, winHigh: e.target.value})}
-            />
-            <TextField
-              margin="dense"
-              id="MAX_ALLOWED_HEIGHT"
-              label="Максимально допустимая высота"
-              type="number"
-              fullWidth
-              size = "small"
-              variant="outlined"
-              value={settings.MAX_ALLOWED_HEIGHT}
-              onChange={(e) => setSettings({...settings, MAX_ALLOWED_HEIGHT: e.target.value})}
-            />
-            <TextField
-              margin="dense"
-              id="flightsDirectory"
-              label="Каталог файлов полетов"
-              fullWidth
-              size = "small"
-              variant="outlined"
-              value={settings.flightsDirectory}
-              onChange={(e) => setSettings({...settings, flightsDirectory: e.target.value})}
-            />
-            <TextField
-              margin="dense"
-              id="latInit"
-              label="Исходная широта"
-              type="number"
-              fullWidth
-              size = "small"
-              variant="outlined"
-              value={settings.latInit}
-              onChange={(e) => setSettings({...settings, latInit: e.target.value})}
-            />
-            <TextField
-              margin="dense"
-              id="lonInit"
-              label="Исходная долгота"
-              type="number"
-              fullWidth
-              size = "small"
-              variant="outlined"
-              value={settings.lonInit}
-              onChange={(e) => setSettings({...settings, lonInit: e.target.value})}
-            />
-            <TextField
-              margin="dense"
-              id="altInit"
-              label="Исходная высота"
-              type="number"
-              fullWidth
-              size = "small"
-              variant="outlined"
-              value={settings.altInit}
-              onChange={(e) => setSettings({...settings, altInit: e.target.value})}
-            />
-              <TextField
-                margin="dense"
-                id="gm1Coeff"
-                label="Коэффициент пересчета ГМ1"
-                type="number"
-                fullWidth
-                size="small"
-                variant="outlined"
-                value={settings.gm1Coeff}
-                onChange={(e) => setSettings({...settings, gm1Coeff: e.target.value})}
-              />
-
-              <TextField
-                margin="dense"
-                id="gm2Coeff"
-                label="Коэффициент пересчета ГМ2"
-                type="number"
-                fullWidth
-                size="small"
-                variant="outlined"
-                value={settings.gm2Coeff}
-                onChange={(e) => setSettings({...settings, gm2Coeff: e.target.value})}
-              />
-
-              <TextField
-                margin="dense"
-                id="winCoeff"
-                label="Коэффициент пересчета Cs (1 окно)"
-                type="number"
-                fullWidth
-                size="small"
-                variant="outlined"
-                value={settings.winCoeff}
-                onChange={(e) => setSettings({...settings, winCoeff: e.target.value})}
-              />
-            {/* Для массивов можно использовать сериализацию в JSON или отдельные поля */}
-            <div>
-              <div>Коэффициенты полинома для уровня энергии менее 550 кэВ</div>
-              {settings.coeffs_below_550 && settings.coeffs_below_550.map((coeff, index) => (
-                <TextField
-                  key={`coeff-below-${index}`}
-                  margin="dense"
-                  id={`coeff-below-${index}`}
-                  label={`Коэфф ${index + 1} (<= 550 кэВ)`}
-                  fullWidth
-                  size = "small"
-                  variant="outlined"
-                  value={coeff}
-                  onChange={(e) => handleCoeffChange(e.target.value, index, 'coeffs_below_550')}
-                />
-              ))}
-            </div>
-            <div>
-              <div>Коэффициенты полинома для уровня энергии более 550 кэВ</div>
-              
-              {settings.coeffs_above_550 && settings.coeffs_above_550.map((coeff, index) => (
-                <TextField
-                  key={`coeff-above-${index}`}
-                  margin="dense"
-                  id={`coeff-above-${index}`}
-                  label={`Коэфф ${index + 1} (> 550 кэВ)`}
-                  fullWidth
-                  size = "small"
-                  variant="outlined"
-                  value={coeff}
-                  onChange={(e) => handleCoeffChange(e.target.value, index, 'coeffs_above_550')}
-                />
-              ))}
-            </div>
-            </DialogContent>
-          )}
+            ) : (
+              <Box p={3}>
+                {tabPanelContent(activeTab)}
+              </Box>
+            )}
+          </DialogContent>
           <DialogActions>
             <Button onClick={handleSettingsDialogClose}>Отмена</Button>
             <Button onClick={() => handleSaveSettings(settings)} disabled={isSettingsLoading}>Сохранить</Button>
           </DialogActions>
         </Dialog>
-
-
-
-        
-
- 
-    <Dialog open={settingsDialogOpen} onClose={handleSettingsDialogClose} aria-labelledby="settings-dialog-title" fullWidth maxWidth="md">
-      <DialogTitle id="settings-dialog-title">Настройки</DialogTitle>
-      <Tabs value={activeTab} variant="scrollable" 
- onChange={handleChangeTab} aria-label="Настройки вкладок">
-        <Tab label="Расчет МЭД(в точке детектора)" />
-        <Tab label="Расчет МЭД(по  окну)" />
-        <Tab label="Расчет МЭД(по счетчикам Гейгера)" />
-        <Tab label="Прочее" />
-      </Tabs>
-      <DialogContent>
-        {isSettingsLoading ? (
-          <CircularProgress />
-        ) : (
-          <Box p={3}>
-            {tabPanelContent(activeTab)}
-          </Box>
-        )}
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={handleSettingsDialogClose}>Отмена</Button>
-        <Button onClick={() => handleSaveSettings(settings)} disabled={isSettingsLoading}>Сохранить</Button>
-      </DialogActions>
-    </Dialog>
-  
 
         <IconButton
           color="inherit"

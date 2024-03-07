@@ -4,7 +4,7 @@ const { ReadlineParser } = require('@serialport/parser-readline');
 // Замените 'CNCA0' на имя вашего виртуального COM порта, если это необходимо
 const port = new SerialPort({
   path: 'CNCA1',
-  baudRate: 9600
+  baudRate: 57600
 });
 
 function generateData() {
