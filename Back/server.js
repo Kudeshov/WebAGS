@@ -6,6 +6,7 @@ const cors = require('cors');
 const app = express();
 const fs = require('fs');
 const path = require('path');
+const SerialPort = require('serialport');
 const configPath = path.join(__dirname, 'config.json');
 // Синхронное чтение и парсинг файла конфигурации
 let config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
@@ -592,7 +593,8 @@ app.post('/start-flight-simulation', (req, res) => {
           winLow,
           winHigh,
           active: true,
-          dbName: dbName
+          dbName: dbName,
+          is_online: true
         };
 
         res.json({ message: "Эмуляция полета запущена", _id, onlineFlightStatus });

@@ -1,5 +1,4 @@
 const { SerialPort } = require('serialport');
-const { ReadlineParser } = require('@serialport/parser-readline');
 
 // Замените 'CNCA0' на имя вашего виртуального COM порта, если это необходимо
 const port = new SerialPort({
@@ -34,13 +33,6 @@ function generateData() {
   const sensorSWValue = 41;
   const gpsAvailable = 1;
   const temporaryConst = 0;
-/*   const barometerAvailable = 1;
-  const magnetometerAvailable = 1;
-  const photoTrigged = 0;
-  const navigationMode = 0;
-  const guidanceMode = 0;
-  const batteryVoltage = 23000;
-  const machineErrors = 0; */
 
   return `#${sensorId},${flightNumber},${gpsWeek},${gpsTime},${gpsX},${gpsY},${gpsZ},${relativeHeight},${flightTime},${operatingTime},${sensorGM1Value},${sensorGM2Value},${sensorSWValue},${gpsAvailable},${temporaryConst}y\r`;
 }

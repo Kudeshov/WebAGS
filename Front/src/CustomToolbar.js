@@ -27,7 +27,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   const { selectedCollection, setSelectedCollection } = useContext(FlightDataContext);
   const { selectedDatabase, setSelectedDatabase } = useContext(FlightDataContext);
   const { onlineMeasurements, setOnlineMeasurements } = useContext(FlightDataContext);
-  const { databaseName, setDatabaseName} = useContext(FlightDataContext);
+  const { setDatabaseName} = useContext(FlightDataContext);
   
   const [filterMenuAnchorE2, setDatabaseMenuAnchorE2] = useState(null);
   const [filterMenuAnchorCollection, setDatabaseMenuAnchorCollection] = useState(null);
@@ -194,7 +194,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
               const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
               const wsHost = process.env.REACT_APP_WEBSOCKET_HOST || window.location.host;
               console.log(wsProtocol, wsHost);
-              let ws = new WebSocket(`${wsProtocol}//${wsHost}`);
+              ws = new WebSocket(`${wsProtocol}//${wsHost}`);
               connectWebSocket(); // Попытка переподключения
           }, 1000); // Переподключение через 1 секунду
         };
@@ -509,6 +509,12 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
    // if (!selectedCollection) return;
     setIsLoading(isLoadingFlight);
   }, [isLoadingFlight]);
+
+  useEffect(() => {
+    if ( chartOpen && selectedCollection?.is_online)
+      onToggleChart();
+  }, [selectedCollection?.is_online]);
+  
  
 
   const fetchData = async () => {
@@ -738,14 +744,17 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
       case 0: // Расчет МЭД(в точке детектора)
         return (
           <>
-            <div>Коэффициенты полинома для уровня энергии менее 550 кэВ</div>
+            <Box mb={0.5}> {/* mb = margin bottom 2 (технически, это 16px * 2 = 32px отступ снизу) */}
+              Коэффициенты полинома для уровня энергии менее 550 кэВ
+            </Box>
+            {/* <div>Коэффициенты полинома для уровня энергии менее 550 кэВ</div> */}
             <Grid container spacing={2}>
               {settings.coeffs_below_550 && settings.coeffs_below_550.map((coeff, index) => (
                 <Grid item xs={2.4} key={`coeff-below-${index}`}> {/* xs={3} означает, что каждый элемент займет 1/4 ширины контейнера */}
                   <TextField
                     margin="dense"                  
                     id={`coeff-below-${index}`}
-                    label={`Коэфф ${index + 1} (<= 550 кэВ)`}
+                    label={`Коэфф ${index + 1}`}
                     fullWidth
                     size="small"
                     variant="outlined"
@@ -755,15 +764,17 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
                 </Grid>
               ))}
             </Grid>
-      
-            <div>Коэффициенты полинома для уровня энергии более 550 кэВ</div>
+            <Box mb={0.5} mt={1}>  
+              Коэффициенты полинома для уровня энергии более 550 кэВ
+            </Box>     
+            {/* <div>Коэффициенты полинома для уровня энергии более 550 кэВ</div> */}
             <Grid container spacing={2}>
               {settings.coeffs_above_550 && settings.coeffs_above_550.map((coeff, index) => (
                 <Grid item xs={2.4} key={`coeff-above-${index}`}> {/* Аналогично, используем xs={3} для распределения по 4 в ряд */}
                   <TextField
                     margin="dense"
                     id={`coeff-above-${index}`}
-                    label={`Коэфф ${index + 1} (> 550 кэВ)`}
+                    label={`Коэфф ${index + 1}`}
                     fullWidth
                     size="small"
                     variant="outlined"
@@ -803,7 +814,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
             <TextField
               margin="dense"
               id="winCoeff"
-              label="Коэффициент пересчета Cs (1 окно)"
+              label="Коэффициент чувствительности для выбранного диапазона"
               type="number"
               fullWidth
               size="small"
@@ -1079,9 +1090,9 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
           borderRadius: '50%',
           padding: '0px',  
         }}>
-          <IconButton color="inherit" onClick={handleChartToggle}>
+          <IconButton color="inherit"  disabled={selectedCollection?.is_online} onClick={handleChartToggle} >
             <Tooltip title="Спектр">
-              <ChartIcon style={{ fill: chartOpen ? theme.palette.primary.main : "white", width: 24, height: 24 }} />
+              <ChartIcon style={{ fill: selectedCollection?.is_online?"lightgray": (chartOpen ? theme.palette.primary.main : "white"), width: 24, height: 24 }} />
             </Tooltip>
           </IconButton>
         </div>
@@ -1127,25 +1138,15 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
           </DialogActions>
         </Dialog>
 
-        <IconButton
-          color="inherit"
-          onClick={saveMapAsImage}
-        >
+        <IconButton color="inherit" onClick={saveMapAsImage}>
           <Tooltip title="Сохранить экран карты">
-            <CameraIcon 
-            style={{ fill: "white", width: 24, height: 24 }} />
+            <CameraIcon style={{ fill: "white", width: 24, height: 24 }} />
           </Tooltip>
         </IconButton>
 
-        <IconButton
-          color="inherit"
-          disabled={validMeasurements.length === 0}
-          onClick={saveDataToFile}
-        >
+        <IconButton color="inherit" disabled={validMeasurements.length === 0} onClick={saveDataToFile}>
           <Tooltip title="Сохранить данные">
-            <DownloadIcon
-            
-            style={{ fill: validMeasurements.length === 0?"lightgray": "white", width: 24, height: 24 }} />
+            <DownloadIcon style={{ fill: validMeasurements.length === 0?"lightgray": "white", width: 24, height: 24 }} />
           </Tooltip>
         </IconButton>
 
