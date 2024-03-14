@@ -762,7 +762,7 @@ function generateMeasurementData(db, flightId) {
   // Время создания записи
   const dateTime = new Date().toISOString();
   // Расчёты дозы
-  const windose = getDose(winCount, alt, false, 1, config.gm1Coeff, config.gm2Coeff, config.winCoeff); // Используем функцию getDose для расчета дозы в окне
+  let windose = getDose(winCount, alt, false, 1, config.gm1Coeff, config.gm2Coeff, config.winCoeff); // Используем функцию getDose для расчета дозы в окне
   const gmDose1 = getDose(0, alt, true, 1, config.gm1Coeff, config.gm2Coeff, config.winCoeff); // Примерный вызов для gmdose1 с предположением, что geiger1 = 0
   const gmDose2 = getDose(0, alt, true, 2, config.gm1Coeff, config.gm2Coeff, config.winCoeff); // Примерный вызов для gmdose2 с предположением, что geiger2 = 0
   if (windose>3) {
