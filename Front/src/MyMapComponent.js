@@ -93,17 +93,18 @@ const transformData = (data, flightStartTime) => {
     const timeFromStart = (measurementTime - flightStart) / 1000;
     return {
       time: timeFromStart,
-      dose: measurement.dose
+      dose: measurement.dose,
+      // Include height data
+      height: measurement.height
     };
   });
 };  
 
 const formatDateAxis = (tickItem) => {
-  const interval = 10;
-  return new Date(tickItem).toLocaleDateString();
+  // Assuming tickItem is a timestamp
+  const date = new Date(tickItem);
+  return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
 };
-
-
 function TimeLineChart({ data, flightStartTime }) {
   const transformedData = transformData(data, flightStartTime);
 
@@ -112,33 +113,16 @@ function TimeLineChart({ data, flightStartTime }) {
       <CartesianGrid strokeDasharray="3 3" />
       
       <XAxis dataKey="time" label={{ value: 'Время с начала полёта (сек)', position: 'insideBottomRight', offset: -5 }} />
-      <YAxis label={{ value: 'Доза', angle: -90, position: 'insideLeft' }} />
+      <YAxis yAxisId="left" label={{ value: 'Доза', angle: -90, position: 'insideLeft' }} />
+      <YAxis yAxisId="right" orientation="right" label={{ value: 'Высота', angle: -90, position: 'insideRight' }} />
       <Tooltip />
-      <Line type="monotone" dataKey="dose" stroke="#8884d8" activeDot={{ r: 8 }} />
+      <Line yAxisId="left" type="monotone" dataKey="dose" stroke="#8884d8" activeDot={{ r: 8 }} />
+      <Line yAxisId="right" type="monotone" dataKey="height" stroke="red" activeDot={{ r: 8 }} />
     </LineChart>
+    
   );
 
-// Использование TimeLineChart в компоненте, который реагирует на изменения состояния
-/*   function MyDynamicChartComponent({ data, chartOpen, selectedCollection }) {
-  React.useEffect(() => {
-    if (chartOpen && selectedCollection?.is_online) {
-      // Логика для отображения графика, возможно, изменение состояния для показа/скрытия
-      console.log('Отображаем TimeLineChart на основе состояния');
-    }
-  }, [chartOpen, selectedCollection?.is_online]);
-
-  return <div>{chartOpen && selectedCollection?.is_online && <TimeLineChart data={data} />}</div>;
-  } */
 }
-
-
-
-
-
-
-
-
-
 
 
 function MapEffect({ setMapInstance }) {
