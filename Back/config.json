@@ -25,5 +25,9 @@
   ],
   "gm1Coeff": 0.0024,
   "gm2Coeff": 0.0024,
-  "winCoeff": 0.0073
+  "winCoeff": 0.0073,
+  "serialPort": {
+    "path": "CNCB1",
+    "baudRate": 57600
+  }
 }

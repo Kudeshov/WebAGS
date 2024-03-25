@@ -6,11 +6,14 @@ const cors = require('cors');
 const app = express();
 const fs = require('fs');
 const path = require('path');
-const SerialPort = require('serialport');
+//const SerialPort = require('serialport');
 const configPath = path.join(__dirname, 'config.json');
 // Синхронное чтение и парсинг файла конфигурации
 let config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
 const port = config.port; // Использование номера порта из config.json
+const { SerialPort } = require('serialport');
+const { ReadlineParser } = require('@serialport/parser-readline');
+let activeSerialPort = null;
 
 app.use(express.json());
 
@@ -55,7 +58,9 @@ let onlineFlightStatus = {
   winLow: null,
   winHigh: null,
   active: false,
-  dbName: null
+  dbName: null,
+  is_online: false,
+  is_real: false
 };
 
 // Запуск HTTP сервера
@@ -489,7 +494,6 @@ app.get('/api/data/:dbname/:collectionId', async (req, res) => {
   }
 });
 
-// Предполагается, что config.flightsDirectory определена ранее в вашем коде
 function ensureDatabaseExists(newDbName) {
   return new Promise((resolve, reject) => {
     const templatePath = path.join(config.flightsDirectory, 'template.udkgdb');
@@ -550,7 +554,7 @@ app.post('/start-flight-simulation', (req, res) => {
                 clearInterval(flightSimulations[_id].interval);
                 delete flightSimulations[_id];
               }
-              //clearInterval(flightSimulations[_id]?.interval);
+ 
               delete flightSimulations[_id];
               onlineFlightStatus = {
                 _id: null,
@@ -565,7 +569,9 @@ app.post('/start-flight-simulation', (req, res) => {
                 P0: null,
                 P1: null,
                 P2: null,
-                P3: null
+                P3: null,
+                is_online: false,
+                is_real: false
               };
 
               wss.clients.forEach(client => {
@@ -594,7 +600,8 @@ app.post('/start-flight-simulation', (req, res) => {
           winHigh,
           active: true,
           dbName: dbName,
-          is_online: true
+          is_online: true,
+          is_real: false
         };
 
         res.json({ message: "Эмуляция полета запущена", _id, onlineFlightStatus });
@@ -606,47 +613,69 @@ app.post('/start-flight-simulation', (req, res) => {
   });
 });
 
-app.post('/stop-flight-simulation', (req, res) => {
+app.post('/stop-flight', (req, res) => {
   const _id = req.body._id;
-  console.log('Попытка останова полета, _id=',_id);
-  if (flightSimulations[_id]) {
+  console.log('Попытка останова полета, _id=', _id);
 
-    // Останавливаем интервал, используя сохранённый идентификатор
+  if (onlineFlightStatus._id === _id && onlineFlightStatus.is_real) {
+    // Остановка реального полета
+    if (activeSerialPort && activeSerialPort.isOpen) {
+      activeSerialPort.close(err => {
+        if (err) {
+          console.error('Ошибка при закрытии COM порта:', err);
+          return res.status(500).send('Ошибка при закрытии COM порта');
+        }
+        console.log('COM порт успешно закрыт');
+        activeSerialPort = null; // Сброс ссылки на порт после закрытия
+        updateAndNotifyFlightStatus(_id, false); // Обновление статуса полета и отправка уведомления
+        res.json({ message: "Реальный полет успешно остановлен", _id });
+      });
+    } else {
+      console.log('COM порт не был открыт или уже закрыт');
+      updateAndNotifyFlightStatus(_id, false); // Обновление статуса полета и отправка уведомления даже если порт уже закрыт
+      res.json({ message: "COM порт не был открыт или уже закрыт", _id });
+    }
+  } else if (flightSimulations[_id]) {
+    // Остановка симулированного полета
     clearInterval(flightSimulations[_id].interval);
-
     delete flightSimulations[_id];
-
-    onlineFlightStatus = {
-      _id: null,
-      active: false,
-      dbName: null,
-      description: null,
-      winLow: null,
-      winHigh: null,
-      dateTime: null,
-      detector: null,
-      hasCalibr: null,
-      P0: null,
-      P1: null,
-      P2: null,
-      P3: null
-    };
-
-    console.log(`Эмуляция полета ${_id} была остановлена вручную.`);
-    res.json({ message: "Эмуляция полета остановлена", _id });
-
-    wss.clients.forEach(client => {
-      if (client.readyState === WebSocket.OPEN) {
-        client.send(JSON.stringify({ type: 'flightEnded', _id, message: 'Симуляция полета остановлена вручную' }));
-      }
-    });
-
+    updateAndNotifyFlightStatus(_id, false); // Обновление статуса полета и отправка уведомления
+    res.json({ message: "Симуляция полета остановлена", _id });
   } else {
-
-    console.log( "Эмуляция полета  не найдена", _id);
-    res.status(404).json({ message: "Эмуляция полета не найдена", _id });
+    console.log("Полет не найден", _id);
+    res.status(404).json({ message: "Полет не найден", _id });
   }
 });
+
+function updateAndNotifyFlightStatus(_id, isActive) {
+  // Обновление статуса полета в объекте onlineFlightStatus
+  onlineFlightStatus = {
+    _id: null,
+    active: isActive,
+    dbName: null,
+    description: null,
+    winLow: null,
+    winHigh: null,
+    dateTime: null,
+    detector: null,
+    hasCalibr: null,
+    P0: null,
+    P1: null,
+    P2: null,
+    P3: null,
+    is_online: false,
+    is_real: false
+  };
+
+  console.log(`Полет ${_id} был остановлен.`);
+  // Уведомление всех подключенных клиентов через WebSocket
+  wss.clients.forEach(client => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(JSON.stringify({ type: 'flightEnded', _id, message: 'Полет остановлен' }));
+    }
+  });
+}
+
 
 app.get('/api/online-flight-status', (req, res) => {
   res.json(onlineFlightStatus);
@@ -710,6 +739,60 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
   return R * c; // Возвращает расстояние в километрах
 }
 
+function insertOnlineMeasurement(db, flightId, measurementData) {
+  const insertSql = `
+      INSERT INTO online_measurement 
+      (flightId, dateTime, gpsX, gpsY, gpsZ, rHeight, srtmHeight, calcHeight, geiger1, geiger2, winCount) 
+      VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, ?)`;
+
+  db.run(insertSql, [
+    flightId, measurementData.dateTime, measurementData.gpsX, measurementData.gpsY, measurementData.gpsZ, 
+    measurementData.rHeight, measurementData.geiger1, measurementData.geiger2, measurementData.winCount
+  ], function(err) {
+    if (err) {
+      console.error('Ошибка при добавлении записи в online_measurement:', err.message);
+      return;
+    }
+
+    let coords = toLLA(measurementData.gpsX, measurementData.gpsY, measurementData.gpsZ);
+
+    console.log(`Запись измерения добавлена. ID: ${this.lastID}`);
+
+    let windose = getDose(measurementData.winCount, coords.alt, false, 1, config.gm1Coeff, config.gm2Coeff, config.winCoeff); // Используем функцию getDose для расчета дозы в окне
+    const gmDose1 = getDose(0, coords.alt, true, 1, config.gm1Coeff, config.gm2Coeff, config.winCoeff); // Примерный вызов для gmdose1 с предположением, что geiger1 = 0
+    const gmDose2 = getDose(0, coords.alt, true, 2, config.gm1Coeff, config.gm2Coeff, config.winCoeff); // Примерный вызов для gmdose2 с предположением, что geiger2 = 0
+    if (windose>3) {
+        windose = 3
+      }
+  
+    // Подготовка данных для отправки через WebSocket с учетом требуемого формата
+    const flightDataForWebSocket = {
+      id: this.lastID,
+      flightId,
+      datetime: measurementData.dateTime,
+      lat: coords.lat, // Нужно будет добавить в measurementData
+      lon: coords.lon, // Нужно будет добавить в measurementData
+      alt: coords.alt, // Нужно будет добавить в measurementData
+      height: measurementData.rHeight,
+      countw: measurementData.winCount,
+      dosew: windose, // Это значение должно быть рассчитано заранее
+      dose: windose,
+      geiger1: measurementData.geiger1,
+      geiger2: measurementData.geiger2,
+      gmdose1: measurementData.gmDose1, // Это значение должно быть рассчитано заранее
+      gmdose2: measurementData.gmDose2, // Это значение должно быть рассчитано заранее
+      spectrum: [] // Добавьте спектр, если он доступен
+    };
+
+    // Отправка данных всем подключенным клиентам через WebSocket
+    wss.clients.forEach(client => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(JSON.stringify(flightDataForWebSocket));
+      }
+    });
+  });
+}
+
 function generateMeasurementData(db, flightId) {
   // Добавляем случайную погрешность к шагам
   const randomErrorLat = (Math.random() - 0.5) * 0.00002;
@@ -736,8 +819,6 @@ function generateMeasurementData(db, flightId) {
 
   const ecefCoords = toECEF(lat+randomErrorLat, lon+randomErrorLon, alt);
 
-  //const winCount = Math.floor(Math.random() * (100 - 20 + 1)) + 20;
-
   // Расчет близости к ближайшему очагу
   let minDistance = Infinity;
   hotspots.forEach(hotspot => {
@@ -762,51 +843,142 @@ function generateMeasurementData(db, flightId) {
   // Время создания записи
   const dateTime = new Date().toISOString();
   // Расчёты дозы
-  const windose = getDose(winCount, alt, false, 1, config.gm1Coeff, config.gm2Coeff, config.winCoeff); // Используем функцию getDose для расчета дозы в окне
+  let windose = getDose(winCount, alt, false, 1, config.gm1Coeff, config.gm2Coeff, config.winCoeff); // Используем функцию getDose для расчета дозы в окне
   const gmDose1 = getDose(0, alt, true, 1, config.gm1Coeff, config.gm2Coeff, config.winCoeff); // Примерный вызов для gmdose1 с предположением, что geiger1 = 0
   const gmDose2 = getDose(0, alt, true, 2, config.gm1Coeff, config.gm2Coeff, config.winCoeff); // Примерный вызов для gmdose2 с предположением, что geiger2 = 0
   if (windose>3) {
       windose = 3
     }
-  // SQL запрос на вставку
-  const insertSql = `INSERT INTO online_measurement (flightId, dateTime, gpsX, gpsY, gpsZ, rHeight, srtmHeight, calcHeight, geiger1, geiger2, winCount) VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, 0, 0, ?)`;
 
-  // Вставка данных в базу данных
-  db.run(insertSql, [flightId, dateTime, ecefCoords.x, ecefCoords.y, ecefCoords.z, alt, winCount], function(err) {
-      if (err) {
-          console.error(err.message);
-          return;
-      }
+  const measurementData = {
+    dateTime: new Date().toISOString(),
+    gpsX: ecefCoords.x,
+    gpsY: ecefCoords.y,
+    gpsZ: ecefCoords.z,
+    rHeight: alt,
+    geiger1: 0, // Примерное значение, подставьте реальные данные
+    geiger2: 0, // Примерное значение, подставьте реальные данные
+    winCount: winCount,
+  };
 
-      console.log(`Запись измерения добавлена для flightId: ${flightId} с ID: ${this.lastID}, ${dateTime}, ${windose}`);
-
-      // Подготовка данных для отправки через WebSocket в географических координатах
-      const flightDataForWebSocket = {
-          id: this.lastID,
-          flightId,
-          datetime: dateTime,
-          lat: (lat+randomErrorLat), // Преобразование в географические координаты не требуется, так как мы уже работаем с ними
-          lon: (lon+randomErrorLon),
-          alt,
-          height: alt, // использование alt для height
-          countw: winCount,
-          dosew: windose,
-          dose: windose,
-          geiger1: 0,
-          geiger2: 0,
-          gmdose1: gmDose1,
-          gmdose2: gmDose2,
-          spectrum: []
-      };
-
-      // Отправка подготовленных данных всем подключенным клиентам через WebSocket
-      wss.clients.forEach(client => {
-          //console.log(`Отправка подготовленных данных 1`);
-          if (client.readyState === WebSocket.OPEN) {
-
-            //console.log(`Отправка подготовленных данных 2`);
-            client.send(JSON.stringify(flightDataForWebSocket));
-          }
-      });
-  });
+  insertOnlineMeasurement(db, flightId, measurementData);  
 }
+
+function parseData(dataString) {
+  try {
+    const trimmedData = dataString.trim().slice(1, -2);
+    const values = trimmedData.split(',');
+    
+    // Расчет dateTime из gpsWeek и gpsTime
+    const gpsWeek = parseInt(values[2]);
+    const gpsTime = parseInt(values[3]); // gpsTime уже в миллисекундах
+
+    const startDate = new Date(Date.UTC(1980, 0, 6));
+    const millisecondsSinceEpoch = (gpsWeek * 7 * 24 * 60 * 60 * 1000) + gpsTime;
+    const dateTime = new Date(startDate.getTime() + millisecondsSinceEpoch);
+
+    return {
+      sensorId: parseInt(values[0]),
+      flightNumber: parseInt(values[1]),
+      gpsWeek: gpsWeek,
+      gpsTime: gpsTime,
+      gpsX: parseInt(values[4]),
+      gpsY: parseInt(values[5]),
+      gpsZ: parseInt(values[6]),
+      rHeight: parseInt(values[7]),
+      flightTime: parseInt(values[8]),
+      operatingTime: parseInt(values[9]),
+      sensorGM1Value: parseInt(values[10]),
+      sensorGM2Value: parseInt(values[11]),
+      sensorSWValue: parseInt(values[12]),
+      gpsAvailable: parseInt(values[13]),
+      temporaryConst: parseInt(values[14]),
+      dateTime: dateTime.toISOString(), // Добавляем рассчитанное dateTime
+      winCount: parseInt(values[12]),
+    };
+  } catch (error) {
+    console.error('Error parsing data:', error);
+    return null;
+  }
+}
+
+app.post('/start-flight', (req, res) => {
+  const { dbName, flightName, winLow, winHigh } = req.body;
+
+  // Проверка наличия и создание базы данных, если требуется
+  ensureDatabaseExists(dbName).then(() => {
+      // Путь к файлу базы данных
+      const dbPath = `${config.flightsDirectory}/${dbName}.sqlite`;
+      // Открытие базы данных
+      const db = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE, (err) => {
+          if (err) {
+              console.error('Ошибка при открытии базы данных:', err);
+              return res.status(500).json({ message: "Ошибка при открытии базы данных" });
+          }
+          console.log('База данных успешно открыта');
+
+          // Создание записи полета
+          createFlightRecord(db, dbName, flightName, winLow, winHigh, (_id) => {
+              console.log(`Запись полета ${_id} создана`);
+
+              onlineFlightStatus = {
+                _id,
+                dateTime: new Date().toISOString(),
+                detector: null,
+                hasCalibr: null,
+                P0: null,
+                P1: null,
+                P2: null,
+                P3: null,
+                description: flightName,
+                winLow,
+                winHigh,
+                active: true,
+                dbName: dbName,
+                is_online: true,
+                is_real: true
+              };
+      
+              // Настройка и открытие COM порта
+              const port = new SerialPort({
+                  path: config.serialPort.path,
+                  baudRate: config.serialPort.baudRate
+              });
+
+              activeSerialPort = port;
+
+              const parser = port.pipe(new ReadlineParser({ delimiter: '\r\n' }));
+
+              parser.on('data', (data) => {
+                  console.log(`Raw data received: ${data}`);
+                  // Парсинг и обработка полученных данных
+                  const parsedData = parseData(data); // Убедитесь, что функция parseData правильно обрабатывает полученные данные
+                  if (parsedData) {
+                      console.log('Parsed data:', parsedData);
+                      // Вставка данных измерения в таблицу online_measurement
+                      insertOnlineMeasurement(db, _id, parsedData);
+                  } else {
+                      console.log('Data parsing error or invalid data format');
+                  }
+              });
+
+              port.on('open', () => {
+                  console.log('Serial Port Opened for receiving data.');
+                  //res.json({ message: "Flight data collection started", _id });
+
+                  res.json({ message: "Полет запущен", _id, onlineFlightStatus });
+              });
+
+              port.on('error', (err) => {
+                  console.error('Error with serial port:', err.message);
+                  res.status(500).send(`Error opening serial port: ${err.message}`);
+              });
+
+            
+          });
+      });
+  }).catch((error) => {
+      console.error('Error preparing database:', error);
+      res.status(500).json({ message: "Internal server error preparing the database" });
+  });
+});

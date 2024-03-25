@@ -9,7 +9,6 @@
   import { HeatmapLayer } from 'react-leaflet-heatmap-layer-v3';
   import { getColorT, calculateScaledThresholds } from './colorUtils';
   import RectangularSelection from './RectangularSelection';
-/*   import { ReactComponent as RectangleIcon } from './icons/rectangle-landscape.svg'; */
   import { FlightDataContext } from './FlightDataContext';
   import { createRoot } from 'react-dom/client';
   import 'leaflet-easyprint';
@@ -132,7 +131,7 @@
     };
 
     useEffect(() => {
-      // This assumes there's an array of selected points
+    
       if (selectedPoints.length > 0) {
         // Calculate sums and ranges
         let sumDose = 0, sumDoseW = 0, sumGeiger1 = 0, sumGeiger2 = 0, sumGMDose1 = 0, sumGMDose2 = 0;
@@ -388,8 +387,6 @@
 
   
       // Задаем функцию в контекст
-      //setSaveMapAsImage(() => () => printPlugin.printMap('CurrentSize', generateFileName()));
-
       setSaveMapAsImage(() => () => {
         // Устанавливаем актуальное имя файла непосредственно перед сохранением
         printPlugin.options.filename = generateFileName();
@@ -464,26 +461,6 @@
         }
       }
     }, [averageMeasurement, averageDiapasone, selectedPoints.length]);
-
-
-   /*  const updateLegend = (thresholds, minValue, maxValue) => {
-      if (legendControlRef.current) {
-        const div = legendControlRef.current.getContainer();
-        const gradientStyle = `background: linear-gradient(to top, ${createGradientT(thresholds, minValue, maxValue)});`;
-    
-        div.style.display = 'flex';
-        div.style.flexDirection = 'row'; // Элементы будут расположены горизонтально (один за другим)
-        div.style.alignItems = 'center'; // Выравниваем элементы по центру по вертикали
-    
-        div.innerHTML = `
-          <div style="width: 15px; height: 120px; ${gradientStyle}"></div>
-          <div style="height: 120px; display: flex; flex-direction: column; justify-content: space-between; margin-left: 3px;">
-            <span>${Math.ceil(maxValue * 100) / 100}</span>
-            <span>${Math.floor(minValue * 100) / 100}</span>
-          </div>
-        `;
-      }
-    }; */
 
     const [previousValidMeasurements, setPreviousValidMeasurements] = useState();
     const [previousValidMeasurementsBand, setPreviousValidMeasurementsBand] = useState();
@@ -875,31 +852,6 @@
             })}
           </FeatureGroup>        
         </LayersControl.Overlay>
-
-{/*         <LayersControl.Overlay checked name="Онлайн измерения">
-          <FeatureGroup ref={onlineMeasurementsLayerRef}>
-            {
-            
-            onlineMeasurements.map((onlineMeasurements, index) => (
-              <CircleMarker
-                key={index}
-                center={[onlineMeasurements.lat, onlineMeasurements.lon]}
-                pathOptions={{
-                  color: getColor(onlineMeasurements.dose, 0, 2), // Вы можете настроить стиль маркера здесь
-                  fillColor: getColor(onlineMeasurements.dose, 0, 2),
-                  fillOpacity: 0.5,
-                  radius: 5,
-                }}
-                eventHandlers={{
-                  click: () => {
-                    console.log('Measurement clicked', onlineMeasurements);
-                    // Действия при клике на маркер, если требуется
-                  },
-                }}
-              />
-            ))}
-          </FeatureGroup>
-        </LayersControl.Overlay> */}
 
         <LayersControl.Overlay name="Тепловая карта">
           <HeatmapLayer

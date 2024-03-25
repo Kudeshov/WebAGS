@@ -8,7 +8,6 @@ import { ReactComponent as CameraIcon } from './icons/camera.svg';
 import { ReactComponent as DownloadIcon } from './icons/download.svg';
 import { ReactComponent as EraserIcon } from './icons/trash.svg';
 import { ReactComponent as CogIcon } from './icons/cog.svg';
-//import { ReactComponent as HelicopterIcon } from './icons/helicopter.svg';
 
 import Tooltip from '@mui/material/Tooltip';
 import { useTheme } from '@mui/material/styles';
@@ -220,7 +219,10 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
 
   const handleStartFlight = () => {
     setOnlineMeasurements([]);
-    fetch('/start-flight-simulation', {
+    // Определяем URL в зависимости от состояния isDemoMode
+    const url = isDemoMode ? '/start-flight-simulation' : '/start-flight';
+  
+    fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -230,7 +232,6 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
         flightName: onlineFlightName, // Добавляем название полета
         winLow: winLowValue, // Добавляем нижнюю границу окна
         winHigh: winHighValue, // Добавляем верхнюю границу окна
-        demoMode: isDemoMode // Добавляем статус демо-режима
       })
     })
     .then(response => response.json())
@@ -240,12 +241,13 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
         setOnlineFlightId(data.onlineFlightStatus._id); // Сохраняем ID полета
         setSelectedDatabase(selectedOnlineDB);
         setSelectedCollection(data.onlineFlightStatus); // Предполагая, что это корректные данные для вашего контекста
-
+  
         console.log("setupWebSocket из HandleStartFlight");
         setupWebSocket(data.onlineFlightStatus._id); // Установка WebSocket соединения
         
         setSnackbarOpen(true);
-        setSnackbarMessage('Эмуляция полета запущена');
+        const msg = isDemoMode ? 'Эмуляция полета запущена' : 'Полет запущен';
+        setSnackbarMessage(msg);
       } else {
         console.error('Не удалось запустить полет:', data);
         setSnackbarOpen(true);
@@ -262,7 +264,6 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
       handleStartFlightDialogClose(); // Закрываем диалоговое окно
     });
   };
-
  
   useEffect(() => {
     // Функция для запроса статуса онлайн-полета
@@ -298,7 +299,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
       return;
     }
   
-    fetch('/stop-flight-simulation', {
+    fetch('/stop-flight', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -468,9 +469,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
     document.getElementById('fileInput').click();
   };
 
-
-
-   const theme = useTheme();
+  const theme = useTheme();
 
   // Измените обработчик для кнопки
   const handleDataGridToggle = () => {
@@ -1019,7 +1018,6 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
             <PlaneIcon style={{ fill: "white", width: 24, height: 24 }} />
           </Tooltip>
         </IconButton>
-
         <Menu
           anchorEl={filterMenuAnchorCollection} 
           open={Boolean(filterMenuAnchorCollection)}
@@ -1030,11 +1028,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
         >
           {/* Отображение офлайн полетов */}
           {collectionOptions.filter(collection => !collection.is_online).map((collection, index) => (
-            <MenuItem       
-              key={collection._id} 
-              onClick={() => handleCollectionSelect(collection)}
-              disabled={onlineFlightId !== null}
-            >
+            <MenuItem key={collection._id} onClick={() => handleCollectionSelect(collection)} disabled={onlineFlightId !== null}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', width: '100%' }}>
                 <span style={{ fontWeight: 'normal', marginRight: '1rem' }}>{collection.description}</span>
                 <span style={{ color: '#aaa', fontSize: '0.8rem' }}>
@@ -1043,36 +1037,33 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
               </div>
             </MenuItem>
           ))}
-          {collectionOptions.some(collection => !collection.is_online) && <Divider />}
 
           {/* Разделитель, если есть офлайн полеты */}
-          {collectionOptions.some(collection => collection.is_online) && (
-            <>
-              <ListSubheader>Онлайн полеты</ListSubheader>
-              <Divider />
-              {collectionOptions.filter(collection => collection.is_online).map((collection, index) => (
-                <MenuItem       
-                  key={collection._id} 
-                  onClick={() => handleCollectionSelect(collection)}
-                  disabled={onlineFlightId !== null}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', width: '100%' }}>
-                    <span style={{ fontWeight: 'normal', marginRight: '1rem' }}>{collection.description}</span>
-                    <span style={{ color: '#aaa', fontSize: '0.8rem' }}>
-                      {convertDateTimeWithoutSeconds(collection?.dateTime)}
-                    </span>
-                  </div>
-                </MenuItem>
-              ))}
-              <Divider />
-            </>
-          )}
+          {collectionOptions.some(collection => !collection.is_online) && <Divider />}
+
+          {/* Онлайн полеты, если они есть */}
+          {collectionOptions.some(collection => collection.is_online) && [
+            <ListSubheader key="online-flight-header">Онлайн полеты</ListSubheader>,
+            <Divider key="online-flight-divider" />,
+            ...collectionOptions.filter(collection => collection.is_online).map((collection, index) => (
+              <MenuItem key={collection._id} onClick={() => handleCollectionSelect(collection)} disabled={onlineFlightId !== null}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', width: '100%' }}>
+                  <span style={{ fontWeight: 'normal', marginRight: '1rem' }}>{collection.description}</span>
+                  <span style={{ color: '#aaa', fontSize: '0.8rem' }}>
+                    {convertDateTimeWithoutSeconds(collection?.dateTime)}
+                  </span>
+                </div>
+              </MenuItem>
+            )),
+            <Divider key="online-flight-final-divider" />
+          ]}
 
           {/* Управление онлайн полетами */}
           <MenuItem onClick={handleStartFlightDialogOpen} disabled={onlineFlightId !== null}>Начать онлайн-полет</MenuItem>
           <MenuItem onClick={handleStopFlight} disabled={onlineFlightId === null}>Остановить онлайн-полет</MenuItem>
         </Menu>
- 
+
+
         <div style={{
           backgroundColor: drawerOpen ? "white" : "transparent",
           borderRadius: '50%',
@@ -1090,7 +1081,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
           borderRadius: '50%',
           padding: '0px',  
         }}>
-          <IconButton color="inherit"  disabled={selectedCollection?.is_online} onClick={handleChartToggle} >
+          <IconButton color="inherit"  disabled={selectedCollection?.is_online===true} onClick={handleChartToggle} >
             <Tooltip title="Спектр">
               <ChartIcon style={{ fill: selectedCollection?.is_online?"lightgray": (chartOpen ? theme.palette.primary.main : "white"), width: 24, height: 24 }} />
             </Tooltip>
@@ -1256,7 +1247,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
           </Grid>
         </Grid>
         <FormControlLabel
-          control={<Checkbox checked={isDemoMode} onChange={handleDemoModeChange} disabled />}
+          control={<Checkbox checked={isDemoMode} onChange={handleDemoModeChange} />}
           label="Демо-режим"
         />
       </DialogContent>

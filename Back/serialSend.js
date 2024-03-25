@@ -1,31 +1,54 @@
 const { SerialPort } = require('serialport');
 
-// Замените 'CNCA0' на имя вашего виртуального COM порта, если это необходимо
 const port = new SerialPort({
   path: 'CNCA1',
   baudRate: 57600
 });
 
-function generateData() {
-  // Получаем текущее время
-  const now = new Date();
-  
-  // Определяем начальную точку отсчёта времени GPS (6 января 1980 года)
-  const startDate = new Date(Date.UTC(1980, 0, 6));
-  
-  // Вычисляем gpsWeek и gpsTime
-  const diff = now - startDate; // Разница в миллисекундах
-  const gpsWeek = Math.floor(diff / (7 * 24 * 60 * 60 * 1000)); // Количество недель
-  const weekMilliseconds = diff % (7 * 24 * 60 * 60 * 1000); // Миллисекунды текущей недели
-  const gpsTime = Math.floor(weekMilliseconds); // Оставляем как есть, поскольку уже в миллисекундах
+// Определение параметров модели Земли
+const a = 6378137.0; // Радиус Земли в метрах
+const e = 0.08181919; // Эксцентриситет
+const b2 = Math.pow(6356752.314245, 2); // Квадрат малой полуоси
+const a2 = Math.pow(a, 2); // Квадрат большой полуоси
 
-  // Остальные параметры, как в предыдущем примере
+let lat = 55.704034038232834;
+let lon = 37.62119540524117;
+let alt = 25;
+
+function toECEF(lat, lon, alt) {
+  const latRad = lat * Math.PI / 180.0;
+  const lonRad = lon * Math.PI / 180.0;
+  const N = a / Math.sqrt(1 - e * e * Math.sin(latRad) * Math.sin(latRad));
+  const X = (N + alt) * Math.cos(latRad) * Math.cos(lonRad);
+  const Y = (N + alt) * Math.cos(latRad) * Math.sin(lonRad);
+  const Z = ((b2 / a2) * N + alt) * Math.sin(latRad);
+  return { x: Math.round(X * 100), y: Math.round(Y * 100), z: Math.round(Z * 100) };
+}
+
+function updatePosition() {
+  // Случайное изменение координат и высоты
+  lat += (Math.random() - 0.5) * 0.000036; // Примерно 2 метра в широту
+  lon += (Math.random() - 0.5) * 0.000036; // Примерно 2 метра в долготу
+  alt += (Math.random() - 0.5) * 1; // В пределах 0.5 метра
+}
+
+function generateData() {
+  //updatePosition();
+  const ecef = toECEF(lat, lon, alt);
+  
+  const now = new Date();
+  const startDate = new Date(Date.UTC(1980, 0, 6));
+  const diff = now - startDate;
+  const gpsWeek = Math.floor(diff / (7 * 24 * 60 * 60 * 1000));
+  const weekMilliseconds = diff % (7 * 24 * 60 * 60 * 1000);
+  const gpsTime = Math.floor(weekMilliseconds);
+
   const sensorId = 8;
   const flightNumber = 1;
-  const gpsX = Math.floor(Math.random() * 1000000000);
-  const gpsY = Math.floor(Math.random() * 1000000000);
-  const gpsZ = Math.floor(Math.random() * 1000000000);
-  const relativeHeight = Math.floor(Math.random() * 100 - 50);
+  const gpsX = ecef.x;
+  const gpsY = ecef.y;
+  const gpsZ = ecef.z;
+  const relativeHeight = Math.floor((alt - 25) * 100);
   const flightTime = 8390;
   const operatingTime = flightTime;
   const sensorGM1Value = 0;
@@ -48,5 +71,4 @@ function sendData() {
   });
 }
 
-// Отправляем данные каждую секунду
 setInterval(sendData, 1000);
