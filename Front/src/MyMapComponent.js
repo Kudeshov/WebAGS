@@ -22,31 +22,6 @@ L.Icon.Default.mergeOptions({
   shadowUrl: require('leaflet/dist/images/marker-shadow.png'),
 });
 
-
-function SpectrumChartWithLabel({ data }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', width: '293px', height: '200px' }}>
-      <div style={{
-        transform: 'rotate(-90deg)',
-        transformOrigin: 'left top',
-        width: '60px',
-        height: '50px',
-        textAlign: 'center',
-        fontSize: '12px',
-        marginLeft: '-10px', // Отрицательный отступ для компенсации ширины после вращения
-        marginBottom: '-140px',
-        marginRight: '-85px', // Дополнительный отступ от графика
-        whiteSpace: 'nowrap'
-      }}>
-        Скорость счета 1/с
-      </div>
-      <div style={{ width: '100%', height: '100%' }}>
-        {/* isLoading ? 'Загрузка...' :  */<SpectrumChart data={data} />}
-      </div>
-    </div>
-  );
-}
-
 const formatXAxis = (tickItem) => {
   // Задайте интервал, до которого вы хотите округлить (например, 400)
   const interval = 400;
@@ -54,11 +29,9 @@ const formatXAxis = (tickItem) => {
   return Math.round(tickItem / interval) * interval;
 }
 
-
-
 function SpectrumChart({ data }) {
   return (
-    <LineChart width={330} height={200} data={data}>
+    <LineChart width={330} height={200} data={data} margin={{ top: 5, right: 5, left: -15, bottom: 5 }}>
       <Line 
         type="monotone" 
         dataKey="value" 
@@ -72,57 +45,57 @@ function SpectrumChart({ data }) {
         dataKey="energy" // Использование 'energy' в качестве ключа
         label={{ value: "Энергия (keV)", position: "bottom", offset: -6, style: { fontSize: 12 } }}  
       />
-      <YAxis />
+      <YAxis 
+        label={{ value: 'Скорость счета 1/с', angle: -90, position: 'insideLeft', offset: 25, dy: 60 }} 
+      />
       <Tooltip />
     </LineChart>
   );
 }
 
+const transformData = (data) => {
 
+  if (data.length===0) 
+    return;
 
-
-
-
-const transformData = (data, flightStartTime) => {
+  const flightStartTime = data.reduce((min, p) => p.datetime < min ? p.datetime : min, data[0].datetime);
   const flightStart = new Date(flightStartTime).getTime();
 
-  return data.map((measurement) => {
-    const measurementTime = new Date(measurement.dateTime).getTime();
-    // Вычисляем время в секундах с начала полёта
+  const transformedData = data.map((measurement) => {
+    const measurementTime = new Date(measurement.datetime).getTime();  
     const timeFromStart = (measurementTime - flightStart) / 1000;
     return {
       time: timeFromStart,
       dose: measurement.dose,
-      // Include height data
       height: measurement.height
     };
   });
-};  
+
+  // Сортировка преобразованных данных по времени с начала полёта
+  transformedData.sort((a, b) => a.time - b.time);
+
+  return transformedData;
+};
+
 
 const formatDateAxis = (tickItem) => {
-  // Assuming tickItem is a timestamp
-  const date = new Date(tickItem);
-  return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
-};
-function TimeLineChart({ data, flightStartTime }) {
-  const transformedData = transformData(data, flightStartTime);
+  return Math.round(tickItem);
+};  
 
+function TimeLineChart({ data }) {
+  const transformedData = transformData(data); // Преобразование данных
   return (
-    <LineChart tickFormatter={formatDateAxis} width={400} height={200} data={transformedData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+    <LineChart width={350} height={200} data={transformedData} margin={{ top: 5, right: -5, left: -5, bottom: 5 }}>
       <CartesianGrid strokeDasharray="3 3" />
-      
-      <XAxis dataKey="time" label={{ value: 'Время с начала полёта, с', position: 'insideBottomRight', offset: -5 }} />
-      <YAxis yAxisId="left" label={{ value: 'Доза, мкЗв/час', angle: -90, position: 'insideLeft' }} />
-      <YAxis yAxisId="right" orientation="right" label={{ value: 'Высота, ', angle: -90, position: 'insideRight' }} />
+      <XAxis tickFormatter={formatDateAxis} dataKey="time" label={{ value: 'Время с начала полёта, с', position: 'insideBottomRight', offset: 0, dx: -40 }} />
+      <YAxis yAxisId="left" label={{ value: 'Доза, мкЗв/час', angle: -90, position: 'insideLeft', offset: 15, dy: 50 }} />
+      <YAxis yAxisId="right" orientation="right" label={{ value: 'Высота, м', angle: -90, position: 'insideRight', offset: 15, dy: -25 }} />
       <Tooltip />
-      <Line yAxisId="left" type="monotone" dataKey="dose" stroke="#8884d8"strokeWidth={2} dot={false}  />
-      <Line yAxisId="right" type="monotone" dataKey="height" stroke="red" strokeWidth={2} dot={false}  />
+      <Line yAxisId="left" type="monotone" dataKey="dose" stroke="#8884d8" strokeWidth={2} dot={false} />
+      <Line yAxisId="right" type="monotone" dataKey="height" stroke="red" strokeWidth={2} dot={false} />
     </LineChart>
-    
   );
-
 }
-
 
 function MapEffect({ setMapInstance }) {
   const map = useMap();
@@ -277,7 +250,7 @@ function MyMapComponent({ chartOpen, heightFilterActive }) {
       // Обновление панели спектра
       if (spectrumPanelRef.current && spectrumPanelRef.current._root) {
         spectrumPanelRef.current._root.render(
-          <SpectrumChartWithLabel data={avgSpectrumData} isLoading={false} />
+          <SpectrumChart data={avgSpectrumData} isLoading={false} />
         );
       }
     }
@@ -479,7 +452,7 @@ function MyMapComponent({ chartOpen, heightFilterActive }) {
       // Создаем корень для рендеринга компонента
       const root = createRoot(spectrumPanelRef.current);
       spectrumPanelRef.current._root = root; // Сохраняем корень в свойстве для последующего доступа
-      root.render(<SpectrumChartWithLabel data={spectrumData}/*  isLoading={isLoading} */ />);
+      root.render(<SpectrumChart data={spectrumData}/*  isLoading={isLoading} */ />);
       return spectrumPanelRef.current;
     };
   
@@ -493,15 +466,16 @@ function MyMapComponent({ chartOpen, heightFilterActive }) {
   useEffect(() => {
   if (validMeasurements && validMeasurements.length > 0) {
     // Вычисляем flightStartTime из наименьшего значения dateTime в validMeasurements
-    const flightStartTime = validMeasurements.reduce((min, p) => p.dateTime < min ? p.dateTime : min, validMeasurements[0].dateTime);
-    
+    //const flightStartTime = validMeasurements.reduce((min, p) => p.datetime < min ? p.datetime : min, validMeasurements[0].datetime);
+    //console.log('flightStartTime', flightStartTime);
+    //console.log('validMeasurements', validMeasurements);
     // Преобразовываем данные для TimeLineChart
-    const newChartData = transformData(validMeasurements, flightStartTime);
+    // const newChartData = transformData(validMeasurements, flightStartTime);
     
     // Обновляем TimeLineChart с новыми данными
     if (timeLineRef.current && timeLineRef.current._root) {
       timeLineRef.current._root.render(
-        <TimeLineChart data={newChartData} flightStartTime={flightStartTime} />
+        <TimeLineChart data={validMeasurements} /* flightStartTime={flightStartTime} */ />
       );
     }
   }

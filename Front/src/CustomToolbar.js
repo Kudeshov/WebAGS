@@ -218,10 +218,9 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   }, [websocket]);
 
   const handleStartFlight = () => {
-    setOnlineMeasurements([]);
-    // Определяем URL в зависимости от состояния isDemoMode
+    setOnlineMeasurements([]); // Очищаем предыдущие измерения
     const url = isDemoMode ? '/start-flight-simulation' : '/start-flight';
-  
+
     fetch(url, {
       method: 'POST',
       headers: {
@@ -229,42 +228,47 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
       },
       body: JSON.stringify({
         dbName: selectedOnlineDB,
-        flightName: onlineFlightName, // Добавляем название полета
-        winLow: winLowValue, // Добавляем нижнюю границу окна
-        winHigh: winHighValue, // Добавляем верхнюю границу окна
+        flightName: onlineFlightName,
+        winLow: winLowValue,
+        winHigh: winHighValue,
       })
     })
-    .then(response => response.json())
-    .then(data => {
-      if (data && data.onlineFlightStatus) {
-        console.log('Полет запущен:', selectedOnlineDB);
-        setOnlineFlightId(data.onlineFlightStatus._id); // Сохраняем ID полета
-        setSelectedDatabase(selectedOnlineDB);
-        setSelectedCollection(data.onlineFlightStatus); // Предполагая, что это корректные данные для вашего контекста
-  
-        console.log("setupWebSocket из HandleStartFlight");
-        setupWebSocket(data.onlineFlightStatus._id); // Установка WebSocket соединения
-        
-        setSnackbarOpen(true);
-        const msg = isDemoMode ? 'Эмуляция полета запущена' : 'Полет запущен';
-        setSnackbarMessage(msg);
-      } else {
-        console.error('Не удалось запустить полет:', data);
-        setSnackbarOpen(true);
-        setSnackbarMessage('Ошибка при запуске полета');
+    .then(async response => {
+      const text = await response.text();
+      try {
+        const data = JSON.parse(text);
+        return { status: response.status, body: data };
+      } catch (error) {
+        throw Error(text || "Произошла ошибка на сервере");
       }
     })
-    .catch(error => {
-      console.error('Ошибка при запуске эмуляции полета:', error);
+    .then(({ status, body }) => {
+      if (status >= 400) {
+        throw Error(body.message || "Произошла ошибка на сервере");
+      }
+      // Обрабатываем успешный ответ
+      console.log('Полет запущен:', selectedOnlineDB);
+      setOnlineFlightId(body._id); // Сохраняем ID запущенного полета
+      setSelectedDatabase(selectedOnlineDB);
+      setSelectedCollection(body.onlineFlightStatus); 
+
+      console.log("setupWebSocket из HandleStartFlight");
+      setupWebSocket(body.onlineFlightStatus._id); // Установка WebSocket соединения
+
       setSnackbarOpen(true);
-      setSnackbarMessage('Ошибка сети при запуске полета');
+      setSnackbarMessage(isDemoMode ? 'Эмуляция полета запущена' : 'Полет запущен');
+    })
+    .catch(error => {
+      // Обработка ошибок, включая некорректный JSON или ошибки сети
+      console.error('Ошибка при выполнении запроса:', error.message);
+      setSnackbarOpen(true);
+      setSnackbarMessage(error.message);
     })
     .finally(() => {
-      //setIsLoading(false); // Выключаем индикатор загрузки
-      handleStartFlightDialogClose(); // Закрываем диалоговое окно
+      handleStartFlightDialogClose();
     });
   };
- 
+
   useEffect(() => {
     // Функция для запроса статуса онлайн-полета
     const checkOnlineFlightStatus = async () => {
@@ -738,6 +742,17 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
     setActiveTab(newValue);
   };
 
+  const handleSerialPortChange = (e) => {
+    const { name, value } = e.target;
+    setSettings((prevState) => ({
+      ...prevState,
+      serialPort: {
+        ...prevState.serialPort,
+        [name]: value,
+      },
+    }));
+  };  
+
   const tabPanelContent = (index) => {
     switch(index) {
       case 0: // Расчет МЭД(в точке детектора)
@@ -930,7 +945,29 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
               value={settings.altInit}
               onChange={(e) => setSettings({...settings, altInit: e.target.value})}
             />
-             
+            <TextField
+              margin="dense"
+              id="path"
+              name="path"
+              label="COM-порт"
+              fullWidth
+              size="small"
+              variant="outlined"
+              value={settings.serialPort.path}
+              onChange={handleSerialPortChange}
+            />
+            <TextField
+              margin="dense"
+              id="baudRate"
+              name="baudRate"
+              label="Скорость передачи данных (Baud Rate)"
+              fullWidth
+              size="small"
+              variant="outlined"
+              value={settings.serialPort.baudRate}
+              onChange={handleSerialPortChange}
+              type="number"
+            />  
           </>
         );
       default:

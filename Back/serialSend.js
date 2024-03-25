@@ -30,10 +30,12 @@ function updatePosition() {
   lat += (Math.random() - 0.5) * 0.000036; // Примерно 2 метра в широту
   lon += (Math.random() - 0.5) * 0.000036; // Примерно 2 метра в долготу
   alt += (Math.random() - 0.5) * 1; // В пределах 0.5 метра
+  if (alt<0) 
+    alt++;
 }
 
 function generateData() {
-  //updatePosition();
+  updatePosition();
   const ecef = toECEF(lat, lon, alt);
   
   const now = new Date();
@@ -48,7 +50,7 @@ function generateData() {
   const gpsX = ecef.x;
   const gpsY = ecef.y;
   const gpsZ = ecef.z;
-  const relativeHeight = Math.floor((alt - 25) * 100);
+  const relativeHeight = alt; /* Math.floor((alt - 25 ) * 100); */
   const flightTime = 8390;
   const operatingTime = flightTime;
   const sensorGM1Value = 0;

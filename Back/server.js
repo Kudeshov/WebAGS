@@ -902,6 +902,54 @@ function parseData(dataString) {
   }
 }
 
+function stopFlight(_id, db) {
+  // Останавливаем симуляцию, если она запущена
+  if (flightSimulations[_id]) {
+    clearInterval(flightSimulations[_id].interval);
+    delete flightSimulations[_id];
+    console.log(`Симуляция полета ${_id} остановлена из-за ошибки.`);
+  }
+
+  // Очистка статуса полета
+  onlineFlightStatus = {
+    _id: null,
+    active: false,
+    dbName: null,
+    description: null,
+    winLow: null,
+    winHigh: null,
+    dateTime: null,
+    detector: null,
+    hasCalibr: null,
+    P0: null,
+    P1: null,
+    P2: null,
+    P3: null,
+    is_online: false,
+    is_real: false
+  };
+
+  // Удаление записи о полете из базы данных
+  if (db && _id) {
+    const deleteSql = "DELETE FROM online_collection WHERE _id = ?";
+    db.run(deleteSql, [_id], function(err) {
+      if (err) {
+        console.error('Ошибка при удалении записи полета:', err.message);
+      } else {
+        console.log(`Запись полета ${_id} удалена из базы данных.`);
+      }
+    });
+  }
+
+  // Отправка сообщения через WebSocket о том, что полет остановлен
+  wss.clients.forEach(client => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(JSON.stringify({ type: 'flightEnded', _id, message: 'Полет остановлен из-за ошибки' }));
+    }
+  });
+}
+
+
 app.post('/start-flight', (req, res) => {
   const { dbName, flightName, winLow, winHigh } = req.body;
 
@@ -970,10 +1018,12 @@ app.post('/start-flight', (req, res) => {
               });
 
               port.on('error', (err) => {
-                  console.error('Error with serial port:', err.message);
-                  res.status(500).send(`Error opening serial port: ${err.message}`);
+                console.error('Error with serial port:', err.message);
+                // Здесь отправляем на фронтенд более информативное сообщение об ошибке
+                res.status(500).json({ error: true, message: `Ошибка при открытии COM-порта: ${err.message}` });
+                // Попытка остановить полет, если начат. Для этого нужна функция остановки
+                stopFlight(_id, db);
               });
-
             
           });
       });
