@@ -111,12 +111,12 @@ function TimeLineChart({ data, flightStartTime }) {
     <LineChart tickFormatter={formatDateAxis} width={400} height={200} data={transformedData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
       <CartesianGrid strokeDasharray="3 3" />
       
-      <XAxis dataKey="time" label={{ value: 'Время с начала полёта (сек)', position: 'insideBottomRight', offset: -5 }} />
-      <YAxis yAxisId="left" label={{ value: 'Доза', angle: -90, position: 'insideLeft' }} />
-      <YAxis yAxisId="right" orientation="right" label={{ value: 'Высота', angle: -90, position: 'insideRight' }} />
+      <XAxis dataKey="time" label={{ value: 'Время с начала полёта, с', position: 'insideBottomRight', offset: -5 }} />
+      <YAxis yAxisId="left" label={{ value: 'Доза, мкЗв/час', angle: -90, position: 'insideLeft' }} />
+      <YAxis yAxisId="right" orientation="right" label={{ value: 'Высота, ', angle: -90, position: 'insideRight' }} />
       <Tooltip />
-      <Line yAxisId="left" type="monotone" dataKey="dose" stroke="#8884d8" activeDot={{ r: 8 }} />
-      <Line yAxisId="right" type="monotone" dataKey="height" stroke="red" activeDot={{ r: 8 }} />
+      <Line yAxisId="left" type="monotone" dataKey="dose" stroke="#8884d8"strokeWidth={2} dot={false}  />
+      <Line yAxisId="right" type="monotone" dataKey="height" stroke="red" strokeWidth={2} dot={false}  />
     </LineChart>
     
   );
