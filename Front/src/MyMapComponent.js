@@ -65,9 +65,9 @@ const transformData = (data) => {
     const measurementTime = new Date(measurement.datetime).getTime();  
     const timeFromStart = (measurementTime - flightStart) / 1000;
     return {
-      time: timeFromStart,
-      dose: measurement.dose,
-      height: measurement.height
+      time: timeFromStart, //parseFloat(measurement.timeFromStart.toFixed(2)),
+      МЭД: parseFloat(measurement.dose.toFixed(2)),
+      Высота: parseFloat(measurement.height.toFixed(2)),  
     };
   });
 
@@ -88,11 +88,11 @@ function TimeLineChart({ data }) {
     <LineChart width={350} height={200} data={transformedData} margin={{ top: 5, right: -5, left: -5, bottom: 5 }}>
       <CartesianGrid strokeDasharray="3 3" />
       <XAxis tickFormatter={formatDateAxis} dataKey="time" label={{ value: 'Время с начала полёта, с', position: 'insideBottomRight', offset: 0, dx: -40 }} />
-      <YAxis yAxisId="left" label={{ value: 'Доза, мкЗв/час', angle: -90, position: 'insideLeft', offset: 15, dy: 50 }} />
+      <YAxis yAxisId="left" label={{ value: 'Доза, мкЗв/час', angle: -90, position: 'insideLeft', offset: 15, dy: 50, style: { fill: 'green' } }} />
       <YAxis yAxisId="right" orientation="right" label={{ value: 'Высота, м', angle: -90, position: 'insideRight', offset: 15, dy: -25 }} />
       <Tooltip />
-      <Line yAxisId="left" type="monotone" dataKey="dose" stroke="#8884d8" strokeWidth={2} dot={false} />
-      <Line yAxisId="right" type="monotone" dataKey="height" stroke="red" strokeWidth={2} dot={false} />
+      <Line yAxisId="left" type="monotone" dataKey="МЭД" stroke="#8884d8" strokeWidth={2} dot={false} />
+      <Line yAxisId="right" type="monotone" dataKey="Высота" stroke="red" strokeWidth={2} dot={false} />
     </LineChart>
   );
 }
