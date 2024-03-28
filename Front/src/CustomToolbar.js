@@ -968,6 +968,17 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
               onChange={handleSerialPortChange}
               type="number"
             />  
+            <TextField
+              margin="dense"
+              id="chartWindow"
+              name="chartWindow"
+              label="Онлайн-полет: отображать последние N секунд на графике"
+              fullWidth
+              size="small"
+              variant="outlined"
+              value={settings.chartWindow}
+              onChange={(e) => setSettings({...settings, chartWindow: e.target.value})}
+            />  
           </>
         );
       default:

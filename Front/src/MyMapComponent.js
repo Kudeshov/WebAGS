@@ -53,19 +53,18 @@ function SpectrumChart({ data }) {
   );
 }
 
-const transformData = (data) => {
+const transformData = (data, globalSettings) => {
 
-  if (data.length===0) 
-    return;
+  if (data.length === 0) return;
 
   const flightStartTime = data.reduce((min, p) => p.datetime < min ? p.datetime : min, data[0].datetime);
   const flightStart = new Date(flightStartTime).getTime();
 
-  const transformedData = data.map((measurement) => {
+  let transformedData = data.map((measurement) => {
     const measurementTime = new Date(measurement.datetime).getTime();  
     const timeFromStart = (measurementTime - flightStart) / 1000;
     return {
-      time: timeFromStart, //parseFloat(measurement.timeFromStart.toFixed(2)),
+      time: timeFromStart,
       МЭД: parseFloat(measurement.dose.toFixed(2)),
       Высота: parseFloat(measurement.height.toFixed(2)),  
     };
@@ -73,6 +72,13 @@ const transformData = (data) => {
 
   // Сортировка преобразованных данных по времени с начала полёта
   transformedData.sort((a, b) => a.time - b.time);
+
+  // Если задано окно для отображения, фильтруем данные, чтобы оставить только последние N секунд
+  if ( globalSettings.chartWindow ) {
+    const lastNSeconds = globalSettings.chartWindow; // Предполагаем, что chartWindow содержит одно значение: N секунд
+    const maxTime = transformedData[transformedData.length - 1].time; // Максимальное время из набора данных
+    transformedData = transformedData.filter(item => (maxTime - item.time) <= lastNSeconds);
+  }
 
   return transformedData;
 };
@@ -82,14 +88,14 @@ const formatDateAxis = (tickItem) => {
   return Math.round(tickItem);
 };  
 
-function TimeLineChart({ data }) {
-  const transformedData = transformData(data); // Преобразование данных
+function TimeLineChart({ data, globalSettings }) {
+  const transformedData = transformData(data, globalSettings); // Преобразование данных
   return (
     <LineChart width={350} height={200} data={transformedData} margin={{ top: 5, right: -5, left: -5, bottom: 5 }}>
       <CartesianGrid strokeDasharray="3 3" />
       <XAxis tickFormatter={formatDateAxis} dataKey="time" label={{ value: 'Время с начала полёта, с', position: 'insideBottomRight', offset: 0, dx: -40 }} />
-      <YAxis yAxisId="left" label={{ value: 'Доза, мкЗв/час', angle: -90, position: 'insideLeft', offset: 15, dy: 50, style: { fill: 'green' } }} />
-      <YAxis yAxisId="right" orientation="right" label={{ value: 'Высота, м', angle: -90, position: 'insideRight', offset: 15, dy: -25 }} />
+      <YAxis yAxisId="left" label={{ value: 'Мощность дозы, мкЗв/час', angle: -90, position: 'insideLeft', offset: 15, dy: 50, style: { fill: 'green' } }} />
+      <YAxis yAxisId="right" orientation="right" label={{ value: 'Высота, м', angle: -90, position: 'insideRight', offset: 15, dy: -25, style: { fill: 'blue' } }} />
       <Tooltip />
       <Line yAxisId="left" type="monotone" dataKey="МЭД" stroke="#8884d8" strokeWidth={2} dot={false} />
       <Line yAxisId="right" type="monotone" dataKey="Высота" stroke="red" strokeWidth={2} dot={false} />
@@ -475,7 +481,7 @@ function MyMapComponent({ chartOpen, heightFilterActive }) {
     // Обновляем TimeLineChart с новыми данными
     if (timeLineRef.current && timeLineRef.current._root) {
       timeLineRef.current._root.render(
-        <TimeLineChart data={validMeasurements} /* flightStartTime={flightStartTime} */ />
+        <TimeLineChart data={validMeasurements} globalSettings={globalSettings}/* flightStartTime={flightStartTime} */ />
       );
     }
   }
@@ -492,7 +498,7 @@ function MyMapComponent({ chartOpen, heightFilterActive }) {
       const root = createRoot(timeLineRef.current);
       timeLineRef.current._root = root; // Сохраняем корень в свойстве для последующего доступа
       // Assuming flightStartTime and timeLineData are available in the scope or passed to this function
-      root.render(<TimeLineChart data={validMeasurements}/>);
+      root.render(<TimeLineChart data={validMeasurements} globalSettings={globalSettings}/>);
       return timeLineRef.current;
     };
   
