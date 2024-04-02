@@ -793,6 +793,46 @@ function insertOnlineMeasurement(db, flightId, measurementData) {
   });
 }
 
+
+app.delete('/delete-flight/:dbname/:_id', async (req, res) => {
+  const dbname = req.params.dbname;
+  if (!dbname || dbname === 'null') {
+    return res.status(400).send('Invalid database name');
+  }
+
+  const dbPath = `${config.flightsDirectory}/${dbname}.sqlite`;
+
+  // Подключаемся к базе данных
+  const db = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE, (err) => {
+    if (err) {
+      console.error(err.message);
+      return res.status(500).send('Error connecting to database');
+    }
+    console.log('Connected to the database ' + dbname);
+
+    const _id = req.params._id; // Получаем _id из параметров запроса
+    console.log('Попытка удаления полета, _id=', _id);
+
+    // Определяем, является ли полет онлайн или офлайн
+    const isOnlineFlight = parseInt(_id, 10) < ONLINE_FLIGHT_ID_THRESHOLD;
+    const tableName = isOnlineFlight ? "online_collection" : "collection";
+    const deleteSql = `DELETE FROM ${tableName} WHERE _id = ?`;
+
+    console.log(deleteSql);
+
+    // Выполняем запрос к базе данных
+    db.run(deleteSql, [_id], function(err) {
+      if (err) {
+        console.error(`Ошибка при удалении записи из ${tableName}:`, err.message);
+        return res.status(500).send('Ошибка при удалении записи полета');
+      } else {
+        console.log(`Запись с _id=${_id} удалена из ${tableName}`);
+        res.json({ message: "Полет успешно удален", _id });
+      }
+    });
+  });
+});
+
 function generateMeasurementData(db, flightId) {
   // Добавляем случайную погрешность к шагам
   const randomErrorLat = (Math.random() - 0.5) * 0.00002;
