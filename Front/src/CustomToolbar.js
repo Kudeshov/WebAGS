@@ -611,6 +611,51 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
     }
   };
 
+  const [deleteFlightDialogOpen, setDeleteFlightDialogOpen] = useState(false);
+    const [flightToDelete, setFlightToDelete] = useState({});
+
+    // Функция для открытия диалога удаления
+    const handleOpenDeleteFlightDialog = (id) => {
+      console.log(id)
+      setFlightToDelete(id);
+      
+      setDeleteFlightDialogOpen(true);
+    };
+
+    // Функция для закрытия диалога удаления
+    const handleCloseDeleteFlightDialog = () => {
+      setDeleteFlightDialogOpen(false);
+    };
+
+    // Функция для подтверждения удаления полета
+    const handleConfirmDeleteFlight = async () => {
+      try {
+        handleCollectionMenuClose();
+        // Предполагая, что flightToDelete содержит поле id с идентификатором полета
+        const _id = flightToDelete;
+        console.log(_id)
+        const response = await fetch(`/delete-flight/${selectedDatabase}/${_id}`, {
+          
+          method: 'DELETE',
+        });
+    
+        if (!response.ok) {
+          throw new Error('Проблема с удалением полета. Статус: ' + response.status);
+        }
+    
+        const result = await response.json();
+        console.log(result.message); // Показываем сообщение об успешном удалении
+        
+        // После успешного удаления закрываем диалог и, возможно, обновляем список полетов в UI
+        setDeleteFlightDialogOpen(false);
+        // Здесь можете добавить вызов функции для обновления списка полетов, если есть
+    
+      } catch (error) {
+        console.error('Ошибка при удалении полета:', error);
+        // Здесь можете обработать ошибку, например, показать уведомление пользователю
+      }
+    }
+
   const handleDeleteDatabase = async () => {
     try {
         handleDatabaseMenuClose(); // Закрыть меню базы данных при начале удаления
@@ -704,6 +749,8 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
       return;
     }
 
+
+    
     const updatedSettings = {
       ...updatedSettingsParam,
       NSPCHANNELS: parseInt(updatedSettingsParam.NSPCHANNELS, 10),
@@ -1074,6 +1121,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
             subheader: <ListSubheader>Офлайн полеты</ListSubheader>,
           }}
         >
+
           {/* Отображение офлайн полетов */}
           {collectionOptions.filter(collection => !collection.is_online).map((collection, index) => (
             <MenuItem key={collection._id} onClick={() => handleCollectionSelect(collection)} disabled={onlineFlightId !== null}>
@@ -1083,6 +1131,21 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
                   {convertDateTimeWithoutSeconds(collection?.dateTime)}
                 </span>
               </div>
+             
+          <div>
+          {/* Изменение кнопки удаления на IconButton с Tooltip */}
+          <Tooltip title="Удалить полет">
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation(); // Предотвращаем всплытие события, чтобы не вызвать onClick родительского MenuItem
+                handleOpenDeleteFlightDialog(collection._id);
+              }}
+            >
+              <EraserIcon style={{ fill: theme.palette.primary.main, width: 20, height: 20 }} />
+            </IconButton>
+          </Tooltip>
+          </div>
             </MenuItem>
           ))}
 
@@ -1101,16 +1164,32 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
                     {convertDateTimeWithoutSeconds(collection?.dateTime)}
                   </span>
                 </div>
+                <div>
+          {/* Изменение кнопки удаления на IconButton с Tooltip */}
+          <Tooltip title="Удалить полет">
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation(); // Предотвращаем всплытие события, чтобы не вызвать onClick родительского MenuItem
+                handleOpenDeleteFlightDialog(collection._id);
+              }}
+            >
+              <EraserIcon style={{ fill: theme.palette.primary.main, width: 20, height: 20 }} />
+            </IconButton>
+          </Tooltip>
+          </div>
               </MenuItem>
+              
             )),
             <Divider key="online-flight-final-divider" />
+            
           ]}
 
           {/* Управление онлайн полетами */}
           <MenuItem onClick={handleStartFlightDialogOpen} disabled={onlineFlightId !== null}>Начать онлайн-полет</MenuItem>
           <MenuItem onClick={handleStopFlight} disabled={onlineFlightId === null}>Остановить онлайн-полет</MenuItem>
-        </Menu>
-
+          </Menu>
+        
 
         <div style={{
           backgroundColor: drawerOpen ? "white" : "transparent",
@@ -1237,6 +1316,23 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
         </Button>
         <Button onClick={handleConfirmDelete} color="primary" autoFocus>
           Да
+        </Button>
+      </DialogActions>
+    </Dialog>
+
+    <Dialog open={deleteFlightDialogOpen} onClose={handleCloseDeleteFlightDialog}>
+      <DialogTitle>Удалить полет</DialogTitle>
+      <DialogContent>
+        <DialogContentText>
+          Вы уверены, что хотите удалить полет {flightToDelete.name} {flightToDelete.date} из базы данных {flightToDelete.databaseName}?
+        </DialogContentText>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={handleCloseDeleteFlightDialog} color="primary">
+          Отмена
+        </Button>
+        <Button onClick={handleConfirmDeleteFlight} color="primary" autoFocus>
+          Удалить
         </Button>
       </DialogActions>
     </Dialog>
