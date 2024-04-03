@@ -83,22 +83,23 @@ const transformData = (data, globalSettings) => {
   return transformedData;
 };
 
-
 const formatDateAxis = (tickItem) => {
   return Math.round(tickItem);
-};  
+};   
 
 function TimeLineChart({ data, globalSettings }) {
   const transformedData = transformData(data, globalSettings); // Преобразование данных
+  if (!transformedData?.length) 
+    return;
   return (
-    <LineChart width={350} height={200} data={transformedData} margin={{ top: 5, right: -5, left: -5, bottom: 5 }}>
+    <LineChart width={350} height={210} data={transformedData} margin={{ top: 5, right: -5, left: -5, bottom: 10 }}>
       <CartesianGrid strokeDasharray="3 3" />
-      <XAxis tickFormatter={formatDateAxis} dataKey="time" label={{ value: 'Время с начала полёта, с', position: 'insideBottomRight', offset: 0, dx: -40 }} />
-      <YAxis yAxisId="left" label={{ value: 'Мощность дозы, мкЗв/час', angle: -90, position: 'insideLeft', offset: 15, dy: 50, style: { fill: 'green' } }} />
+      <XAxis tickFormatter={formatDateAxis} dataKey="time" label={{ value: 'Время с начала полёта, с', position: 'insideBottomRight', offset: -5, dx: -50 }} />
+      <YAxis yAxisId="left" label={{ value: 'Мощность дозы, мкЗв/час', angle: -90, position: 'insideLeft', offset: 15, dy: 80, style: { fill: 'green' } }} />
       <YAxis yAxisId="right" orientation="right" label={{ value: 'Высота, м', angle: -90, position: 'insideRight', offset: 15, dy: -25, style: { fill: 'blue' } }} />
       <Tooltip />
-      <Line yAxisId="left" type="monotone" dataKey="МЭД" stroke="#8884d8" strokeWidth={2} dot={false} />
-      <Line yAxisId="right" type="monotone" dataKey="Высота" stroke="red" strokeWidth={2} dot={false} />
+      <Line yAxisId="left" type="monotone" dataKey="МЭД" stroke="green" strokeWidth={2} dot={false} />
+      <Line yAxisId="right" type="monotone" dataKey="Высота" stroke="blue" strokeWidth={2} dot={false} />
     </LineChart>
   );
 }
@@ -262,10 +263,6 @@ function MyMapComponent({ chartOpen, heightFilterActive }) {
     }
   }, [selectedPoints, calculateAverageSpectrum, selectedCollection]);
   
-
-
-
-
   useEffect(() => {
     if (selectedPoints.length > 0) {
       let minDose = Infinity, maxDose = -Infinity;
@@ -364,8 +361,6 @@ function MyMapComponent({ chartOpen, heightFilterActive }) {
       spectrumPanelRef.current.style.display = 'block';
     }
   };
-
-
   
   const hideTimeLine = () => {
     if (timeLineRef.current) {
@@ -438,10 +433,7 @@ function MyMapComponent({ chartOpen, heightFilterActive }) {
       hidden: true // Скрываем кнопку на карте
     }).addTo(map);
 
-
     // Задаем функцию в контекст
-    //setSaveMapAsImage(() => () => printPlugin.printMap('CurrentSize', generateFileName()));
-
     setSaveMapAsImage(() => () => {
       // Устанавливаем актуальное имя файла непосредственно перед сохранением
       printPlugin.options.filename = generateFileName();
@@ -470,34 +462,24 @@ function MyMapComponent({ chartOpen, heightFilterActive }) {
   }
 
   useEffect(() => {
-  if (validMeasurements && validMeasurements.length > 0) {
-    // Вычисляем flightStartTime из наименьшего значения dateTime в validMeasurements
-    //const flightStartTime = validMeasurements.reduce((min, p) => p.datetime < min ? p.datetime : min, validMeasurements[0].datetime);
-    //console.log('flightStartTime', flightStartTime);
-    //console.log('validMeasurements', validMeasurements);
-    // Преобразовываем данные для TimeLineChart
-    // const newChartData = transformData(validMeasurements, flightStartTime);
-    
-    // Обновляем TimeLineChart с новыми данными
-    if (timeLineRef.current && timeLineRef.current._root) {
-      timeLineRef.current._root.render(
-        <TimeLineChart data={validMeasurements} globalSettings={globalSettings}/* flightStartTime={flightStartTime} */ />
-      );
+    if (validMeasurements && validMeasurements.length > 0) {
+      // Обновляем TimeLineChart с новыми данными
+      if (timeLineRef.current && timeLineRef.current._root) {
+        timeLineRef.current._root.render(
+          <TimeLineChart data={validMeasurements} globalSettings={globalSettings}/* flightStartTime={flightStartTime} */ />
+        );
+      }
     }
-  }
-}, [validMeasurements]); // Добавляем validMeasurements в массив зависимостей
-
+  }, [validMeasurements]);
   
   function createTimeLineControl(map) {
     const timeLineControl = L.control({ position: 'bottomright' });
-  
     timeLineControl.onAdd = function () {
       timeLineRef.current = L.DomUtil.create('div', 'time-line-panel');
       L.DomEvent.disableClickPropagation(timeLineRef.current);
       // Создаем корень для рендеринга компонента
       const root = createRoot(timeLineRef.current);
       timeLineRef.current._root = root; // Сохраняем корень в свойстве для последующего доступа
-      // Assuming flightStartTime and timeLineData are available in the scope or passed to this function
       root.render(<TimeLineChart data={validMeasurements} globalSettings={globalSettings}/>);
       return timeLineRef.current;
     };
@@ -532,7 +514,6 @@ function MyMapComponent({ chartOpen, heightFilterActive }) {
         Высота GPS.: ${averageDiapasone.altRange[0].toFixed(2)} - ${averageDiapasone.altRange[1].toFixed(2)} м<br>
         Мощность дозы (полином): ${parseFloat(averageMeasurement.dose).toFixed(2)} мкЗв/час<br>
         Мощность дозы (по окну): ${parseFloat(averageMeasurement.dosew).toFixed(2)} мкЗв/час<br>
-        
         Счётчик ГМ1: ${averageMeasurement.geiger1.toFixed(6)} имп/с<br>
         Счётчик ГМ2: ${averageMeasurement.geiger2.toFixed(6)} имп/с<br>
         Мощность дозы ГМ: ${averageMeasurement.gmdose1.toFixed(6)} мкЗв/час`
@@ -550,33 +531,12 @@ function MyMapComponent({ chartOpen, heightFilterActive }) {
         Высота GPS.: ${averageDiapasone.altRange[0].toFixed(2)} м<br>
         Мощность дозы (полином): ${parseFloat(averageMeasurement.dose).toFixed(2)} мкЗв/час<br>
         Мощность дозы (по окну): ${parseFloat(averageMeasurement.dosew).toFixed(2)} мкЗв/час<br>
-        
         Счётчик ГМ1: ${averageMeasurement.geiger1} имп/с<br>
         Счётчик ГМ2: ${averageMeasurement.geiger2} имп/с<br>
         Мощность дозы ГМ1: ${averageMeasurement.gmdose1} мкЗв/час`        
       }
     }
   }, [averageMeasurement, averageDiapasone, selectedPoints.length]);
-
-
- /*  const updateLegend = (thresholds, minValue, maxValue) => {
-    if (legendControlRef.current) {
-      const div = legendControlRef.current.getContainer();
-      const gradientStyle = `background: linear-gradient(to top, ${createGradientT(thresholds, minValue, maxValue)});`;
-  
-      div.style.display = 'flex';
-      div.style.flexDirection = 'row'; // Элементы будут расположены горизонтально (один за другим)
-      div.style.alignItems = 'center'; // Выравниваем элементы по центру по вертикали
-  
-      div.innerHTML = `
-        <div style="width: 15px; height: 120px; ${gradientStyle}"></div>
-        <div style="height: 120px; display: flex; flex-direction: column; justify-content: space-between; margin-left: 3px;">
-          <span>${Math.ceil(maxValue * 100) / 100}</span>
-          <span>${Math.floor(minValue * 100) / 100}</span>
-        </div>
-      `;
-    }
-  }; */
 
   const [previousValidMeasurements, setPreviousValidMeasurements] = useState();
   const [previousValidMeasurementsBand, setPreviousValidMeasurementsBand] = useState();
