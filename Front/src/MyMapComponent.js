@@ -5,7 +5,7 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import './MyMapComponent.css';
 import { FeatureGroup } from 'react-leaflet';
-import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, LogarithmicScale } from 'recharts';
 import { HeatmapLayer } from 'react-leaflet-heatmap-layer-v3';
 import { getColorT, calculateScaledThresholds } from './colorUtils';
 import RectangularSelection from './RectangularSelection';
@@ -29,6 +29,69 @@ const formatXAxis = (tickItem) => {
   return Math.round(tickItem / interval) * interval;
 }
 
+const formatYAxisTick = (value) => {
+  // Для очень малых значений, возвращаем "0" или любое другое предпочтительное обозначение
+  if (value < 0.001 && value > 0) return "0";
+  return value;
+};
+
+function SpectrumChart({ data }) {
+  const [scale, setScale] = useState('linear');
+
+  if (!data?.length) 
+    return;
+  // Функция для предварительной обработки данных
+  const preprocessData = data.map(point => ({
+    ...point,
+    value: point.value === 0 ? 0.00001 : point.value // Заменяем нулевые значения на 0.1
+  }));
+
+  return (
+    <div>
+      <LineChart width={330} height={200} data={preprocessData} margin={{ top: 5, right: 5, left: -15, bottom: 5 }}>
+        <Line
+          type="monotone"
+          dataKey="value"
+          stroke="#0000FF" // Синий цвет линии
+          dot={false} // Отключить отображение точек
+          isAnimationActive={false}
+        />
+        <CartesianGrid stroke="#ccc" />
+        <XAxis
+          tickFormatter={formatXAxis}
+          dataKey="energy"
+          label={{ value: "Энергия (keV)", position: "bottom", offset: -6, style: { fontSize: 12 } }}
+        />
+        {scale === 'log' ? (
+          <YAxis
+            scale="log"
+            domain={['auto', 'auto']}
+            allowDataOverflow={true}
+            label={{ value: 'Скорость счета 1/с', angle: -90, position: 'insideLeft', offset: 25, dy: 60 }}
+            //tickFormatter={formatYAxisTick} // Используем форматирование тиков
+          />
+        ) : (
+          <YAxis
+            label={{ value: 'Скорость счета 1/с', angle: -90, position: 'insideLeft', offset: 25, dy: 60 }}
+            //tickFormatter={formatYAxisTick} // Используем форматирование тиков
+          />
+        )}
+        <Tooltip />
+      </LineChart>
+      {/* Чекбокс под графиком */}
+      <div style={{ marginTop: '10px', textAlign: 'left' }}>
+        <input
+          type="checkbox"
+          id="scaleCheckbox"
+          checked={scale === 'log'}
+          onChange={(e) => setScale(e.target.checked ? 'log' : 'linear')}
+        />
+        <label htmlFor="scaleCheckbox">Логарифмическая шкала</label>
+      </div>
+    </div>
+  );
+}
+/* 
 function SpectrumChart({ data }) {
   return (
     <LineChart width={330} height={200} data={data} margin={{ top: 5, right: 5, left: -15, bottom: 5 }}>
@@ -52,7 +115,7 @@ function SpectrumChart({ data }) {
     </LineChart>
   );
 }
-
+ */
 const transformData = (data, globalSettings) => {
 
   if (data.length === 0) return;
