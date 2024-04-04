@@ -833,6 +833,36 @@ app.delete('/delete-flight/:dbname/:_id', async (req, res) => {
   });
 });
 
+app.post('/save_collection_params', async (req, res) => {
+  console.log('Сохранение параметров коллекции', req.body);
+  const { dbName, collectionId, P0, P1 } = req.body;
+
+  // Corrected: variable name `dbname` to `dbName` to match the destructuring above.
+  if (!dbName || dbName === 'null' || !collectionId || collectionId === 'null') {
+    return res.status(400).send('Invalid database name or collection ID');
+  }
+
+  try {
+    // Template literals need backticks, not single quotes.
+    const db = await openDatabase(`${config.flightsDirectory}/${dbName}.sqlite`);
+    console.log(`Connected to the database ${dbName}`);
+
+    await updateCollection(db, collectionId, { P0, P1 });
+
+    // Success response
+    res.send('Collection parameters updated successfully');
+  } catch (error) {
+    console.error(error.message);
+    res.status(500).send('An error occurred while processing your request');
+  }
+});
+
+
+async function updateCollection(db, collectionId, params) {
+  const sql = `UPDATE collection SET P0 = ?, P1 = ? WHERE _id = ?`;
+  await db.run(sql, [params.P0, params.P1, collectionId]);
+}
+
 function generateMeasurementData(db, flightId) {
   // Добавляем случайную погрешность к шагам
   const randomErrorLat = (Math.random() - 0.5) * 0.00002;
@@ -903,6 +933,16 @@ function generateMeasurementData(db, flightId) {
 
   insertOnlineMeasurement(db, flightId, measurementData);  
 }
+
+
+
+
+
+
+
+
+
+
 
 function parseData(dataString) {
   try {

@@ -611,12 +611,15 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
     }
   };
 
-  const [deleteFlightDialogOpen, setDeleteFlightDialogOpen] = useState(false);
+    const [deleteFlightDialogOpen, setDeleteFlightDialogOpen] = useState(false);
     const [flightToDelete, setFlightToDelete] = useState({});
+    const [selectedOption, setSelectedOption] = useState();
 
     // Функция для открытия диалога удаления
     const handleOpenDeleteFlightDialog = (id) => {
-      console.log(id)
+      const selectedMenuOption = collectionOptions.find(option => option._id === id);
+
+      setSelectedOption(selectedMenuOption);
       setFlightToDelete(id);
       
       setDeleteFlightDialogOpen(true);
@@ -633,7 +636,6 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
         handleCollectionMenuClose();
         // Предполагая, что flightToDelete содержит поле id с идентификатором полета
         const _id = flightToDelete;
-        console.log(_id)
         const response = await fetch(`/delete-flight/${selectedDatabase}/${_id}`, {
           
           method: 'DELETE',
@@ -656,6 +658,65 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
       }
     }
 
+    const [flightSettingsDialogOpen, setFlightSettingsDialogOpen] = useState(false);
+
+    const handleP0Change = (e) => {
+      const updatedValue = e.target.value;
+      setSelectedOption((prevOption) => ({
+        ...prevOption,
+        P0: updatedValue
+      }));
+    };
+
+    const handleP1Change = (e) => {
+      const updatedValue = e.target.value;
+      setSelectedOption((prevOption) => ({
+        ...prevOption,
+        P1: updatedValue
+      }));
+    };
+
+    
+    const handleOpenFlightSettingsDialog = (id) => {
+      const selectedMenuOption = collectionOptions.find(option => option._id === id);
+      setSelectedOption(selectedMenuOption);
+      //setFlightToDelete(id);
+      setFlightSettingsDialogOpen(true);
+    };
+
+    async function saveCollectionParams(dbName, opt) {
+      try {
+        const payload = {
+          dbName,
+          collectionId: opt._id,  
+          P0: opt.P0,
+          P1: opt.P1,
+        };
+    
+        const response = await fetch('/save_collection_params', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload), // Используем переменную payload для ясности
+        });
+    
+        if (!response.ok) {
+          throw new Error('Failed to save collection parameters');
+        }
+    
+        const responseBody = await response.text();
+        console.log(responseBody);
+        return { success: true, message: responseBody };
+      } catch (error) {
+        console.error('Error saving collection params:', error);
+        return { success: false, message: error.message };
+      }
+    }
+    
+
+    
+    
   const handleDeleteDatabase = async () => {
     try {
         handleDatabaseMenuClose(); // Закрыть меню базы данных при начале удаления
@@ -1131,7 +1192,22 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
                   {convertDateTimeWithoutSeconds(collection?.dateTime)}
                 </span>
               </div>
-             
+
+              <div>
+          {/* Изменение кнопки удаления на IconButton с Tooltip */}
+          <Tooltip title="Настпройки полета">
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation(); // Предотвращаем всплытие события, чтобы не вызвать onClick родительского MenuItem
+                handleOpenFlightSettingsDialog(collection._id);
+              }}
+            >
+              <CogIcon style={{ fill: theme.palette.primary.main, width: 20, height: 20 }} />
+            </IconButton>
+          </Tooltip>
+          </div>
+
           <div>
           {/* Изменение кнопки удаления на IconButton с Tooltip */}
           <Tooltip title="Удалить полет">
@@ -1324,7 +1400,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
       <DialogTitle>Удалить полет</DialogTitle>
       <DialogContent>
         <DialogContentText>
-          Вы уверены, что хотите удалить полет {flightToDelete.name} {flightToDelete.date} из базы данных {flightToDelete.databaseName}?
+          Вы уверены, что хотите удалить полет {selectedOption?.description} ({convertDateTimeWithoutSeconds(selectedOption?.dateTime)}) из базы данных {selectedDatabase}?
         </DialogContentText>
       </DialogContent>
       <DialogActions>
@@ -1334,6 +1410,44 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
         <Button onClick={handleConfirmDeleteFlight} color="primary" autoFocus>
           Удалить
         </Button>
+      </DialogActions>
+    </Dialog>
+
+    <Dialog open={flightSettingsDialogOpen} onClose={() => setFlightSettingsDialogOpen(false)}>
+    <DialogTitle>Настройки полета - Энергетическая калибровка</DialogTitle>
+      <DialogContent>
+        <form>
+          <TextField
+            margin="dense"
+            id="P0"
+            label="P0"
+            type="number"
+            fullWidth
+            variant="outlined"
+            value={selectedOption?.P0 || 0}
+            onChange={handleP0Change}
+          />
+          <TextField
+            margin="dense"
+            id="P1"
+            label="P1"
+            type="number"
+            fullWidth
+            variant="outlined"
+            value={selectedOption?.P1 || 0}
+            onChange={handleP1Change}
+          />
+        </form>
+      </DialogContent>
+
+      <DialogActions>
+        <Button onClick={() => setFlightSettingsDialogOpen(false)}>Отмена</Button>
+        <Button onClick={() => {
+          // Здесь логика сохранения изменений
+          saveCollectionParams(selectedDatabase, selectedOption);
+          // После сохранения необходимо обновить collectionOptions и selectedCollection, если требуется
+          setFlightSettingsDialogOpen(false);
+        }}>Сохранить</Button>
       </DialogActions>
     </Dialog>
 
