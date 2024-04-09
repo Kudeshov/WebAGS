@@ -13,6 +13,10 @@ import { FlightDataContext } from './FlightDataContext';
 import { createRoot } from 'react-dom/client';
 import 'leaflet-easyprint';
 import { convertDateTime } from './dateUtils';
+import { IconButton } from '@mui/material';
+import { ExportToCsv } from 'export-to-csv-fix-source-map';
+import { SellTwoTone } from '@mui/icons-material';
+import { timeInterval } from 'd3';
 
 delete L.Icon.Default.prototype._getIconUrl;
 
@@ -29,65 +33,153 @@ const formatXAxis = (tickItem) => {
   return Math.round(tickItem / interval) * interval;
 }
 
-const formatYAxisTick = (value) => {
-  // Для очень малых значений, возвращаем "0" или любое другое предпочтительное обозначение
-  if (value < 0.001 && value > 0) return "0";
-  return value;
-};
 
-function SpectrumChart({ data }) {
-  const [scale, setScale] = useState('linear');
 
-  if (!data?.length) 
-    return;
-  // Функция для предварительной обработки данных
-  const preprocessData = data.map(point => ({
-    ...point,
-    value: point.value === 0 ? 0.00001 : point.value // Заменяем нулевые значения на 0.1
-  }));
+  function SpectrumChart({ data, selectedCollection, averageHeight, timeInterval}) {
+    const [scale, setScale] = useState('linear');
+    
+    function downloadCsv(csvContent, fileName) {
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute("download", fileName);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
 
-  return (
-    <div>
-      <LineChart width={330} height={200} data={preprocessData} margin={{ top: 5, right: 5, left: -15, bottom: 5 }}>
-        <Line
-          type="monotone"
-          dataKey="value"
-          stroke="#0000FF" // Синий цвет линии
-          dot={false} // Отключить отображение точек
-          isAnimationActive={false}
-        />
-        <CartesianGrid stroke="#ccc" />
-        <XAxis
-          tickFormatter={formatXAxis}
-          dataKey="energy"
-          label={{ value: "Энергия (keV)", position: "bottom", offset: -6, style: { fontSize: 12 } }}
-        />
-        {scale === 'log' ? (
-          <YAxis
-            scale="log"
-            domain={['auto', 'auto']}
-            allowDataOverflow={true}
-            label={{ value: 'Скорость счета 1/с', angle: -90, position: 'insideLeft', offset: 25, dy: 60 }}
-            //tickFormatter={formatYAxisTick} // Используем форматирование тиков
+    function exportToCsv(data) {
+      const optionsCSV = {
+        fieldSeparator: ';',
+        quoteStrings: '"',
+        decimalSeparator: '.',
+        showLabels: true, 
+        useTextFile: false,
+        useBom: true,
+        headers: ['Дата и время', 'Широта', 'Долгота', 'Высота GPS', 'Барометрическая высота', 'Мощность дозы по окну', 'Доза']
+      };
+      // Мета-информация
+    
+      // Заголовки столбцов
+      const headers = "Канал;Счет (имп);Энергия (кЭв);Счет (имп/с)\n";
+      const { P0 = 70, P1 = 11 } = selectedCollection || {};
+  
+      // Подготовка данных измерений
+      const calibrationBase = P0; // Базовый калибровочный коэффициент
+      const calibrationStep = P1; // Шаг калибровки в кэВ/канал
+      const measurementTime = 1; // Время измерения в секундах
+
+      const metaInfo =  
+      `Полет:;;${selectedCollection.description}
+      Дата:;${convertDateTime(selectedCollection.dateTime)}
+      Средняя высота:;${averageHeight};м
+      Калибровочные коэффициенты:;${calibrationBase};кэВ
+       ;${calibrationStep};кэВ/канал
+      Время (количество точек):;${timeInterval};с\n\n`;
+      
+      // Формирование данных
+      let measurementsData = "";
+      data.forEach((item, index) => {
+        const energy = calibrationBase + index * calibrationStep;
+        const calculatedEnergy = `=A${index + 2}*$B$5+$B$4`; // Пример формулы для Excel
+        const calculatedRate = `=B${index + 2}/$B$6`; // Пример формулы для Excel
+        const countPerSecond = item.value / measurementTime;
+        measurementsData += `${index};${item.value};${calculatedEnergy};${calculatedRate}\n`;
+      });
+    
+      // Сборка всего CSV
+      const csvContent = metaInfo + headers + measurementsData;
+      downloadCsv(csvContent, "spectrum.csv");
+    }
+    
+
+/*     const handleSaveSpectrum = useCallback((data) => {
+      const optionsCSV = {
+        fieldSeparator: ';',
+        quoteStrings: '"',
+        decimalSeparator: '.',
+        showLabels: true, 
+        useTextFile: false,
+        useBom: true,
+        headers: ['Дата и время', 'Широта', 'Долгота', 'Высота GPS', 'Барометрическая высота', 'Мощность дозы по окну', 'Доза']
+      };
+    
+      const csvExporter = new ExportToCsv(optionsCSV);
+      console.log(data);
+      csvExporter.generateCsv(data);
+    }, []); // Убрано data из списка зависимостей
+  */
+    
+
+    if (!data?.length) return null;
+
+    const preprocessData = data.map(point => ({
+      ...point,
+      value: point.value === 0 ? 0.00001 : point.value
+    })); 
+
+    return (
+      <div>
+        <LineChart width={330} height={200} data={preprocessData} margin={{ top: 5, right: 5, left: -15, bottom: 5 }}>
+          <Line
+            type="monotone"
+            dataKey="value"
+            stroke="#0000FF" // Синий цвет линии
+            dot={false} // Отключить отображение точек
+            isAnimationActive={false}
           />
-        ) : (
-          <YAxis
-            label={{ value: 'Скорость счета 1/с', angle: -90, position: 'insideLeft', offset: 25, dy: 60 }}
-            //tickFormatter={formatYAxisTick} // Используем форматирование тиков
+          <CartesianGrid stroke="#ccc" />
+          <XAxis
+            tickFormatter={formatXAxis}
+            dataKey="energy"
+            label={{ value: "Энергия (keV)", position: "bottom", offset: -6, style: { fontSize: 12 } }}
           />
-        )}
-        <Tooltip />
-      </LineChart>
-      {/* Чекбокс под графиком */}
-      <div style={{ marginTop: '10px', textAlign: 'left' }}>
-        <input
-          type="checkbox"
-          id="scaleCheckbox"
-          checked={scale === 'log'}
-          onChange={(e) => setScale(e.target.checked ? 'log' : 'linear')}
-        />
-        <label htmlFor="scaleCheckbox">Логарифмическая шкала</label>
-      </div>
+          {scale === 'log' ? (
+            <YAxis
+              scale="log"
+              domain={['auto', 'auto']}
+              allowDataOverflow={true}
+              label={{ value: 'Скорость счета 1/с', angle: -90, position: 'insideLeft', offset: 25, dy: 60 }}
+              //tickFormatter={formatYAxisTick} // Используем форматирование тиков
+            />
+          ) : (
+            <YAxis
+              label={{ value: 'Скорость счета 1/с', angle: -90, position: 'insideLeft', offset: 25, dy: 60 }}
+              //tickFormatter={formatYAxisTick} // Используем форматирование тиков
+            />
+          )}
+          <Tooltip />
+        </LineChart>
+        {/* Чекбокс под графиком */}
+        <div style={{ marginTop: '10px', textAlign: 'left' }}>
+          <input
+            type="checkbox"
+            id="scaleCheckbox"
+            checked={scale === 'log'}
+            onChange={(e) => setScale(e.target.checked ? 'log' : 'linear')}
+          />
+          <label htmlFor="scaleCheckbox">Логарифмическая шкала</label>
+        </div>
+        <button
+          onClick={() => exportToCsv(data)} // Обработчик клика остается без изменений
+          style={{
+            position: 'absolute',
+            right: '5px', // Исправлено значение для правильной стилизации
+            bottom: '5px', // Исправлено значение для правильной стилизации
+            fontSize: '0.75rem', // Можно адаптировать размер шрифта по необходимости
+            color: 'white', // Установка цвета текста кнопки
+            backgroundColor: '#1976d2', // Фоновый цвет кнопки, аналогичный color="primary" в Material-UI
+            border: 'none', // Убрать стандартную рамку кнопки
+            borderRadius: '4px', // Добавить скругление углов для визуального соответствия с Material-UI
+            padding: '6px 16px', // Отступы внутри кнопки для текста
+            cursor: 'pointer', // Стиль курсора при наведении
+            outline: 'none', // Убрать контур при фокусировке
+          }}
+        >
+          CSV
+        </button>
     </div>
   );
 }
@@ -318,14 +410,28 @@ function MyMapComponent({ chartOpen, heightFilterActive }) {
       const avgSpectrumData = calculateAverageSpectrum(selectedPoints);
       setSpectrumData(avgSpectrumData); // Прямое присвоение обработанных данных
       // Обновление панели спектра
+      const totalHeight = selectedPoints.reduce((acc, point) => acc + point.height, 0);
+      const averageHeight = totalHeight / selectedPoints.length;
+      const times = selectedPoints.map(point => new Date(point.datetime).getTime());
+      const minTime = Math.min(...times);
+      const maxTime = Math.max(...times);
+      const timeInterval = (maxTime - minTime) / 1000; // Разница в секундах
+      console.log(selectedPoints, timeInterval)
+      // Обновление панели спектра
       if (spectrumPanelRef.current && spectrumPanelRef.current._root) {
         spectrumPanelRef.current._root.render(
-          <SpectrumChart data={avgSpectrumData} isLoading={false} />
+          <SpectrumChart
+            averageHeight={averageHeight}
+            timeInterval={timeInterval} // Передаем вычисленный интервал времени
+            selectedCollection={selectedCollection}
+            data={avgSpectrumData}
+            isLoading={false}
+          />
         );
       }
     }
   }, [selectedPoints, calculateAverageSpectrum, selectedCollection]);
-  
+
   useEffect(() => {
     if (selectedPoints.length > 0) {
       let minDose = Infinity, maxDose = -Infinity;
@@ -512,8 +618,16 @@ function MyMapComponent({ chartOpen, heightFilterActive }) {
       L.DomEvent.disableClickPropagation(spectrumPanelRef.current);
       // Создаем корень для рендеринга компонента
       const root = createRoot(spectrumPanelRef.current);
+      const totalHeight = selectedPoints.reduce((acc, point) => acc + point.height, 0);
+      const averageHeight = totalHeight / selectedPoints.length;
+      const times = selectedPoints.map(point => new Date(point.datetime).getTime());
+      const minTime = Math.min(...times);
+      const maxTime = Math.max(...times);
+      const timeInterval = (maxTime - minTime) / 1000; // Разница в секундах
+      console.log(selectedPoints, timeInterval)
+
       spectrumPanelRef.current._root = root; // Сохраняем корень в свойстве для последующего доступа
-      root.render(<SpectrumChart data={spectrumData}/*  isLoading={isLoading} */ />);
+      root.render(<SpectrumChart  timeInterval={timeInterval}  averageHeight={averageHeight} selectedCollection={selectedCollection} data={spectrumData}/*  isLoading={isLoading} */ />);
       return spectrumPanelRef.current;
     };
   

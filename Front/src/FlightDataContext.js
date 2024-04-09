@@ -75,7 +75,9 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
 
   const date = new Date();
   const formatDate = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
-  const formatTime = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`;  const saveDataToFile = useCallback(() => {
+  const formatTime = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`;  
+  
+  const saveDataToFile = useCallback(() => {
   const optionsCSV = {
     filename: `${databaseName}_${formatDate}_${formatTime}`,
     fieldSeparator: ';',
