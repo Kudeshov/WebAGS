@@ -5,7 +5,7 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import './MyMapComponent.css';
 import { FeatureGroup } from 'react-leaflet';
-import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, LogarithmicScale } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { HeatmapLayer } from 'react-leaflet-heatmap-layer-v3';
 import { getColorT, calculateScaledThresholds } from './colorUtils';
 import RectangularSelection from './RectangularSelection';
@@ -13,10 +13,6 @@ import { FlightDataContext } from './FlightDataContext';
 import { createRoot } from 'react-dom/client';
 import 'leaflet-easyprint';
 import { convertDateTime } from './dateUtils';
-import { IconButton } from '@mui/material';
-import { ExportToCsv } from 'export-to-csv-fix-source-map';
-import { SellTwoTone } from '@mui/icons-material';
-import { timeInterval } from 'd3';
 
 delete L.Icon.Default.prototype._getIconUrl;
 
@@ -34,24 +30,27 @@ const formatXAxis = (tickItem) => {
 }
 
 
-
   function SpectrumChart({ data, selectedCollection, averageHeight, timeInterval}) {
     const [scale, setScale] = useState('linear');
-    
+
     function downloadCsv(csvContent, fileName) {
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement("a");
+      // Добавление BOM (Byte Order Mark) для UTF-8
+      const BOM = "\uFEFF";
+      const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
+      
+      const link = document.createElement("a");
       link.setAttribute("href", url);
       link.setAttribute("download", fileName);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      document.body.appendChild(link); // Необходимо для Firefox
+      
+      link.click(); // Инициируем скачивание
+      
+      document.body.removeChild(link); // Удаляем элемент после скачивания
     }
 
     function exportToCsv(data) {
-      const optionsCSV = {
+/*       const optionsCSV = {
         fieldSeparator: ';',
         quoteStrings: '"',
         decimalSeparator: '.',
@@ -59,7 +58,7 @@ const formatXAxis = (tickItem) => {
         useTextFile: false,
         useBom: true,
         headers: ['Дата и время', 'Широта', 'Долгота', 'Высота GPS', 'Барометрическая высота', 'Мощность дозы по окну', 'Доза']
-      };
+      }; */
       // Мета-информация
     
       // Заголовки столбцов
@@ -69,8 +68,10 @@ const formatXAxis = (tickItem) => {
       // Подготовка данных измерений
       const calibrationBase = P0; // Базовый калибровочный коэффициент
       const calibrationStep = P1; // Шаг калибровки в кэВ/канал
-      const measurementTime = 1; // Время измерения в секундах
 
+      if (!timeInterval) {
+        timeInterval = 1;
+      }
       const metaInfo =  
       `Полет:;;${selectedCollection.description}
       Дата:;${convertDateTime(selectedCollection.dateTime)}
@@ -82,11 +83,9 @@ const formatXAxis = (tickItem) => {
       // Формирование данных
       let measurementsData = "";
       data.forEach((item, index) => {
-        const energy = calibrationBase + index * calibrationStep;
-        const calculatedEnergy = `=A${index + 2}*$B$5+$B$4`; // Пример формулы для Excel
-        const calculatedRate = `=B${index + 2}/$B$6`; // Пример формулы для Excel
-        const countPerSecond = item.value / measurementTime;
-        measurementsData += `${index};${item.value};${calculatedEnergy};${calculatedRate}\n`;
+        const calculatedEnergy = `=A${index + 9}*$B$5+$B$4`; // Пример формулы для Excel
+        const calculatedRate = `=B${index + 9}/$B$6`; // Пример формулы для Excel
+        measurementsData += `${index};${item.count};${calculatedEnergy};${calculatedRate}\n`;
       });
     
       // Сборка всего CSV
@@ -94,25 +93,6 @@ const formatXAxis = (tickItem) => {
       downloadCsv(csvContent, "spectrum.csv");
     }
     
-
-/*     const handleSaveSpectrum = useCallback((data) => {
-      const optionsCSV = {
-        fieldSeparator: ';',
-        quoteStrings: '"',
-        decimalSeparator: '.',
-        showLabels: true, 
-        useTextFile: false,
-        useBom: true,
-        headers: ['Дата и время', 'Широта', 'Долгота', 'Высота GPS', 'Барометрическая высота', 'Мощность дозы по окну', 'Доза']
-      };
-    
-      const csvExporter = new ExportToCsv(optionsCSV);
-      console.log(data);
-      csvExporter.generateCsv(data);
-    }, []); // Убрано data из списка зависимостей
-  */
-    
-
     if (!data?.length) return null;
 
     const preprocessData = data.map(point => ({
@@ -183,31 +163,7 @@ const formatXAxis = (tickItem) => {
     </div>
   );
 }
-/* 
-function SpectrumChart({ data }) {
-  return (
-    <LineChart width={330} height={200} data={data} margin={{ top: 5, right: 5, left: -15, bottom: 5 }}>
-      <Line 
-        type="monotone" 
-        dataKey="value" 
-        stroke="#0000FF" // Синий цвет линии
-        dot={false} // Отключить отображение точек
-        isAnimationActive={false}
-      />
-      <CartesianGrid stroke="#ccc" />
-      <XAxis 
-        tickFormatter={formatXAxis}
-        dataKey="energy" // Использование 'energy' в качестве ключа
-        label={{ value: "Энергия (keV)", position: "bottom", offset: -6, style: { fontSize: 12 } }}  
-      />
-      <YAxis 
-        label={{ value: 'Скорость счета 1/с', angle: -90, position: 'insideLeft', offset: 25, dy: 60 }} 
-      />
-      <Tooltip />
-    </LineChart>
-  );
-}
- */
+
 const transformData = (data, globalSettings) => {
 
   if (data.length === 0) return;
@@ -399,7 +355,8 @@ function MyMapComponent({ chartOpen, heightFilterActive }) {
     // Вычисление среднего значения спектра
     const avgSpectrum = sumSpectrum.map((value, index) => ({
       energy: P0 + P1 * index, // Преобразование номера канала в энергию
-      value: value / selectedPoints.length
+      value: value / selectedPoints.length, // Среднее значение
+      count: value // Неусредненное суммарное значение
     }));
     return avgSpectrum;
   }, [selectedCollection]);
