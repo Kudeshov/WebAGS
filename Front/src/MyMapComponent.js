@@ -100,6 +100,47 @@ const formatXAxis = (tickItem) => {
       value: point.value === 0 ? 0.00001 : point.value
     })); 
 
+
+    function exportToN42(data, selectedCollection, averageHeight, timeInterval) {
+
+      if (!timeInterval) {
+        timeInterval = 1;
+      }
+      const liveTime = timeInterval; // Пример значения, скорректируйте по вашим данным
+      const realTime = timeInterval; // Пример значения, скорректируйте по вашим данным
+      const coefficients = `${selectedCollection.P0} ${selectedCollection.P1} 0 0`; // Подставьте актуальные значения
+      const channelData = data.map(item => item.value).join(' ');
+    
+      const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
+    <N42InstrumentData>
+      <Measurement>
+        <Spectrum Type="PHA">
+          <LiveTime>${liveTime}</LiveTime>
+          <RealTime>${realTime}</RealTime>
+          <Calibration Type="Energy">
+            <Equation Model="Polynomial">
+              <Coefficients>${coefficients}</Coefficients>
+            </Equation>
+          </Calibration>
+          <ChannelData>${channelData}</ChannelData>
+        </Spectrum>
+      </Measurement>
+    </N42InstrumentData>`;
+    
+      const fileName = "spectrum.n42";
+      const blob = new Blob([xmlContent], { type: 'application/xml' });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute("download", fileName);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    
+
     return (
       <div>
         <LineChart width={330} height={200} data={preprocessData} margin={{ top: 5, right: 5, left: -15, bottom: 5 }}>
@@ -160,9 +201,34 @@ const formatXAxis = (tickItem) => {
         >
           CSV
         </button>
+
+        <button
+          onClick={() => exportToN42(data, selectedCollection, averageHeight, timeInterval)} // Обработчик клика остается без изменений
+          style={{
+            position: 'absolute',
+            right: '70px', // Исправлено значение для правильной стилизации
+            bottom: '5px', // Исправлено значение для правильной стилизации
+            fontSize: '0.75rem', // Можно адаптировать размер шрифта по необходимости
+            color: 'white', // Установка цвета текста кнопки
+            backgroundColor: '#1976d2', // Фоновый цвет кнопки, аналогичный color="primary" в Material-UI
+            border: 'none', // Убрать стандартную рамку кнопки
+            borderRadius: '4px', // Добавить скругление углов для визуального соответствия с Material-UI
+            padding: '6px 16px', // Отступы внутри кнопки для текста
+            cursor: 'pointer', // Стиль курсора при наведении
+            outline: 'none', // Убрать контур при фокусировке
+          }}
+        >
+          N42
+        </button>
+
     </div>
   );
 }
+
+
+
+
+
 
 const transformData = (data, globalSettings) => {
 
