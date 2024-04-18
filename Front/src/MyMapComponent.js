@@ -6,7 +6,7 @@ import L from 'leaflet';
 import './MyMapComponent.css';
 import { FeatureGroup } from 'react-leaflet';
 import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
-import { HeatmapLayer } from 'react-leaflet-heatmap-layer-v3';
+//import { HeatmapLayer } from 'react-leaflet-heatmap-layer-v3';
 import { getColorT, calculateScaledThresholds } from './colorUtils';
 import RectangularSelection from './RectangularSelection';
 import { FlightDataContext } from './FlightDataContext';
@@ -97,7 +97,7 @@ const formatXAxis = (tickItem) => {
 
     const preprocessData = data.map(point => ({
       ...point,
-      value: point.value === 0 ? 0.00001 : point.value
+      value: point.value === 0 ? 0.01 : point.value
     })); 
 
 
@@ -172,11 +172,11 @@ const formatXAxis = (tickItem) => {
               <Tooltip />
           </LineChart>
           {/* Чекбокс под графиком, выравнивание влево */}
-          <div style={{ textAlign: 'right', marginRight: '18px' }}>
+          <div style={{ textAlign: 'right', marginRight: '12px' }}>
               Сохранить спектр
           </div>
 
-          <div style={{ marginTop: '10px', textAlign: 'left' }}>
+          <div style={{ marginTop: '5px', textAlign: 'left' }}>
               <input
                   type="checkbox"
                   id="scaleCheckbox"
@@ -1151,7 +1151,7 @@ useEffect(() => {
             />
           ))}
         </FeatureGroup>
-      </LayersControl.Overlay> */}
+      </LayersControl.Overlay> 
 
       <LayersControl.Overlay name="Тепловая карта">
         <HeatmapLayer
@@ -1163,7 +1163,7 @@ useEffect(() => {
           blur={20}
           useLocalExtrema={false}
         />
-      </LayersControl.Overlay>
+      </LayersControl.Overlay>*/}
 
       <LayersControl.Overlay name="Изолинии">
         <FeatureGroup
