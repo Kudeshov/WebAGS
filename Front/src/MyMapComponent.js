@@ -143,85 +143,84 @@ const formatXAxis = (tickItem) => {
 
     return (
       <div>
-        <LineChart width={330} height={200} data={preprocessData} margin={{ top: 5, right: 5, left: -15, bottom: 5 }}>
-          <Line
-            type="monotone"
-            dataKey="value"
-            stroke="#0000FF" // Синий цвет линии
-            dot={false} // Отключить отображение точек
-            isAnimationActive={false}
-          />
-          <CartesianGrid stroke="#ccc" />
-          <XAxis
-            tickFormatter={formatXAxis}
-            dataKey="energy"
-            label={{ value: "Энергия (keV)", position: "bottom", offset: -6, style: { fontSize: 12 } }}
-          />
-          {scale === 'log' ? (
-            <YAxis
-              scale="log"
-              domain={['auto', 'auto']}
-              allowDataOverflow={true}
-              label={{ value: 'Скорость счета 1/с', angle: -90, position: 'insideLeft', offset: 25, dy: 60 }}
-              //tickFormatter={formatYAxisTick} // Используем форматирование тиков
-            />
-          ) : (
-            <YAxis
-              label={{ value: 'Скорость счета 1/с', angle: -90, position: 'insideLeft', offset: 25, dy: 60 }}
-              //tickFormatter={formatYAxisTick} // Используем форматирование тиков
-            />
-          )}
-          <Tooltip />
-        </LineChart>
-        {/* Чекбокс под графиком */}
-        <div style={{ marginTop: '10px', textAlign: 'left' }}>
-          <input
-            type="checkbox"
-            id="scaleCheckbox"
-            checked={scale === 'log'}
-            onChange={(e) => setScale(e.target.checked ? 'log' : 'linear')}
-          />
-          <label htmlFor="scaleCheckbox">Логарифмическая шкала</label>
-        </div>
-        <button
-          onClick={() => exportToCsv(data)} // Обработчик клика остается без изменений
-          style={{
-            position: 'absolute',
-            right: '5px', // Исправлено значение для правильной стилизации
-            bottom: '5px', // Исправлено значение для правильной стилизации
-            fontSize: '0.75rem', // Можно адаптировать размер шрифта по необходимости
-            color: 'white', // Установка цвета текста кнопки
-            backgroundColor: '#1976d2', // Фоновый цвет кнопки, аналогичный color="primary" в Material-UI
-            border: 'none', // Убрать стандартную рамку кнопки
-            borderRadius: '4px', // Добавить скругление углов для визуального соответствия с Material-UI
-            padding: '6px 16px', // Отступы внутри кнопки для текста
-            cursor: 'pointer', // Стиль курсора при наведении
-            outline: 'none', // Убрать контур при фокусировке
-          }}
-        >
-          CSV
-        </button>
+          <LineChart width={330} height={200} data={preprocessData} margin={{ top: 5, right: 5, left: -15, bottom: 5 }}>
+              <Line
+                  type="monotone"
+                  dataKey="value"
+                  stroke="#0000FF" // Синий цвет линии
+                  dot={false} // Отключить отображение точек
+                  isAnimationActive={false}
+              />
+              <CartesianGrid stroke="#ccc" />
+              <XAxis
+                  tickFormatter={formatXAxis}
+                  dataKey="energy"
+                  label={{ value: "Энергия (keV)", position: "bottom", offset: -6, style: { fontSize: 12 } }}
+              />
+              {scale === 'log' ? (
+                  <YAxis
+                      scale="log"
+                      domain={['auto', 'auto']}
+                      allowDataOverflow={true}
+                      label={{ value: 'Скорость счета 1/с', angle: -90, position: 'insideLeft', offset: 25, dy: 60 }}
+                  />
+              ) : (
+                  <YAxis
+                      label={{ value: 'Скорость счета 1/с', angle: -90, position: 'insideLeft', offset: 25, dy: 60 }}
+                  />
+              )}
+              <Tooltip />
+          </LineChart>
+          {/* Чекбокс под графиком, выравнивание влево */}
+          <div style={{ textAlign: 'right', marginRight: '18px' }}>
+              Сохранить спектр
+          </div>
 
-        <button
-          onClick={() => exportToN42(data, selectedCollection, averageHeight, timeInterval)} // Обработчик клика остается без изменений
-          style={{
-            position: 'absolute',
-            right: '70px', // Исправлено значение для правильной стилизации
-            bottom: '5px', // Исправлено значение для правильной стилизации
-            fontSize: '0.75rem', // Можно адаптировать размер шрифта по необходимости
-            color: 'white', // Установка цвета текста кнопки
-            backgroundColor: '#1976d2', // Фоновый цвет кнопки, аналогичный color="primary" в Material-UI
-            border: 'none', // Убрать стандартную рамку кнопки
-            borderRadius: '4px', // Добавить скругление углов для визуального соответствия с Material-UI
-            padding: '6px 16px', // Отступы внутри кнопки для текста
-            cursor: 'pointer', // Стиль курсора при наведении
-            outline: 'none', // Убрать контур при фокусировке
-          }}
-        >
-          N42
-        </button>
-
-    </div>
+          <div style={{ marginTop: '10px', textAlign: 'left' }}>
+              <input
+                  type="checkbox"
+                  id="scaleCheckbox"
+                  checked={scale === 'log'}
+                  onChange={(e) => setScale(e.target.checked ? 'log' : 'linear')}
+              />
+              <label htmlFor="scaleCheckbox">Логарифмическая шкала</label>
+          </div>
+          {/* Подпись для кнопок сохранения, выравнивание вправо */}
+          
+          <div style={{ position: 'absolute', right: '5px', bottom: '5px' }}>
+              <button
+                  onClick={() => exportToCsv(data)}
+                  style={{
+                      fontSize: '0.75rem',
+                      color: 'white',
+                      backgroundColor: '#1976d2',
+                      border: 'none',
+                      borderRadius: '4px',
+                      padding: '6px 16px',
+                      cursor: 'pointer',
+                      outline: 'none',
+                      marginRight: '10px', // Добавляем отступ между кнопками
+                  }}
+              >
+                  .CSV
+              </button>
+              <button
+                  onClick={() => exportToN42(data, selectedCollection, averageHeight, timeInterval)}
+                  style={{
+                      fontSize: '0.75rem',
+                      color: 'white',
+                      backgroundColor: '#1976d2',
+                      border: 'none',
+                      borderRadius: '4px',
+                      padding: '6px 16px',
+                      cursor: 'pointer',
+                      outline: 'none',
+                  }}
+              >
+                  .N42
+              </button>
+          </div>
+      </div>
   );
 }
 
