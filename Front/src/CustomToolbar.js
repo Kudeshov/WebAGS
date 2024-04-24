@@ -1086,6 +1086,17 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
               variant="outlined"
               value={settings.chartWindow}
               onChange={(e) => setSettings({...settings, chartWindow: e.target.value})}
+              />  
+              <TextField
+                margin="dense"
+                id="altitudeSource"
+                name="altitudeSource"
+                label="Основа высоты"
+                fullWidth
+                size="small"
+                variant="outlined"
+                value={settings.altitudeSource}
+                onChange={(e) => setSettings({...settings, altitudeSource: e.target.value})}
             />  
           </>
         );

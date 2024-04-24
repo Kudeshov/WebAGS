@@ -30,5 +30,6 @@
   "serialPort": {
     "path": "CNCB1",
     "baudRate": 57600
-  }
+  },
+  "altitudeSource": "124"
 }
