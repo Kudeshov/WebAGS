@@ -8,10 +8,9 @@ import { ReactComponent as CameraIcon } from './icons/camera.svg';
 import { ReactComponent as DownloadIcon } from './icons/download.svg';
 import { ReactComponent as EraserIcon } from './icons/trash.svg';
 import { ReactComponent as CogIcon } from './icons/cog.svg';
-
 import Tooltip from '@mui/material/Tooltip';
 import { useTheme } from '@mui/material/styles';
-import { AppBar, Grid, Toolbar, IconButton, Menu, MenuItem, ListSubheader, Dialog, DialogTitle, 
+import { FormControl, InputLabel, Select, AppBar, Grid, Toolbar, IconButton, Menu, MenuItem, ListSubheader, Dialog, DialogTitle, 
          Autocomplete, DialogContent, DialogContentText, DialogActions, FormControlLabel, TextField, Button, Checkbox, Tab, Tabs, Box  } from '@mui/material';
 import { FlightDataContext } from './FlightDataContext';
 import Snackbar from '@mui/material/Snackbar';
@@ -1087,17 +1086,19 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
               value={settings.chartWindow}
               onChange={(e) => setSettings({...settings, chartWindow: e.target.value})}
               />  
-              <TextField
-                margin="dense"
+          <FormControl fullWidth margin="dense" size="small" variant="outlined">
+            <InputLabel id="altitude-source-label">Источник высоты</InputLabel>
+            <Select
+                labelId="altitude-source-label"
                 id="altitudeSource"
-                name="altitudeSource"
-                label="Основа высоты"
-                fullWidth
-                size="small"
-                variant="outlined"
                 value={settings.altitudeSource}
                 onChange={(e) => setSettings({...settings, altitudeSource: e.target.value})}
-            />  
+                label="Источник высоты"
+            >
+                <MenuItem value="barometric">Барометрическая</MenuItem>
+                <MenuItem value="GPS">GPS</MenuItem>
+            </Select>
+        </FormControl>
           </>
         );
       default:
