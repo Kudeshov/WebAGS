@@ -30,5 +30,6 @@
   "serialPort": {
     "path": "COM3",
     "baudRate": 57600
-  }
+  },
+  "altitudeSource": "barometric"
 }
