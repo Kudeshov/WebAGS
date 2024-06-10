@@ -366,8 +366,8 @@ async function handleOnlineFlights(db, collectionId) {
 
         // Предполагается, что функции toLLA и getDose уже определены
         const windose = getDose(row.winCount, coords.alt, false, 1, config.gm1Coeff, config.gm2Coeff, config.winCoeff); 
-        const gmDose1 = getDose(0, coords.alt, true, 1, config.gm1Coeff, config.gm2Coeff, config.winCoeff); 
-        const gmDose2 = getDose(0, coords.alt, true, 2, config.gm1Coeff, config.gm2Coeff, config.winCoeff);
+        const gmDose1 = getDose(row.geiger1, coords.alt, true, 1, config.gm1Coeff, config.gm2Coeff, config.winCoeff); 
+        const gmDose2 = getDose(row.geiger2, coords.alt, true, 2, config.gm1Coeff, config.gm2Coeff, config.winCoeff);
         // Округление высоты до сантиметра
         const heightRounded = Math.round(row.rHeight * 100) / 100;
         return {
@@ -940,7 +940,7 @@ function generateMeasurementData(db, flightId) {
 
 
 
-
+/* 
 
 
 
@@ -976,6 +976,92 @@ function parseData(dataString) {
       dateTime: dateTime.toISOString(), // Добавляем рассчитанное dateTime
       winCount: parseInt(values[12]),
     };
+  } catch (error) {
+    console.error('Error parsing data:', error);
+    return null;
+  }
+} */
+
+
+function parseType2Data(values) {
+  const dateTimeString = values[2];
+  const day = parseInt(dateTimeString.slice(0, 2), 10);
+  const month = parseInt(dateTimeString.slice(2, 4), 10); 
+  const year = 2000 + parseInt(dateTimeString.slice(4, 6), 10); // Добавляем 2000 для корректного года
+  const hour = parseInt(dateTimeString.slice(6, 8), 10);
+  const minute = parseInt(dateTimeString.slice(8, 10), 10);
+  const second = parseInt(dateTimeString.slice(10, 12), 10);
+  console.log(year, month, day, hour, minute, second);
+  const dateTime = new Date(Date.UTC(year, month, day, hour, minute, second));
+
+  return {
+    type: 2,
+    dateTime: dateTime.toISOString(),
+    Lat: parseFloat(values[3]),
+    Lon: parseFloat(values[4]),
+    HeightBar: parseFloat(values[5]),
+    rHeight: parseFloat(values[5]),
+    Pressure: parseFloat(values[6]),
+    temper: parseFloat(values[7]),
+    speed: parseFloat(values[8]),
+    Sats: parseFloat(values[9])
+  };
+}
+
+function parseType1Data(values) {
+  // Проверяем, что массив значений содержит достаточно элементов для данного типа данных
+  if (values.length !== 15) {
+    console.error('Некорректное количество значений для типа 1');
+    return null;
+  }
+
+  // Расчет dateTime из gpsWeek и gpsTime
+  const gpsWeek = parseInt(values[3]);
+  const gpsTime = parseInt(values[4]); // gpsTime уже в миллисекундах
+
+  const startDate = new Date(Date.UTC(1980, 0, 6));
+  const millisecondsSinceEpoch = (gpsWeek * 7 * 24 * 60 * 60 * 1000) + gpsTime;
+  const dateTime = new Date(startDate.getTime() + millisecondsSinceEpoch);
+
+  // Преобразуем значения из строк в соответствующие числовые типы
+  return {
+    type: 1,
+    sensorId: parseInt(values[1], 10),
+    flightNumber: parseInt(values[2], 10),
+    gpsWeek: parseInt(values[3], 10),
+    gpsTime: parseInt(values[4], 10),
+    gpsX: parseInt(values[5], 10),
+    gpsY: parseInt(values[6], 10),
+    gpsZ: parseInt(values[7], 10),
+    rHeight: parseFloat(values[8]), // Относительная высота, предположительно может быть дробным числом
+    flightTime: parseInt(values[9], 10),
+    operatingTime: parseInt(values[9], 10), // Дублируем flightTime, как в вашем исходном коде на C++
+    geiger1: parseFloat(values[10]),
+    geiger2: parseFloat(values[11]),
+    winCount: parseFloat(values[12]),
+    gpsAvailable: parseInt(values[13], 10) > 0, // Преобразуем в булево значение
+    temporaryConst: parseInt(values[14], 10),
+    dateTime: dateTime.toISOString() // Добавляем рассчитанное dateTime
+  };
+}
+
+
+function parseData(dataString) {
+  try {
+    const trimmedData = dataString.trim().slice(1, -1);
+    const values = trimmedData.split(',');
+    const type = parseInt(values[0], 10);
+
+    if (type === 1 && values.length === 15) {
+      return parseType1Data(values);
+    } else if (type === 2 && values.length >= 10) {
+      console.log('Skip type 2 now');
+      return null;
+      //return parseType2Data(values);
+    } else {lue
+      console.log('Unknown data type or incorrect data format');
+      return null;
+    }
   } catch (error) {
     console.error('Error parsing data:', error);
     return null;

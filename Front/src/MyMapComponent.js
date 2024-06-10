@@ -97,7 +97,7 @@ const formatXAxis = (tickItem) => {
 
     const preprocessData = data.map(point => ({
       ...point,
-      value: point.value === 0 ? 0.00001 : point.value
+      value: point.value === 0 ? 0.01 : point.value
     })); 
 
 
