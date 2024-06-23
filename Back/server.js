@@ -1154,19 +1154,19 @@ app.post('/start-flight', (req, res) => {
               };
       
               // Настройка и открытие COM порта
-              const port = new SerialPort({
+              const portUsed = new SerialPort({
                   path: config.serialPort.path,
                   baudRate: config.serialPort.baudRate
               });
 
-              activeSerialPort = port;
+              activeSerialPort = portUsed;
 
-              const parser = port.pipe(new ReadlineParser({ delimiter: '\r\n' }));
+              const parser = portUsed.pipe(new ReadlineParser({ delimiter: '\n' }));
 
               parser.on('data', (data) => {
                   console.log(`Raw data received: ${data}`);
                   // Парсинг и обработка полученных данных
-                  const parsedData = parseData(data); // Убедитесь, что функция parseData правильно обрабатывает полученные данные
+                  const parsedData = parseData(data);  
                   if (parsedData) {
                       console.log('Parsed data:', parsedData);
                       // Вставка данных измерения в таблицу online_measurement
@@ -1176,14 +1176,13 @@ app.post('/start-flight', (req, res) => {
                   }
               });
 
-              port.on('open', () => {
-                  console.log('Serial Port Opened for receiving data.');
+              portUsed.on('open', () => {
+                  console.log('Serial Port Opened for receiving data.', portUsed);
                   //res.json({ message: "Flight data collection started", _id });
-
                   res.json({ message: "Полет запущен", _id, onlineFlightStatus });
               });
 
-              port.on('error', (err) => {
+              portUsed.on('error', (err) => {
                 console.error('Error with serial port:', err.message);
                 // Здесь отправляем на фронтенд более информативное сообщение об ошибке
                 res.status(500).json({ error: true, message: `Ошибка при открытии COM-порта: ${err.message}` });
@@ -1198,3 +1197,4 @@ app.post('/start-flight', (req, res) => {
       res.status(500).json({ message: "Internal server error preparing the database" });
   });
 });
+

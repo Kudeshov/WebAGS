@@ -9,7 +9,7 @@
   "latInit": 55.704034038232834,
   "lonInit": 37.62119540524117,
   "altInit": 23,
-  "chartWindow": "3000",
+  "chartWindow": "100",
   "coeffs_below_550": [
     3.88e-23,
     -6.7e-20,
@@ -28,8 +28,8 @@
   "gm2Coeff": 0.0024,
   "winCoeff": 0.0073,
   "serialPort": {
-    "path": "COM3",
+    "path": "CNCB1",
     "baudRate": 57600
   },
-  "altitudeSource": "barometric"
+  "altitudeSource": "GPS"
 }

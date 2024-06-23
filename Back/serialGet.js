@@ -14,7 +14,7 @@ const port = new SerialPort({
   baudRate: config.serialPort.baudRate // Используем значение 'baudRate' из файла конфигурации
 });
 
-const parser = port.pipe(new ReadlineParser({ delimiter: '\r\n' }));
+const parser = port.pipe(new ReadlineParser({ delimiter: '\n' }));
 
 parser.on('data', data => {
   console.log(`Raw data received: ${data}`);
