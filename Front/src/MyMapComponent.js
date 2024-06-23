@@ -699,43 +699,43 @@ function MyMapComponent({ chartOpen, heightFilterActive }) {
   }, [mapInstance]);
 
   useEffect(() => {
-    // Обновляем содержимое панели при изменении selectedMeasurement
+    // Обновляем содержимое панели при изменении selectedMeasurement или altitudeSource
     if (infoPanelRef.current && averageMeasurement && averageDiapasone) {
-      if (selectedPoints.length>1) {
-      infoPanelRef.current.innerHTML = `
-        Количество измерений: ${selectedPoints.length}<br>
-        Дата: ${convertDateTime(averageDiapasone.timeRange[0])} -  ${convertDateTime(averageDiapasone.timeRange[1])}<br>
-        Время измерения: ${(averageDiapasone.timeRange[1].getTime() - averageDiapasone.timeRange[0].getTime()) / 1000} сек<br>
-        Счёт в окне: ${averageDiapasone.countwRange[0]} - ${averageDiapasone.countwRange[1]} имп/с<br>
-        Высота баром.: ${averageDiapasone.heightRange[0].toFixed(2)} - ${averageDiapasone.heightRange[1].toFixed(2)} м<br>
-        Долгота: ${averageDiapasone.longRange[0].toFixed(6)} - ${averageDiapasone.longRange[1].toFixed(6)}<br>
-        Широта: ${averageDiapasone.latRange[0].toFixed(6)} - ${averageDiapasone.latRange[1].toFixed(6)}<br>
-        Высота GPS.: ${averageDiapasone.altRange[0].toFixed(2)} - ${averageDiapasone.altRange[1].toFixed(2)} м<br>
-        Мощность дозы (полином): ${parseFloat(averageMeasurement.dose).toFixed(2)} мкЗв/час<br>
-        Мощность дозы (по окну): ${parseFloat(averageMeasurement.dosew).toFixed(2)} мкЗв/час<br>
-        Счётчик ГМ1: ${averageMeasurement.geiger1.toFixed(6)} имп/с<br>
-        Счётчик ГМ2: ${averageMeasurement.geiger2.toFixed(6)} имп/с<br>
-        Мощность дозы ГМ: ${averageMeasurement.gmdose1.toFixed(6)} мкЗв/час`
-      ;
-      }
-      else
-      {
+      const altitudeLabel = globalSettings.altitudeSource === 'barometric' ? 'Высота баром.' : 'Высота GPS.';
+      const altitudeRange = globalSettings.altitudeSource === 'barometric' ? averageDiapasone.heightRange : averageDiapasone.altRange;
+
+      if (selectedPoints.length > 1) {
         infoPanelRef.current.innerHTML = `
-        Дата: ${convertDateTime(averageDiapasone.timeRange[0])}<br>
-        Время измерения: 1 сек<br>
-        Счёт в окне: ${averageDiapasone.countwRange[0]} имп/с<br>
-        Высота баром.: ${averageDiapasone.heightRange[0].toFixed(2)} м<br>
-        Долгота: ${averageDiapasone.longRange[0].toFixed(6)}<br>
-        Широта: ${averageDiapasone.latRange[0].toFixed(6)} <br>
-        Высота GPS.: ${averageDiapasone.altRange[0].toFixed(2)} м<br>
-        Мощность дозы (полином): ${parseFloat(averageMeasurement.dose).toFixed(2)} мкЗв/час<br>
-        Мощность дозы (по окну): ${parseFloat(averageMeasurement.dosew).toFixed(2)} мкЗв/час<br>
-        Счётчик ГМ1: ${averageMeasurement.geiger1} имп/с<br>
-        Счётчик ГМ2: ${averageMeasurement.geiger2} имп/с<br>
-        Мощность дозы ГМ1: ${averageMeasurement.gmdose1} мкЗв/час`        
+          Количество измерений: ${selectedPoints.length}<br>
+          Дата: ${convertDateTime(averageDiapasone.timeRange[0])} -  ${convertDateTime(averageDiapasone.timeRange[1])}<br>
+          Время измерения: ${(averageDiapasone.timeRange[1].getTime() - averageDiapasone.timeRange[0].getTime()) / 1000} сек<br>
+          Счёт в окне: ${averageDiapasone.countwRange[0]} - ${averageDiapasone.countwRange[1]} имп/с<br>
+          Долгота: ${averageDiapasone.longRange[0].toFixed(6)} - ${averageDiapasone.longRange[1].toFixed(6)}<br>
+          Широта: ${averageDiapasone.latRange[0].toFixed(6)} - ${averageDiapasone.latRange[1].toFixed(6)}<br>
+          ${altitudeLabel}: ${altitudeRange[0].toFixed(2)} - ${altitudeRange[1].toFixed(2)} м<br>
+          Мощность дозы (полином): ${parseFloat(averageMeasurement.dose).toFixed(2)} мкЗв/час<br>
+          Мощность дозы (по окну): ${parseFloat(averageMeasurement.dosew).toFixed(2)} мкЗв/час<br>
+          Счётчик ГМ1: ${averageMeasurement.geiger1.toFixed(6)} имп/с<br>
+          Счётчик ГМ2: ${averageMeasurement.geiger2.toFixed(6)} имп/с<br>
+          Мощность дозы ГМ: ${averageMeasurement.gmdose1.toFixed(6)} мкЗв/час`
+        ;
+      } else {
+        infoPanelRef.current.innerHTML = `
+          Дата: ${convertDateTime(averageDiapasone.timeRange[0])}<br>
+          Время измерения: 1 сек<br>
+          Счёт в окне: ${averageDiapasone.countwRange[0]} имп/с<br>
+          Долгота: ${averageDiapasone.longRange[0].toFixed(6)}<br>
+          Широта: ${averageDiapasone.latRange[0].toFixed(6)} <br>
+          ${altitudeLabel}: ${altitudeRange[0].toFixed(2)} м<br>
+          Мощность дозы (полином): ${parseFloat(averageMeasurement.dose).toFixed(2)} мкЗв/час<br>
+          Мощность дозы (по окну): ${parseFloat(averageMeasurement.dosew).toFixed(2)} мкЗв/час<br>
+          Счётчик ГМ1: ${averageMeasurement.geiger1} имп/с<br>
+          Счётчик ГМ2: ${averageMeasurement.geiger2} имп/с<br>
+          Мощность дозы ГМ1: ${averageMeasurement.gmdose1} мкЗв/час`        
       }
     }
-  }, [averageMeasurement, averageDiapasone, selectedPoints.length]);
+  }, [averageMeasurement, averageDiapasone, selectedPoints.length, globalSettings.altitudeSource]);
+
 
   const [previousValidMeasurements, setPreviousValidMeasurements] = useState();
   const [previousValidMeasurementsBand, setPreviousValidMeasurementsBand] = useState();
