@@ -30,6 +30,7 @@ const DroneFlight3D = ({ heightFilterActive, heightFrom, heightTo }) => {
   const { geoCenter } = useContext(FlightDataContext);
   const { colorThresholds } = useContext(FlightDataContext);
   const { selectedPoints } = useContext(FlightDataContext);
+  const { globalSettings } = useContext(FlightDataContext);
   const isSelected = (measurement) => {
     return selectedPoints.some(point => point.id === measurement.id);
   };  
@@ -40,15 +41,17 @@ const DroneFlight3D = ({ heightFilterActive, heightFrom, heightTo }) => {
       <pointLight position={[10, 10, 10]} />
       <primitive object={new AxesHelper(10)} />
       <primitive object={new GridHelper(200, 20)} rotation={[0, 0, 0]} />
-      {validMeasurements.map((vmeasurement, index) => ( 
-        //const isSelected = selectedPoints.some(point => point.id === vmeasurement.id);
-        <Point
-          key={index}
-          position={scaleCoordinates( vmeasurement.lat, vmeasurement.lon, vmeasurement.alt, geoCenter.lat, geoCenter.lng)}
-          color={getColorT(vmeasurement.dose, colorThresholds, minDoseValue, maxDoseValue)}
-          selected={selectedPoints.some(point => point.id === vmeasurement.id)}
-        />
-      ))}
+      {validMeasurements.map((vmeasurement, index) => {
+        const altitude = globalSettings.altitudeSource === 'barometric' ? vmeasurement.height : vmeasurement.alt;
+        return (
+          <Point
+            key={index}
+            position={scaleCoordinates(vmeasurement.lat, vmeasurement.lon, altitude, geoCenter.lat, geoCenter.lng)}
+            color={getColorT(vmeasurement.dose, colorThresholds, minDoseValue, maxDoseValue)}
+            selected={selectedPoints.some(point => point.id === vmeasurement.id)}
+          />
+        );
+      })}
       <OrbitControls />
     </Canvas>
   );

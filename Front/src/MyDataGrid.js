@@ -9,6 +9,7 @@ const MyDataGrid = ({ heightFilterActive }) => {
   const { selectedPoints, setSelectedPoints } = useContext(FlightDataContext);
   const { selectionSource, setSelectionSource } = useContext(FlightDataContext);
   const { colorThresholds, minDoseValue, maxDoseValue } = useContext(FlightDataContext);
+  const { globalSettings } = useContext(FlightDataContext);
   const dataGridRef = useRef(null);
   const apiRef = useRef(null);
   const [rowSelectionModel, setRowSelectionModel] = useState([]);
@@ -80,7 +81,7 @@ const MyDataGrid = ({ heightFilterActive }) => {
       valueFormatter: (params) => params.value.toFixed(6),
     },
     {
-      field: 'height',
+      field: globalSettings.altitudeSource === 'barometric' ? 'height' : 'alt',
       headerName: 'Высота',
       width: 70,
       valueFormatter: (params) => params.value.toFixed(2),
