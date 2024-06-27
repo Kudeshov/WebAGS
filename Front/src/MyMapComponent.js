@@ -662,16 +662,34 @@ function MyMapComponent({ chartOpen, heightFilterActive }) {
 
   useEffect(() => {
     if (validMeasurements && validMeasurements.length > 0) {
-      // Обновляем TimeLineChart с новыми данными
+      // Обновляем TimeLineChart с новыми данными и показываем панель
       if (timeLineRef.current && timeLineRef.current._root) {
         timeLineRef.current._root.render(
-          <TimeLineChart data={validMeasurements} globalSettings={globalSettings}/* flightStartTime={flightStartTime} */ />
+          <TimeLineChart data={validMeasurements} globalSettings={globalSettings} />
         );
+        if (timeLineRef.current && selectedCollection?.is_online) {
+          timeLineRef.current.style.display = 'block';
+        }
+      }
+    } else {
+      // Скрываем TimeLineChart, если validMeasurements пуст
+      if (timeLineRef.current) { 
+        timeLineRef.current.style.display = 'none';
       }
     }
-  }, [validMeasurements]);
+  }, [validMeasurements, globalSettings]);
+  
   
   function createTimeLineControl(map) {
+
+    if (timeLineRef.current)
+    {
+      if (timeLineRef.current && !selectedCollection?.is_online) {
+        timeLineRef.current.style.display = 'none';
+      }
+      return timeLineRef.current; 
+    }
+
     const timeLineControl = L.control({ position: 'bottomright' });
     timeLineControl.onAdd = function () {
       timeLineRef.current = L.DomUtil.create('div', 'time-line-panel');
