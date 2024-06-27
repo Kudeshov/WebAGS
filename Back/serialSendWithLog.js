@@ -14,7 +14,9 @@ const port = new SerialPort({
   baudRate: config.serialPort.baudRate
 });
 
-const logFile = path.join(config.flightsDirectory, '20210511120546.log');
+сonst logFile = path.join(config.flightsDirectory, '20210511120546.log');
+//const logFile = path.join(config.flightsDirectory, '20210511130338.log');
+
 let logData = [];
 let currentIndex = 0;
 
@@ -57,7 +59,7 @@ function sendData() {
 
 // Функция для начала отправки данных с интервалом
 function startSendingData() {
-  intervalId = setInterval(sendData, 500); // Отправка данных раз в секунду
+  intervalId = setInterval(sendData, 500); // Отправка данных 
 }
 
 let intervalId;
