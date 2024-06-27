@@ -14,7 +14,7 @@ const port = new SerialPort({
   baudRate: config.serialPort.baudRate
 });
 
-сonst logFile = path.join(config.flightsDirectory, '20210511120546.log');
+const logFile = path.join(config.flightsDirectory, '20210511120546.log');
 //const logFile = path.join(config.flightsDirectory, '20210511130338.log');
 
 let logData = [];
