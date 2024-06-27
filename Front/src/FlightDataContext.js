@@ -45,26 +45,21 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
     lonInit: 37.62119540524117
   }); // Инициализация состояния для хранения глобальных настроек
 
-  //const [isSettingsLoading, setIsSettingsLoading] = useState(false); // Состояние для отслеживания загрузки настроек
+  useEffect(() => {
+    const fetchSettings = () => {
+      fetch('/api/settings')
+        .then(response => response.json())
+        .then(data => {
+          setGlobalSettings(data); // Сохранение полученных настроек в состояние
+          console.log('Настройки загружены:', data, data.latInit);
 
-    useEffect(() => {
-      const fetchSettings = () => {
-        //setIsSettingsLoading(true); // Начало загрузки
-        fetch('/api/settings')
-          .then(response => response.json())
-          .then(data => {
-            setGlobalSettings(data); // Сохранение полученных настроек в состояние
-            console.log('Настройки загружены:', data, data.latInit);
-            // Здесь вы можете инициализировать другие состояния значениями из настроек, если это необходимо
+          setGeoCenter({ lat: data.latInit, lng: data.lonInit });
+        })
+        .catch(error => console.error('Ошибка при получении настроек:', error));
+    };
 
-            setGeoCenter({ lat: data.latInit, lng: data.lonInit });
-          })
-          .catch(error => console.error('Ошибка при получении настроек:', error));
-          //.finally(() => setIsSettingsLoading(false)); // Загрузка завершена
-      };
-
-      fetchSettings();
-    }, []); // Пустой массив зависимостей означает, что эффект выполнится один раз при монтировании компонента
+    fetchSettings();
+  }, []); // Пустой массив зависимостей означает, что эффект выполнится один раз при монтировании компонента
 
   const [colorThresholds, setColorThresholds ] = useState({
     v0: 0,
@@ -237,6 +232,17 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
     //console.log('filter by height');
     setValidMeasurements(validData);
   }, [measurements, heightFilterFrom, heightFilterTo, heightFilterActive]);
+
+  useEffect(() => {
+    if (onlineMeasurements.length > 0) {
+      const nonZeroCoordinates = onlineMeasurements.filter(m => m.lat !== 0 && m.lon !== 0);
+      if (nonZeroCoordinates.length === 1) {
+        const firstValidMeasurement = nonZeroCoordinates[0];
+        console.log('Найдена единственная ненулевая точка отсчета, координаты установлены в ', firstValidMeasurement.lat, firstValidMeasurement.lon);
+        setGeoCenter({ lat: firstValidMeasurement.lat, lng: firstValidMeasurement.lon });
+      }
+    }
+  }, [onlineMeasurements]);
 
   useEffect(() => {
     filterMeasurementsByHeight()
