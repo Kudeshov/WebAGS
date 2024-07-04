@@ -934,55 +934,6 @@ function generateMeasurementData(db, flightId) {
   insertOnlineMeasurement(db, flightId, measurementData);  
 }
 
-
-
-
-
-
-
-/* 
-
-
-
-function parseData(dataString) {
-  try {
-    const trimmedData = dataString.trim().slice(1, -2);
-    const values = trimmedData.split(',');
-    
-    // Расчет dateTime из gpsWeek и gpsTime
-    const gpsWeek = parseInt(values[2]);
-    const gpsTime = parseInt(values[3]); // gpsTime уже в миллисекундах
-
-    const startDate = new Date(Date.UTC(1980, 0, 6));
-    const millisecondsSinceEpoch = (gpsWeek * 7 * 24 * 60 * 60 * 1000) + gpsTime;
-    const dateTime = new Date(startDate.getTime() + millisecondsSinceEpoch);
-
-    return {
-      sensorId: parseInt(values[0]),
-      flightNumber: parseInt(values[1]),
-      gpsWeek: gpsWeek,
-      gpsTime: gpsTime,
-      gpsX: parseInt(values[4]),
-      gpsY: parseInt(values[5]),
-      gpsZ: parseInt(values[6]),
-      rHeight: parseInt(values[7]),
-      flightTime: parseInt(values[8]),
-      operatingTime: parseInt(values[9]),
-      sensorGM1Value: parseInt(values[10]),
-      sensorGM2Value: parseInt(values[11]),
-      sensorSWValue: parseInt(values[12]),
-      gpsAvailable: parseInt(values[13]),
-      temporaryConst: parseInt(values[14]),
-      dateTime: dateTime.toISOString(), // Добавляем рассчитанное dateTime
-      winCount: parseInt(values[12]),
-    };
-  } catch (error) {
-    console.error('Error parsing data:', error);
-    return null;
-  }
-} */
-
-
 function parseType2Data(values) {
   const dateTimeString = values[2];
   const day = parseInt(dateTimeString.slice(0, 2), 10);
@@ -1019,20 +970,33 @@ function parseType1Data(values) {
   const gpsWeek = parseInt(values[3]);
   const gpsTime = parseInt(values[4]); // gpsTime уже в миллисекундах
 
-  const startDate = new Date(Date.UTC(1980, 0, 6));
+/*   const startDate = new Date(Date.UTC(1980, 0, 6));
   const millisecondsSinceEpoch = (gpsWeek * 7 * 24 * 60 * 60 * 1000) + gpsTime;
-  const dateTime = new Date(startDate.getTime() + millisecondsSinceEpoch);
+  const dateTime = new Date(startDate.getTime() + millisecondsSinceEpoch); */
 
-  // Преобразуем значения из строк в соответствующие числовые типы
+  // Получаем текущее время в формате ISO (UTC)
+  const dateTime = new Date();
+
+  const ecefCoords = toECEF(config.latInit, config.lonInit, config.altInit);
+
+  // Преобразуем значения из строк в соответствующие числовые типы и заменяем координаты при необходимости
+/*   const gpsX = parseInt(values[5], 10) === 0 ? ecefCoords.x : parseInt(values[5], 10);
+  const gpsY = parseInt(values[6], 10) === 0 ? ecefCoords.y : parseInt(values[6], 10);
+  const gpsZ = parseInt(values[7], 10) === 0 ? ecefCoords.z : parseInt(values[7], 10); */
+
+  const gpsX = parseInt(values[5], 10);
+  const gpsY = parseInt(values[6], 10);
+  const gpsZ = parseInt(values[7], 10);
+
   return {
     type: 1,
     sensorId: parseInt(values[1], 10),
     flightNumber: parseInt(values[2], 10),
     gpsWeek: parseInt(values[3], 10),
     gpsTime: parseInt(values[4], 10),
-    gpsX: parseInt(values[5], 10),
-    gpsY: parseInt(values[6], 10),
-    gpsZ: parseInt(values[7], 10),
+    gpsX: gpsX,
+    gpsY: gpsY,
+    gpsZ: gpsZ,
     rHeight: parseFloat(values[8]), // Относительная высота, предположительно может быть дробным числом
     flightTime: parseInt(values[9], 10),
     operatingTime: parseInt(values[9], 10), // Дублируем flightTime, как в вашем исходном коде на C++
@@ -1044,6 +1008,7 @@ function parseType1Data(values) {
     dateTime: dateTime.toISOString() // Добавляем рассчитанное dateTime
   };
 }
+
 
 
 function parseData(dataString) {

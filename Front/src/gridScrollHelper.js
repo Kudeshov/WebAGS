@@ -6,7 +6,7 @@ export const useGridScrollPagination = (apiRef, tableData, setRowSelectionModel)
         pageSize: 50, // Размер страницы
         page: 0, // Текущая страница
     }); 
-    console.log('useGridScrollPagination ');
+    //console.log('useGridScrollPagination ');
     const handleScrollToRow = React.useCallback((v_id) => {
         const sortedRowIds = apiRef.current.getSortedRowIds();
         const index = sortedRowIds.indexOf(parseInt(v_id)); // Получение индекса строки в отсортированных данных

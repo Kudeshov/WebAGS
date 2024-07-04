@@ -235,7 +235,7 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
 
   useEffect(() => {
     if (onlineMeasurements.length > 0) {
-      const nonZeroCoordinates = onlineMeasurements.filter(m => m.lat !== 0 && m.lon !== 0);
+      const nonZeroCoordinates = onlineMeasurements.filter(m => m.lat > 0 && m.lon > 0);
       if (nonZeroCoordinates.length === 1) {
         const firstValidMeasurement = nonZeroCoordinates[0];
         console.log('Найдена единственная ненулевая точка отсчета, координаты установлены в ', firstValidMeasurement.lat, firstValidMeasurement.lon);

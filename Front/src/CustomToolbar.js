@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useContext} from 'react';
+import React, { useState, useEffect, useContext, useCallback} from 'react';
 import { ReactComponent as PlaneIcon } from './icons/plane.svg';
 import { ReactComponent as AnalyticsIcon } from './icons/table.svg';
 import { ReactComponent as ChartIcon } from './icons/chart-bar.svg';
+import { ReactComponent as SignalIcon } from './icons/signal.svg';
 import { ReactComponent as DatabaseIcon } from './icons/database.svg';
 import { ReactComponent as CubeIcon } from './icons/cube.svg';
 import { ReactComponent as CameraIcon } from './icons/camera.svg';
@@ -18,6 +19,7 @@ import Divider from '@mui/material/Divider';
 import CircularProgress from '@mui/material/CircularProgress';
 import Backdrop from '@mui/material/Backdrop';
 import { convertDateTimeWithoutSeconds, convertDateTime, convertToTime } from './dateUtils';
+import SpectrumChart from './SpectrumChart'; 
 
 const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, onHeightFilterActive, heightFilterActive,
     handleThreeDToggle, threeDActive, settingsOpen,}) => {
@@ -33,11 +35,11 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   const [flightOptions, setFlightOptions] = useState([]);
   const [collectionOptions, setCollectionOptions] = useState([]);
   const {validMeasurements, setValidMeasurements } = useContext(FlightDataContext);
-  const {setMeasurements } = useContext(FlightDataContext);
+  const {measurements, setMeasurements } = useContext(FlightDataContext);
   const [selectedOnlineDB, setSelectedOnlineDB] = useState(null);
   
-  const { setGlobalSettings } = useContext(FlightDataContext);
-
+  const { globalSettings, setGlobalSettings } = useContext(FlightDataContext);
+  const { selectedPoints } = useContext(FlightDataContext);
   const { saveMapAsImage } = useContext(FlightDataContext);
   const { saveDataToFile } = useContext(FlightDataContext);
   const { isLoadingFlight } = useContext(FlightDataContext);
@@ -56,11 +58,72 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   const [isDemoMode, setIsDemoMode] = useState(true);
   const {onlineFlightId, setOnlineFlightId} = useContext(FlightDataContext); // Состояние для хранения ID онлайн полета
   const [websocket, setWebsocket] = useState(null);
-  const [simulationData, setSimulationData] = useState('');
+  const [dataToShow, setDataToShow] = useState('');
   const [isSettingsLoading, setIsSettingsLoading] = useState(false);
 
   const [websocketConnected, setWebsocketConnected] = useState(false);
   const [lastDataTimestamp, setLastDataTimestamp] = useState(Date.now());
+  const [spectrumDialogOpen, setSpectrumDialogOpen] = useState(false);
+
+  const [spectrumData, setSpectrumData] = useState([]);
+  const [averageHeight, setAverageHeight] = useState(0);
+  const [timeInterval, setTimeInterval] = useState(0);
+  
+  // Calculate average spectrum data and height
+  const calculateAverageSpectrum = useCallback((selectedPoints) => {
+    if (selectedPoints.length === 0 || !selectedCollection) {
+      return [];
+    }
+  
+    const { P0 = 70, P1 = 11 } = selectedCollection || {};
+  
+    const sumSpectrum = Array(selectedPoints[0]?.spectrum?.channels.length || 0).fill(0);
+  
+    selectedPoints.forEach(point => {
+      point.spectrum.channels.forEach((value, index) => {
+        sumSpectrum[index] += value;
+      });
+    });
+  
+    const avgSpectrum = sumSpectrum.map((value, index) => ({
+      energy: P0 + P1 * index,
+      value: value / selectedPoints.length,
+      count: value
+    }));
+  
+    return avgSpectrum;
+  }, [selectedCollection]);
+  
+  useEffect(() => {
+
+    console.log('Selected points length in Toolbar '+selectedPoints.length);
+    if (selectedPoints.length > 0 && selectedCollection) {
+      const totalHeight = selectedPoints.reduce((acc, point) => acc + point.height, 0);
+      setAverageHeight(totalHeight / selectedPoints.length);
+  
+      const times = selectedPoints.map(point => new Date(point.datetime).getTime());
+      const minTime = Math.min(...times);
+      const maxTime = Math.max(...times);
+      setTimeInterval((maxTime - minTime) / 1000);
+
+      // Проверяем, есть ли спектр у первой выбранной точки и содержит ли он массив каналов
+      const hasSpectrumChannels = selectedPoints[0].spectrum && Array.isArray(selectedPoints[0].spectrum.channels);
+      // Если нет спектра или каналов, возвращаем пустой массив
+      if (!hasSpectrumChannels) {
+        setSpectrumData([]);
+      }
+      else 
+      {
+        const avgSpectrumData = calculateAverageSpectrum(selectedPoints);
+        setSpectrumData(avgSpectrumData);
+      }
+    }
+    else
+    {
+      setSpectrumData([]);
+    }
+  }, [selectedPoints, calculateAverageSpectrum, selectedCollection]);
+  
 
   // Проверка на отсутствие данных в течение заданного времени (например, 30 секунд)
   useEffect(() => {
@@ -122,7 +185,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
     setStartFlightDialogOpen(false);
   };
 
-  const setupWebSocket = (onlineFlightId) => {
+  const setupWebSocket = (onlineFlightId, globalSettings) => {
 
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsHost = process.env.REACT_APP_WEBSOCKET_HOST || window.location.host;
@@ -147,19 +210,22 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
             setSnackbarMessage('Полет завершен в штатном режиме');
             setSnackbarOpen(true); // Открываем Snackbar с сообщением
             setOnlineFlightId(null); // Сброс ID симуляции
-            setSimulationData('');
+            setDataToShow('');
             if (websocket) {
               websocket.close(); // Закрытие WebSocket соединения
               setWebsocket(null);
             }
             return; // Завершаем выполнение функции, чтобы не обрабатывать данные дальше
           }          
+
+          setLastDataTimestamp(Date.now());
+
           setOnlineMeasurements(currentMeasurements => {
           // Проверяем, что широта и долгота существуют и не равны null
           if (data.lat != null && data.lon != null) {
             const isDuplicate = currentMeasurements.some(item => item.id === data.id);
             if (!isDuplicate) {
-              setLastDataTimestamp(Date.now());
+              
               // Если элемент уникален, добавляем его в массив
               return [...currentMeasurements, data];
             }
@@ -172,8 +238,8 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
             return currentMeasurements;
           }
           });
-          setSimulationData(`Время: ${convertToTime(data.datetime)}, Широта: ${data.lat ? Number(data.lat).toFixed(6) : '0.000000'}, ` +
-                            `Долгота: ${data.lon ? Number(data.lon).toFixed(6) : '0.000000'}, ` +
+          setDataToShow(`Время: ${convertToTime(data.datetime)}, Широта: ${Number(data.lat)>0 ? Number(data.lat).toFixed(6) : 'N/A'}, ` +
+                            `Долгота: ${Number(data.lon)>0 ? Number(data.lon).toFixed(6) : 'N/A'}, ` +
                             `Высота: ${data.alt ? Number(data.alt).toFixed(2) : '0.00'}, ` +
                             `Счет в окне: ${data.countw ? data.countw : '0'}`);
         };
@@ -203,7 +269,12 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   };
 
   useEffect(() => {
-    setValidMeasurements(onlineMeasurements);
+
+    //let validData = onlineMeasurements.filter(m => m.lat >= 0 && m.lon >= 0 && m.dose >= 0 && m.dosew >= 0 && m.countw<1000000);
+    //console.log('filter by height');
+    //setValidMeasurements(onlineMeasurements);
+
+    //setValidMeasurements(onlineMeasurements);
     setMeasurements(onlineMeasurements);
     //console.log('onlineMeasurements', onlineMeasurements);
   }, [onlineMeasurements, setMeasurements, setValidMeasurements]);
@@ -247,12 +318,13 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
       }
       // Обрабатываем успешный ответ
       console.log('Полет запущен:', selectedOnlineDB);
+      setMeasurements([]);
       setOnlineFlightId(body._id); // Сохраняем ID запущенного полета
       setSelectedDatabase(selectedOnlineDB);
       setSelectedCollection(body.onlineFlightStatus); 
 
       console.log("setupWebSocket из HandleStartFlight");
-      setupWebSocket(body.onlineFlightStatus._id); // Установка WebSocket соединения
+      setupWebSocket(body.onlineFlightStatus._id, globalSettings); // Установка WebSocket соединения
 
       setSnackbarOpen(true);
       setSnackbarMessage(isDemoMode ? 'Эмуляция полета запущена' : 'Полет запущен');
@@ -281,7 +353,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
           setOnlineFlightId(statusData._id); // Сохраняем ID активного полета
           setSelectedDatabase(statusData.dbName); // Устанавливаем выбранную базу данных
           // Установка WebSocket соединения
-          setupWebSocket(statusData._id);
+          setupWebSocket(statusData._id, globalSettings);
         } else {
           console.log('Онлайн-полет не активен');
         }
@@ -314,7 +386,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
       if(response.ok) {
         // Действия после успешного останова симуляции
         setOnlineFlightId(null); // Сброс ID симуляции
-        setSimulationData('');
+        setDataToShow('');
         if (websocket) {
           websocket.close();
           setWebsocket(null);
@@ -325,7 +397,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
         console.error('Ошибка остановки полета: HTTP-статус', response.status);
         setSnackbarMessage('Полет уже остановлен');
         setOnlineFlightId(null); // Сброс ID симуляции
-        setSimulationData('');
+        setDataToShow('');
         if (websocket) {
           websocket.close();
           setWebsocket(null);
@@ -336,7 +408,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
       console.error('Ошибка остановки эмуляции:', error);
       setSnackbarMessage('Ошибка остановки полета: ', error);
       setOnlineFlightId(null); // Сброс ID симуляции
-      setSimulationData('');
+      setDataToShow('');
       if (websocket) {
         websocket.close();
         setWebsocket(null);
@@ -681,6 +753,15 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
       setSelectedOption(selectedMenuOption);
       //setFlightToDelete(id);
       setFlightSettingsDialogOpen(true);
+    };
+
+    const handleOpenSpectrumDialog = () => {
+      setSpectrumDialogOpen(true);
+    };
+  
+    // Function to handle closing the spectrum dialog
+    const handleCloseSpectrumDialog = () => {
+      setSpectrumDialogOpen(false);
     };
 
     async function saveCollectionParams(dbName, opt) {
@@ -1297,7 +1378,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
           padding: '0px',  
         }}>
           <IconButton color="inherit"  disabled={selectedCollection?.is_online===true} onClick={handleChartToggle} >
-            <Tooltip title="Спектр">
+            <Tooltip title="Спектр на карте">
               <ChartIcon style={{ fill: selectedCollection?.is_online?"lightgray": (chartOpen ? theme.palette.primary.main : "white"), width: 24, height: 24 }} />
             </Tooltip>
           </IconButton>
@@ -1350,18 +1431,47 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
           </Tooltip>
         </IconButton>
 
-        <IconButton color="inherit" disabled={validMeasurements.length === 0} onClick={saveDataToFile}>
+        <IconButton color="inherit" disabled={(measurements.length === 0 || onlineFlightId !== null)} onClick={saveDataToFile}>
           <Tooltip title="Сохранить данные">
-            <DownloadIcon style={{ fill: validMeasurements.length === 0?"lightgray": "white", width: 24, height: 24 }} />
+            <DownloadIcon style={{ fill: (measurements.length === 0 || onlineFlightId !== null)?"lightgray": "white", width: 24, height: 24 }} />
           </Tooltip>
         </IconButton>
+        <IconButton color="inherit" onClick={handleOpenSpectrumDialog}>
+        <Tooltip title="Показать спектр в отдельном окне">
+          <SignalIcon style={{ fill: "white", width: 24, height: 24 }} />
+        </Tooltip>
+      </IconButton>
+      {/* Spectrum Dialog */}
+      <Dialog open={spectrumDialogOpen} onClose={handleCloseSpectrumDialog} aria-labelledby="spectrum-dialog-title" fullWidth maxWidth="md">
+        <DialogTitle id="spectrum-dialog-title">Спектр</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+          <div style={{ position: 'relative', paddingBottom: '40px' }}>
+            <SpectrumChart
+              averageHeight={averageHeight}
+              timeInterval={timeInterval}
+              selectedCollection={selectedCollection}
+              data={spectrumData}
+              isLoading={false}
+              width={850}  
+              height={400} 
+            />
+          </div>
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseSpectrumDialog} color="primary">
+            Закрыть
+          </Button>
+        </DialogActions>
+      </Dialog>
 
        <OnlineIndicator/> 
 
         <div style={{ flexGrow: 1, display: 'flex', justifyContent: 'flex-end' }}>
           {selectedCollection ? (
             <div style={{ color: 'white', fontSize: 'small' }}>
-              {simulationData && <><span>{simulationData}</span><span> | </span></>}
+              {dataToShow && <><span>{dataToShow}</span><span> | </span></>}
               <span>{selectedDatabase ? selectedDatabase : ''} | </span>
               <span>{selectedCollection?.description} | </span>
               <span>{convertDateTime(selectedCollection?.dateTime)} </span>   

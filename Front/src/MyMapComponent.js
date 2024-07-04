@@ -13,6 +13,7 @@ import { FlightDataContext } from './FlightDataContext';
 import { createRoot } from 'react-dom/client';
 import 'leaflet-easyprint';
 import { convertDateTime } from './dateUtils';
+import SpectrumChart from './SpectrumChart'; 
 
 delete L.Icon.Default.prototype._getIconUrl;
 
@@ -22,215 +23,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: require('leaflet/dist/images/marker-shadow.png'),
 });
 
-const formatXAxis = (tickItem) => {
-  // Задайте интервал, до которого вы хотите округлить (например, 400)
-  const interval = 400;
-  // Округляем до ближайшего интервала
-  return Math.round(tickItem / interval) * interval;
-}
-
-
-  function SpectrumChart({ data, selectedCollection, averageHeight, timeInterval}) {
-    const [scale, setScale] = useState('linear');
-
-    function downloadCsv(csvContent, fileName) {
-      // Добавление BOM (Byte Order Mark) для UTF-8
-      const BOM = "\uFEFF";
-      const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      
-      const link = document.createElement("a");
-      link.setAttribute("href", url);
-      link.setAttribute("download", fileName);
-      document.body.appendChild(link); // Необходимо для Firefox
-      
-      link.click(); // Инициируем скачивание
-      
-      document.body.removeChild(link); // Удаляем элемент после скачивания
-    }
-
-    function exportToCsv(data) {
-/*       const optionsCSV = {
-        fieldSeparator: ';',
-        quoteStrings: '"',
-        decimalSeparator: '.',
-        showLabels: true, 
-        useTextFile: false,
-        useBom: true,
-        headers: ['Дата и время', 'Широта', 'Долгота', 'Высота GPS', 'Барометрическая высота', 'Мощность дозы по окну', 'Доза']
-      }; */
-      // Мета-информация
-    
-      // Заголовки столбцов
-      const headers = "Канал;Счет (имп);Энергия (кЭв);Счет (имп/с)\n";
-      const { P0 = 70, P1 = 11 } = selectedCollection || {};
-  
-      // Подготовка данных измерений
-      const calibrationBase = P0; // Базовый калибровочный коэффициент
-      const calibrationStep = P1; // Шаг калибровки в кэВ/канал
-
-      if (!timeInterval) {
-        timeInterval = 1;
-      }
-      const metaInfo =  
-      `Полет:;;${selectedCollection.description}
-      Дата:;${convertDateTime(selectedCollection.dateTime)}
-      Средняя высота:;${averageHeight};м
-      Калибровочные коэффициенты:;${calibrationBase};кэВ
-       ;${calibrationStep};кэВ/канал
-      Время (количество точек):;${timeInterval};с\n\n`;
-      
-      // Формирование данных
-      let measurementsData = "";
-      data.forEach((item, index) => {
-        const calculatedEnergy = `=A${index + 9}*$B$5+$B$4`; // Пример формулы для Excel
-        const calculatedRate = `=B${index + 9}/$B$6`; // Пример формулы для Excel
-        measurementsData += `${index};${item.count};${calculatedEnergy};${calculatedRate}\n`;
-      });
-    
-      // Сборка всего CSV
-      const csvContent = metaInfo + headers + measurementsData;
-      downloadCsv(csvContent, "spectrum.csv");
-    }
-    
-    if (!data?.length) return null;
-
-    const preprocessData = data.map(point => ({
-      ...point,
-      value: point.value === 0 ? 0.01 : point.value
-    })); 
-
-
-    function exportToN42(data, selectedCollection, averageHeight, timeInterval) {
-
-      if (!timeInterval) {
-        timeInterval = 1;
-      }
-      const liveTime = timeInterval; // Пример значения, скорректируйте по вашим данным
-      const realTime = timeInterval; // Пример значения, скорректируйте по вашим данным
-      const coefficients = `${selectedCollection.P0} ${selectedCollection.P1} 0 0`; // Подставьте актуальные значения
-      const channelData = data.map(item => item.value).join(' ');
-    
-      const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
-    <N42InstrumentData>
-      <Measurement>
-        <Spectrum Type="PHA">
-          <LiveTime>${liveTime}</LiveTime>
-          <RealTime>${realTime}</RealTime>
-          <Calibration Type="Energy">
-            <Equation Model="Polynomial">
-              <Coefficients>${coefficients}</Coefficients>
-            </Equation>
-          </Calibration>
-          <ChannelData>${channelData}</ChannelData>
-        </Spectrum>
-      </Measurement>
-    </N42InstrumentData>`;
-    
-      const fileName = "spectrum.n42";
-      const blob = new Blob([xmlContent], { type: 'application/xml' });
-      const link = document.createElement("a");
-      const url = URL.createObjectURL(blob);
-      link.setAttribute("href", url);
-      link.setAttribute("download", fileName);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
-
-    
-
-    return (
-      <div>
-          <LineChart width={330} height={200} data={preprocessData} margin={{ top: 5, right: 5, left: -15, bottom: 5 }}>
-              <Line
-                  type="monotone"
-                  dataKey="value"
-                  stroke="#0000FF" // Синий цвет линии
-                  dot={false} // Отключить отображение точек
-                  isAnimationActive={false}
-              />
-              <CartesianGrid stroke="#ccc" />
-              <XAxis
-                  tickFormatter={formatXAxis}
-                  dataKey="energy"
-                  label={{ value: "Энергия (keV)", position: "bottom", offset: -6, style: { fontSize: 12 } }}
-              />
-              {scale === 'log' ? (
-                  <YAxis
-                      scale="log"
-                      domain={['auto', 'auto']}
-                      allowDataOverflow={true}
-                      label={{ value: 'Скорость счета 1/с', angle: -90, position: 'insideLeft', offset: 25, dy: 60 }}
-                  />
-              ) : (
-                  <YAxis
-                      label={{ value: 'Скорость счета 1/с', angle: -90, position: 'insideLeft', offset: 25, dy: 60 }}
-                  />
-              )}
-              <Tooltip />
-          </LineChart>
-          {/* Чекбокс под графиком, выравнивание влево */}
-          <div style={{ textAlign: 'right', marginRight: '12px' }}>
-              Сохранить спектр
-          </div>
-
-          <div style={{ marginTop: '5px', textAlign: 'left' }}>
-              <input
-                  type="checkbox"
-                  id="scaleCheckbox"
-                  checked={scale === 'log'}
-                  onChange={(e) => setScale(e.target.checked ? 'log' : 'linear')}
-              />
-              <label htmlFor="scaleCheckbox">Логарифмическая шкала</label>
-          </div>
-          {/* Подпись для кнопок сохранения, выравнивание вправо */}
-          
-          <div style={{ position: 'absolute', right: '5px', bottom: '5px' }}>
-              <button
-                  onClick={() => exportToCsv(data)}
-                  style={{
-                      fontSize: '0.75rem',
-                      color: 'white',
-                      backgroundColor: '#1976d2',
-                      border: 'none',
-                      borderRadius: '4px',
-                      padding: '6px 16px',
-                      cursor: 'pointer',
-                      outline: 'none',
-                      marginRight: '10px', // Добавляем отступ между кнопками
-                  }}
-              >
-                  .CSV
-              </button>
-              <button
-                  onClick={() => exportToN42(data, selectedCollection, averageHeight, timeInterval)}
-                  style={{
-                      fontSize: '0.75rem',
-                      color: 'white',
-                      backgroundColor: '#1976d2',
-                      border: 'none',
-                      borderRadius: '4px',
-                      padding: '6px 16px',
-                      cursor: 'pointer',
-                      outline: 'none',
-                  }}
-              >
-                  .N42
-              </button>
-          </div>
-      </div>
-  );
-}
-
-
-
-
-
-
 const transformData = (data, globalSettings) => {
-
   if (data.length === 0) return;
 
   const flightStartTime = data.reduce((min, p) => p.datetime < min ? p.datetime : min, data[0].datetime);
@@ -297,6 +90,7 @@ function MyMapComponent({ chartOpen, heightFilterActive }) {
   const googleSatelliteUrl = 'http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}&hl=ru';
   const { selectedCollection } = useContext(FlightDataContext);
   const { validMeasurements } = useContext(FlightDataContext);
+  const { measurements } = useContext(FlightDataContext);
   const { geoCenter } = useContext(FlightDataContext);
   const { minDoseValue, maxDoseValue } = useContext(FlightDataContext);
   const { setSaveMapAsImage } = useContext(FlightDataContext);
@@ -322,6 +116,7 @@ function MyMapComponent({ chartOpen, heightFilterActive }) {
   const { selectedDatabase } = useContext(FlightDataContext);
 
   const handlePointClick = (event, measurement) => {
+    
     const nativeEvent = event.originalEvent || event;
     const isCtrlPressed = nativeEvent.ctrlKey; // Проверяем, нажата ли клавиша Ctrl
     //console.log('isCtrlPressed', isCtrlPressed);
@@ -393,6 +188,7 @@ function MyMapComponent({ chartOpen, heightFilterActive }) {
   }, [selectedPoints]); // This useEffect should depend on selectedPoints array
 
   const calculateAverageSpectrum = useCallback((selectedPoints) => {
+
     if (selectedPoints.length === 0 || !selectedCollection) {
       return [];
     }
@@ -506,10 +302,10 @@ function MyMapComponent({ chartOpen, heightFilterActive }) {
     }
   }, [selectMode]);
 
-  const heatPoints = validMeasurements.map(measurement => {
+/*   const heatPoints = validMeasurements.map(measurement => {
     const intensity = (measurement.dose - minDoseValue) / (maxDoseValue - minDoseValue);
     return [measurement.lat, measurement.lon, intensity];
-  });
+  }); */
 
   const handleSelectionComplete = (bounds) => {
     // Разбиваем bounds на отдельные переменные для удобства
@@ -661,23 +457,28 @@ function MyMapComponent({ chartOpen, heightFilterActive }) {
   }
 
   useEffect(() => {
-    if (validMeasurements && validMeasurements.length > 0) {
+    if (measurements && measurements.length > 0) {
       // Обновляем TimeLineChart с новыми данными и показываем панель
       if (timeLineRef.current && timeLineRef.current._root) {
         timeLineRef.current._root.render(
-          <TimeLineChart data={validMeasurements} globalSettings={globalSettings} />
+          <TimeLineChart data={measurements} globalSettings={globalSettings} />
         );
         if (timeLineRef.current && selectedCollection?.is_online) {
           timeLineRef.current.style.display = 'block';
         }
       }
     } else {
+      
+      if (timeLineRef.current && !selectedCollection?.is_online) { 
+        timeLineRef.current.style.display = 'none';
+      }
+
       // Скрываем TimeLineChart, если validMeasurements пуст
-      if (timeLineRef.current) { 
+      if (timeLineRef.current && !measurements?.length) { 
         timeLineRef.current.style.display = 'none';
       }
     }
-  }, [validMeasurements, globalSettings]);
+  }, [measurements, globalSettings]);
   
   
   function createTimeLineControl(map) {
@@ -697,7 +498,7 @@ function MyMapComponent({ chartOpen, heightFilterActive }) {
       // Создаем корень для рендеринга компонента
       const root = createRoot(timeLineRef.current);
       timeLineRef.current._root = root; // Сохраняем корень в свойстве для последующего доступа
-      root.render(<TimeLineChart data={validMeasurements} globalSettings={globalSettings}/>);
+      root.render(<TimeLineChart data={measurements} globalSettings={globalSettings}/>);
       return timeLineRef.current;
     };
   
@@ -1027,6 +828,9 @@ useEffect(() => {
 
   // Пересоздаем маркеры с новым стилем
   validMeasurements.forEach(measurement => {
+    if (measurement.lat <= 0 || measurement.lon <= 0) {
+      return; // Пропускаем маркеры с "плохими" координатами
+    }
     const color = getColorT(measurement.dose, colorThresholds, minDoseValue, maxDoseValue);
     const isSelected = selectedPoints.some(p => p.id === measurement.id);
     const markerStyle = {
@@ -1119,6 +923,7 @@ useEffect(() => {
         <FeatureGroup ref={measurementsLayerRef}>
         {
         validMeasurements
+          .filter(measurement => measurement.lat > 0 && measurement.lon > 0) // Фильтруем "плохие" координаты
           .map((measurement) => {
               if (minDoseValue === null || maxDoseValue === null) return null;
               const color = getColorT(measurement.dose, colorThresholds, minDoseValue, maxDoseValue);
@@ -1146,31 +951,7 @@ useEffect(() => {
         </FeatureGroup>        
       </LayersControl.Overlay>
 
-{/*         <LayersControl.Overlay checked name="Онлайн измерения">
-        <FeatureGroup ref={onlineMeasurementsLayerRef}>
-          {
-          
-          onlineMeasurements.map((onlineMeasurements, index) => (
-            <CircleMarker
-              key={index}
-              center={[onlineMeasurements.lat, onlineMeasurements.lon]}
-              pathOptions={{
-                color: getColor(onlineMeasurements.dose, 0, 2), // Вы можете настроить стиль маркера здесь
-                fillColor: getColor(onlineMeasurements.dose, 0, 2),
-                fillOpacity: 0.5,
-                radius: 5,
-              }}
-              eventHandlers={{
-                click: () => {
-                  console.log('Measurement clicked', onlineMeasurements);
-                  // Действия при клике на маркер, если требуется
-                },
-              }}
-            />
-          ))}
-        </FeatureGroup>
-      </LayersControl.Overlay> 
-
+{/*    
       <LayersControl.Overlay name="Тепловая карта">
         <HeatmapLayer
           points={heatPoints}
