@@ -1378,11 +1378,17 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
           padding: '0px',  
         }}>
           <IconButton color="inherit"  disabled={selectedCollection?.is_online===true} onClick={handleChartToggle} >
-            <Tooltip title="Спектр на карте">
+            <Tooltip title="Показать спектр на карте">
               <ChartIcon style={{ fill: selectedCollection?.is_online?"lightgray": (chartOpen ? theme.palette.primary.main : "white"), width: 24, height: 24 }} />
             </Tooltip>
           </IconButton>
         </div>
+
+        <IconButton color="inherit" onClick={handleOpenSpectrumDialog}>
+        <Tooltip title="Показать спектр в отдельном окне">
+          <SignalIcon style={{ fill: "white", width: 24, height: 24 }} />
+        </Tooltip>
+        </IconButton>
 
         <div style={{
           backgroundColor: threeDActive ? "white" : "transparent",
@@ -1436,11 +1442,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
             <DownloadIcon style={{ fill: (measurements.length === 0 || onlineFlightId !== null)?"lightgray": "white", width: 24, height: 24 }} />
           </Tooltip>
         </IconButton>
-        <IconButton color="inherit" onClick={handleOpenSpectrumDialog}>
-        <Tooltip title="Показать спектр в отдельном окне">
-          <SignalIcon style={{ fill: "white", width: 24, height: 24 }} />
-        </Tooltip>
-      </IconButton>
+
       {/* Spectrum Dialog */}
       <Dialog open={spectrumDialogOpen} onClose={handleCloseSpectrumDialog} aria-labelledby="spectrum-dialog-title" fullWidth maxWidth="md">
         <DialogTitle id="spectrum-dialog-title">Спектр</DialogTitle>
