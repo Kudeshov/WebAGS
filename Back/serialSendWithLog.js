@@ -41,25 +41,24 @@ function readLogFile(filePath) {
 
 // Функция для отправки данных на COM-порт
 function sendData() {
-  if (currentIndex < logData.length) {
-    const data = logData[currentIndex];
-    console.log(`Sending: ${data}`);
-    port.write(data + '\r\n', (err) => {
-      if (err) {
-        return console.log('Error on write: ', err.message);
-      }
-      console.log('Message written');
-    });
-    currentIndex++;
-  } else {
-    console.log('All data sent');
-    clearInterval(intervalId);
+  if (currentIndex >= logData.length) {
+    currentIndex = 0; // Сброс индекса для зацикливания
   }
+
+  const data = logData[currentIndex];
+  console.log(`Sending: ${data}`);
+  port.write(data + '\r\n', (err) => {
+    if (err) {
+      return console.log('Error on write: ', err.message);
+    }
+    console.log('Message written');
+  });
+  currentIndex++;
 }
 
 // Функция для начала отправки данных с интервалом
 function startSendingData() {
-  intervalId = setInterval(sendData, 500); // Отправка данных 
+  intervalId = setInterval(sendData, 500); // Отправка данных раз в полсекунды
 }
 
 let intervalId;

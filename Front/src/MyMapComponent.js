@@ -67,8 +67,8 @@ function TimeLineChart({ data, globalSettings }) {
       <YAxis yAxisId="left" label={{ value: 'Мощность дозы, мкЗв/час', angle: -90, position: 'insideLeft', offset: 15, dy: 80, style: { fill: 'green' } }} />
       <YAxis yAxisId="right" orientation="right" label={{ value: 'Высота, м', angle: -90, position: 'insideRight', offset: 15, dy: -25, style: { fill: 'blue' } }} />
       <Tooltip />
-      <Line yAxisId="left" type="monotone" dataKey="МЭД" stroke="green" strokeWidth={2} dot={false} />
-      <Line yAxisId="right" type="monotone" dataKey="Высота" stroke="blue" strokeWidth={2} dot={false} />
+      <Line yAxisId="left" type="linear" dataKey="МЭД" stroke="green" strokeWidth={2} dot={false} isAnimationActive={false}  />
+      <Line yAxisId="right" type="linear" dataKey="Высота" stroke="blue" strokeWidth={2} dot={false} isAnimationActive={false}  />
     </LineChart>
   );
 }
