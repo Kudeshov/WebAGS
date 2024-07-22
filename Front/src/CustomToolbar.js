@@ -19,7 +19,7 @@ import Divider from '@mui/material/Divider';
 import CircularProgress from '@mui/material/CircularProgress';
 import Backdrop from '@mui/material/Backdrop';
 import { convertDateTimeWithoutSeconds, convertDateTime, convertToTime } from './dateUtils';
-import SpectrumChart from './SpectrumChart'; 
+import SpectrumChartDialog from './SpectrumChartDialog'; 
 
 const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, onHeightFilterActive, heightFilterActive,
     handleThreeDToggle, threeDActive, settingsOpen,}) => {
@@ -794,9 +794,6 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
       }
     }
     
-
-    
-    
   const handleDeleteDatabase = async () => {
     try {
         handleDatabaseMenuClose(); // Закрыть меню базы данных при начале удаления
@@ -1444,21 +1441,28 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
         </IconButton>
 
       {/* Spectrum Dialog */}
-      <Dialog open={spectrumDialogOpen} onClose={handleCloseSpectrumDialog} aria-labelledby="spectrum-dialog-title" fullWidth maxWidth="md">
+      <Dialog 
+        open={spectrumDialogOpen} 
+        onClose={handleCloseSpectrumDialog} 
+        aria-labelledby="spectrum-dialog-title" 
+        fullWidth 
+        maxWidth="md"
+        className="dialog-cursor-default"
+      >
         <DialogTitle id="spectrum-dialog-title">Спектр</DialogTitle>
         <DialogContent>
           <DialogContentText>
-          <div style={{ position: 'relative', paddingBottom: '40px' }}>
-            <SpectrumChart
-              averageHeight={averageHeight}
-              timeInterval={timeInterval}
-              selectedCollection={selectedCollection}
-              data={spectrumData}
-              isLoading={false}
-              width={850}  
-              height={400} 
-            />
-          </div>
+            <div style={{ position: 'relative', paddingBottom: '40px' }}>
+              <SpectrumChartDialog
+                averageHeight={averageHeight}
+                timeInterval={timeInterval}
+                selectedCollection={selectedCollection}
+                data={spectrumData}
+                isLoading={false}
+                width={850}
+                height={400}
+              />
+            </div>
           </DialogContentText>
         </DialogContent>
         <DialogActions>
@@ -1468,7 +1472,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
         </DialogActions>
       </Dialog>
 
-       <OnlineIndicator/> 
+      <OnlineIndicator/> 
 
         <div style={{ flexGrow: 1, display: 'flex', justifyContent: 'flex-end' }}>
           {selectedCollection ? (

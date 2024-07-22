@@ -122,82 +122,129 @@ function SpectrumChart({ data, selectedCollection, averageHeight, timeInterval, 
       borderColor: 'rgba(0, 0, 255, 1)',
       backgroundColor: 'rgba(0, 0, 255, 0.1)',
       pointRadius: 0,
-      borderWidth: 1, // Устанавливаем толщину линии в 1 пиксель
       tension: 0.1
     }]
   };
-
+  
   const options = {
     responsive: true,
     plugins: {
-      legend: { display: false },
+      legend: {
+        display: false
+      },
       zoom: {
-        pan: { enabled: false },
-        zoom: { wheel: { enabled: false }, pinch: { enabled: false }, mode: 'xy' }
+        pan: {
+          enabled: true,
+          mode: 'xy',
+        },
+        zoom: {
+          wheel: {
+            enabled: true,
+          },
+          pinch: {
+            enabled: true
+          },
+          mode: 'xy',
+        }
       }
     },
     scales: {
-      x: { type: 'linear', position: 'bottom', title: { display: true, text: 'Энергия (keV)' } },
-      y: { type: scale === 'log' ? 'logarithmic' : 'linear', position: 'left', title: { display: true, text: 'Скорость счета 1/с' } }
+      x: {
+        type: 'linear',
+        position: 'bottom',
+        title: {
+          display: true,
+          text: 'Энергия (keV)'
+        }
+      },
+      y: {
+        type: scale === 'log' ? 'logarithmic' : 'linear',
+        position: 'left',
+        title: {
+          display: true,
+          text: 'Скорость счета 1/с'
+        }
+      }
     }
   };
-    
-
+  
   return (
+   
+    <div  style={{ cursor: 'pointer' }} >
+    <Line ref={chartRef} data={preprocessData} options={options} margin={{ top: 5, right: 5, left: -10, bottom: 15 }} />
 
-    <div 
-      style={{ width: `${width}px`, height: `${height}px`, paddingBottom: '20px' }}
-      onWheel={(e) => e.stopPropagation()} // Добавляем остановку распространения события колесика
-    >
-      <Line ref={chartRef} data={preprocessData} options={options} />
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '5px' }}>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '5px' }}>
         <div>
           <input
             type="checkbox"
-            id="scaleCheckboxMapChart"
+            id="scaleCheckboxDialog"
             checked={scale === 'log'}
             onChange={(e) => setScale(e.target.checked ? 'log' : 'linear')}
           />
-          <label htmlFor="scaleCheckboxMapChart" style={{ marginLeft: '8px', marginTop: '5px' }}>Логарифмическая шкала</label>
+          <label htmlFor="scaleCheckboxDialog" style={{ marginLeft: '8px' }}>Логарифмическая шкала</label>
         </div>
         <div style={{ textAlign: 'right', marginRight: '6px' }}>
           Сохранить спектр
         </div>
       </div>         
-      <div style={{ position: 'absolute', right: '5px', bottom: '5px' }}>
-        <button
-          onClick={() => exportToCsv(data)}
-          style={{
-            fontSize: '0.75rem',
-            color: 'white',
-            backgroundColor: '#1976d2',
-            border: 'none',
-            borderRadius: '4px',
-            padding: '6px 16px',
-            cursor: 'pointer',
-            outline: 'none',
-            marginRight: '10px',
-          }}
-        >
-          .CSV
-        </button>
-        <button
-          onClick={() => exportToN42(data, selectedCollection, averageHeight, timeInterval)}
-          style={{
-            fontSize: '0.75rem',
-            color: 'white',
-            backgroundColor: '#1976d2',
-            border: 'none',
-            borderRadius: '4px',
-            padding: '6px 16px',
-            cursor: 'pointer',
-            outline: 'none',
-          }}
-        >
-          .N42
-        </button>
-      </div>
+    <div style={{ position: 'absolute', left: '5px', bottom: '5px' }}>
+      <button
+        onClick={() => {
+          const chart = chartRef.current;
+          if (chart) {
+            chart.resetZoom();  // Убедитесь, что вы вызываете resetZoom у ChartJS
+          }
+        }}
+        style={{
+          fontSize: '0.75rem',
+          color: 'white',
+          backgroundColor: '#1976d2',
+          border: 'none',
+          borderRadius: '4px',
+          padding: '6px 16px',
+          cursor: 'pointer',
+          outline: 'none',
+        }}
+      >
+        Сбросить масштаб
+      </button>
     </div>
+  
+    <div style={{ position: 'absolute', right: '5px', bottom: '5px' }}>
+      <button
+        onClick={() => exportToCsv(data)}
+        style={{
+          fontSize: '0.75rem',
+          color: 'white',
+          backgroundColor: '#1976d2',
+          border: 'none',
+          borderRadius: '4px',
+          padding: '6px 16px',
+          cursor: 'pointer',
+          outline: 'none',
+          marginRight: '10px',
+        }}
+      >
+        .CSV
+      </button>
+      <button
+        onClick={() => exportToN42(data, selectedCollection, averageHeight, timeInterval)}
+        style={{
+          fontSize: '0.75rem',
+          color: 'white',
+          backgroundColor: '#1976d2',
+          border: 'none',
+          borderRadius: '4px',
+          padding: '6px 16px',
+          cursor: 'pointer',
+          outline: 'none',
+        }}
+      >
+        .N42
+      </button>
+    </div>
+  </div>
   );
 }
 
