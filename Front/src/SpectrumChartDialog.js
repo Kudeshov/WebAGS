@@ -13,13 +13,26 @@ import {
   Filler
 } from 'chart.js';
 
+import { DataGrid } from '@mui/x-data-grid';
 import { convertDateTime } from './dateUtils';
 import zoomPlugin from 'chartjs-plugin-zoom';
+import { Box, Typography, Checkbox, Button } from '@mui/material';
+
 
 ChartJS.register(CategoryScale, LinearScale, LogarithmicScale, PointElement, LineElement, Title, Tooltip, Legend, Filler, zoomPlugin);
 
+
 function SpectrumChart({ data, selectedCollection, averageHeight, timeInterval, width = 330, height = 200 }) {
   const [scale, setScale] = useState('linear');
+  const [tableData, setTableData] = useState(
+    data.map((point, index) => ({
+      id: index,
+      leftE: calculateEnergy(index, selectedCollection.P0, selectedCollection.P1),
+      rightE: calculateEnergy(index + 1, selectedCollection.P0, selectedCollection.P1),
+      rate: point.value === 0 ? 0.01 : point.value,
+      name: `Point ${index}`
+    }))
+  );
   const chartRef = useRef(null);
 
   const { P0 = 70, P1 = 11 } = selectedCollection || {};
@@ -114,10 +127,10 @@ function SpectrumChart({ data, selectedCollection, averageHeight, timeInterval, 
   }
 
   const preprocessData = {
-    labels: data.map((_, index) => calculateEnergy(index, P0, P1)),
+    labels: tableData.map((row) => row.leftE),
     datasets: [{
       label: 'Спектр',
-      data: data.map(point => point.value === 0 ? 0.01 : point.value),
+      data: tableData.map(point => point.rate),
       fill: false,
       borderColor: 'rgba(0, 0, 255, 1)',
       backgroundColor: 'rgba(0, 0, 255, 0.1)',
@@ -167,85 +180,79 @@ function SpectrumChart({ data, selectedCollection, averageHeight, timeInterval, 
       }
     }
   };
+
+  const handleCellEditCommit = (params) => {
+    const updatedData = [...tableData];
+    const index = updatedData.findIndex((row) => row.id === params.id);
+    updatedData[index] = { ...updatedData[index], [params.field]: params.value };
+    setTableData(updatedData);
+  };
+
+  const columns = [
+    { field: 'id', headerName: '#', width: 50 },
+    { field: 'leftE', headerName: 'leftE', width: 150, editable: true },
+    { field: 'rightE', headerName: 'rightE', width: 150, editable: true },
+    { field: 'rate', headerName: 'S(1/c)', width: 150 },
+    { field: 'name', headerName: 'Name', width: 150 },
+  ];
   
   return (
-   
-    <div  style={{ cursor: 'pointer' }} >
-    <Line ref={chartRef} data={preprocessData} options={options} margin={{ top: 5, right: 5, left: -10, bottom: 15 }} />
-
-
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '5px' }}>
-        <div>
-          <input
-            type="checkbox"
-            id="scaleCheckboxDialog"
+    <div style={{ position: 'relative', padding: '10px' }}>
+      <Line ref={chartRef} data={preprocessData} options={options} />
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <Checkbox
             checked={scale === 'log'}
             onChange={(e) => setScale(e.target.checked ? 'log' : 'linear')}
+            id="scaleCheckboxDialog"
           />
-          <label htmlFor="scaleCheckboxDialog" style={{ marginLeft: '8px' }}>Логарифмическая шкала</label>
-        </div>
-        <div style={{ textAlign: 'right', marginRight: '6px' }}>
-          Сохранить спектр
-        </div>
-      </div>         
-    <div style={{ position: 'absolute', left: '5px', bottom: '5px' }}>
-      <button
-        onClick={() => {
-          const chart = chartRef.current;
-          if (chart) {
-            chart.resetZoom();  // Убедитесь, что вы вызываете resetZoom у ChartJS
-          }
-        }}
-        style={{
-          fontSize: '0.75rem',
-          color: 'white',
-          backgroundColor: '#1976d2',
-          border: 'none',
-          borderRadius: '4px',
-          padding: '6px 16px',
-          cursor: 'pointer',
-          outline: 'none',
-        }}
-      >
-        Сбросить масштаб
-      </button>
+          <Typography htmlFor="scaleCheckboxDialog">Логарифмическая шкала</Typography>
+        </Box>
+        <Typography>Сохранить спектр</Typography>
+      </Box>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px' }}>
+        <Button
+          onClick={() => {
+            const chart = chartRef.current;
+            if (chart) {
+              chart.resetZoom();
+            }
+          }}
+          variant="contained"
+          color="primary"
+        >
+          Сбросить масштаб
+        </Button>
+        <Box>
+          <Button
+            onClick={() => exportToCsv(data)}
+            variant="contained"
+            color="primary"
+            sx={{ marginRight: '10px' }}
+          >
+            .CSV
+          </Button>
+          <Button
+            onClick={() => exportToN42(data, selectedCollection, averageHeight, timeInterval)}
+            variant="contained"
+            color="primary"
+          >
+            .N42
+          </Button>
+        </Box>
+      </Box>
+      <Box sx={{ height: 400, width: '100%', marginTop: '20px' }}>
+        <DataGrid 
+          rows={tableData} 
+          columns={columns} 
+          pageSize={5} 
+          rowsPerPageOptions={[5]} 
+          onCellEditCommit={handleCellEditCommit}
+        />
+      </Box>
     </div>
-  
-    <div style={{ position: 'absolute', right: '5px', bottom: '5px' }}>
-      <button
-        onClick={() => exportToCsv(data)}
-        style={{
-          fontSize: '0.75rem',
-          color: 'white',
-          backgroundColor: '#1976d2',
-          border: 'none',
-          borderRadius: '4px',
-          padding: '6px 16px',
-          cursor: 'pointer',
-          outline: 'none',
-          marginRight: '10px',
-        }}
-      >
-        .CSV
-      </button>
-      <button
-        onClick={() => exportToN42(data, selectedCollection, averageHeight, timeInterval)}
-        style={{
-          fontSize: '0.75rem',
-          color: 'white',
-          backgroundColor: '#1976d2',
-          border: 'none',
-          borderRadius: '4px',
-          padding: '6px 16px',
-          cursor: 'pointer',
-          outline: 'none',
-        }}
-      >
-        .N42
-      </button>
-    </div>
-  </div>
   );
 }
+
 
 export default SpectrumChart;
