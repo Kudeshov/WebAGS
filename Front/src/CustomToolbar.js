@@ -21,6 +21,7 @@ import Backdrop from '@mui/material/Backdrop';
 import { convertDateTimeWithoutSeconds, convertDateTime, convertToTime } from './dateUtils';
 import SpectrumChartDialog from './SpectrumChartDialog'; 
 
+
 const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, onHeightFilterActive, heightFilterActive,
     handleThreeDToggle, threeDActive, settingsOpen,}) => {
 
@@ -937,7 +938,29 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
       },
     }));
   };  
+  const [currentSensorType, setCurrentSensorType] = useState("УДКГ-А01");
 
+ 
+    const handleSensorTypeChange = (event) => {
+      setCurrentSensorType(event.target.value);
+    };
+  
+    const handleZoneChange = (index, field, value) => {
+      const updatedZones = settings.sensorTypes[currentSensorType].zonesOfInterest.map((zone, idx) =>
+        idx === index ? { ...zone, [field]: value } : zone
+      );
+      setSettings({
+        ...settings,
+        sensorTypes: {
+          ...settings.sensorTypes,
+          [currentSensorType]: {
+            ...settings.sensorTypes[currentSensorType],
+            zonesOfInterest: updatedZones
+          }
+        }
+      });
+    };
+  
   const tabPanelContent = (index) => {
     switch(index) {
       case 0: // Расчет МЭД(в точке детектора)
@@ -1051,7 +1074,82 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
             {/* Дополните сюда поля для рабочих диапазонов ГМ1 и ГМ2, если у вас есть соответствующие данные и функции обработки */}
           </>
         );
-      case 3: // Прочее
+        case 3: // Зоны интереса
+        return (
+          <>
+            <FormControl fullWidth margin="dense" size="small" variant="outlined">
+              <InputLabel id="sensor-type-label">Тип датчика</InputLabel>
+              <Select
+                labelId="sensor-type-label"
+                id="sensorType"
+                value={currentSensorType}
+                onChange={handleSensorTypeChange}
+                label="Тип датчика"
+              >
+                {Object.keys(settings.sensorTypes).map((type) => (
+                  <MenuItem key={type} value={type}>
+                    {type}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <Box mt={2}>
+              {settings.sensorTypes[currentSensorType].zonesOfInterest.map((zone, index) => (
+                <Grid container spacing={2} key={zone.id}>
+                  <Grid item xs={2}>
+                    <TextField
+                      margin="dense"
+                      label="ID"
+                      type="number"
+                      fullWidth
+                      size="small"
+                      variant="outlined"
+                      value={zone.id}
+                      disabled
+                    />
+                  </Grid>
+                  <Grid item xs={3}>
+                    <TextField
+                      margin="dense"
+                      label="LeftE"
+                      type="number"
+                      fullWidth
+                      size="small"
+                      variant="outlined"
+                      value={zone.leftE}
+                      onChange={(e) => handleZoneChange(index, 'leftE', e.target.value)}
+                    />
+                  </Grid>
+                  <Grid item xs={3}>
+                    <TextField
+                      margin="dense"
+                      label="RightE"
+                      type="number"
+                      fullWidth
+                      size="small"
+                      variant="outlined"
+                      value={zone.rightE}
+                      onChange={(e) => handleZoneChange(index, 'rightE', e.target.value)}
+                    />
+                  </Grid>
+                  <Grid item xs={4}>
+                    <TextField
+                      margin="dense"
+                      label="Name"
+                      fullWidth
+                      size="small"
+                      variant="outlined"
+                      value={zone.Name}
+                      onChange={(e) => handleZoneChange(index, 'Name', e.target.value)}
+                    />
+                  </Grid>
+                </Grid>
+              ))}
+            </Box>
+          </>
+        );
+      case 4: // Прочееcase 3: // Прочее
         return (
           <>
             <TextField
@@ -1411,6 +1509,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
             <Tab label="Расчет МЭД(в точке детектора)" />
             <Tab label="Расчет МЭД(по  окну)" />
             <Tab label="Расчет МЭД(по счетчикам Гейгера)" />
+            <Tab label="Зоны интереса" />
             <Tab label="Прочее" />
           </Tabs>
           <DialogContent>

@@ -31,5 +31,63 @@
     "path": "CNCB1",
     "baudRate": 57600
   },
-  "altitudeSource": "barometric"
+  "altitudeSource": "barometric",
+  "sensorTypes": {
+    "УДКГ-А01": {
+      "zonesOfInterest": [
+        {
+          "id": 1,
+          "leftE": 100,
+          "rightE": 200,
+          "Name": "Cs-137"
+        },
+        {
+          "id": 2,
+          "leftE": 300,
+          "rightE": 400,
+          "Name": "Калий-40"
+        },
+        {
+          "id": 3,
+          "leftE": 500,
+          "rightE": 600,
+          "Name": "Уран"
+        },
+        {
+          "id": 4,
+          "leftE": 700,
+          "rightE": 800,
+          "Name": "Торий"
+        }
+      ]
+    },
+    "УДБГ-04-06": {
+      "zonesOfInterest": [
+        {
+          "id": 1,
+          "leftE": 110,
+          "rightE": "2112",
+          "Name": "Cs-137"
+        },
+        {
+          "id": 2,
+          "leftE": 320,
+          "rightE": 420,
+          "Name": "Калий-40"
+        },
+        {
+          "id": 3,
+          "leftE": 530,
+          "rightE": 630,
+          "Name": "Уран"
+        },
+        {
+          "id": 4,
+          "leftE": 740,
+          "rightE": 840,
+          "Name": "Торий"
+        }
+      ]
+    }
+  }
 }
