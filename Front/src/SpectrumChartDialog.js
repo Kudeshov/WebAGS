@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useContext, useEffect } from 'react';
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -17,26 +17,69 @@ import { DataGrid } from '@mui/x-data-grid';
 import { convertDateTime } from './dateUtils';
 import zoomPlugin from 'chartjs-plugin-zoom';
 import { Box, Typography, Checkbox, Button } from '@mui/material';
+import { FlightDataContext } from './FlightDataContext';
 
-
+// Регистрация компонентов ChartJS
 ChartJS.register(CategoryScale, LinearScale, LogarithmicScale, PointElement, LineElement, Title, Tooltip, Legend, Filler, zoomPlugin);
 
-
 function SpectrumChart({ data, selectedCollection, averageHeight, timeInterval, width = 330, height = 200 }) {
+  // Получение глобальных настроек через контекст
+  const { globalSettings } = useContext(FlightDataContext);
+
   const [scale, setScale] = useState('linear');
-  const [tableData, setTableData] = useState(
-    data.map((point, index) => ({
-      id: index,
-      leftE: calculateEnergy(index, selectedCollection.P0, selectedCollection.P1),
-      rightE: calculateEnergy(index + 1, selectedCollection.P0, selectedCollection.P1),
-      rate: point.value === 0 ? 0.01 : point.value,
-      name: `Point ${index}`
-    }))
-  );
+  const [tableData, setTableData] = useState([]);
+  const [energyRanges, setEnergyRanges] = useState([]);
+
   const chartRef = useRef(null);
 
-  const { P0 = 70, P1 = 11 } = selectedCollection || {};
+  // Извлечение параметров калибровки и типа датчика
+  const { P0 = 70, P1 = 11, sensorType = 'УДКГ-А01' } = selectedCollection || {};
 
+  // Определение зон интереса на основе выбранного типа датчика
+  const zonesOfInterest = globalSettings.sensorTypes[sensorType]?.zonesOfInterest || globalSettings.sensorTypes["УДКГ-А01"].zonesOfInterest;
+
+  // Эффект для инициализации таблицы данных и диапазонов энергии
+  useEffect(() => {
+    if (zonesOfInterest.length > 0) {
+      const initialTableData = zonesOfInterest.map(zone => ({
+        id: zone.id,
+        leftE: zone.leftE,
+        rightE: zone.rightE,
+        rate: 0, // Изначально скорость счета устанавливаем в 0, она обновится позже
+        name: zone.Name
+      }));
+      setTableData(initialTableData);
+      setEnergyRanges(initialTableData.map(zone => ({ id: zone.id, leftE: zone.leftE, rightE: zone.rightE })));
+    }
+  }, [zonesOfInterest]);
+
+  // Эффект для обновления скоростей счета в таблице
+  useEffect(() => {
+    if (data && energyRanges.length > 0) {
+      const updatedTableData = energyRanges.map((range) => {
+        const leftIndex = Math.max(Math.floor((range.leftE - P0) / P1), 0);
+        const rightIndex = Math.min(Math.ceil((range.rightE - P0) / P1), data.length - 1);
+
+        // Обновляем логику для пересчета скорости счета
+        const rateSum = data.slice(leftIndex, rightIndex + 1).reduce((sum, point) => sum + point.value, 0);
+        const numberOfPoints = rightIndex - leftIndex + 1; // Количество точек
+        const rate = rateSum / (numberOfPoints || 1); // Делим на количество точек
+
+        const correspondingRow = tableData.find(row => row.id === range.id);
+
+        return {
+          ...correspondingRow,
+          leftE: range.leftE,
+          rightE: range.rightE,
+          rate: rate.toFixed(2)
+        };
+      });
+
+      setTableData(updatedTableData);
+    }
+  }, [data, energyRanges, P0, P1]); // Убрали timeInterval, чтобы пересчет происходил при изменении energyRanges
+
+  // Функция для загрузки CSV
   function downloadCsv(csvContent, fileName) {
     const BOM = "\uFEFF";
     const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -51,6 +94,7 @@ function SpectrumChart({ data, selectedCollection, averageHeight, timeInterval, 
     document.body.removeChild(link);
   }
 
+  // Экспорт данных в CSV
   function exportToCsv(data) {
     const headers = "Канал;Счет (имп);Энергия (кЭв);Счет (имп/с)\n";
 
@@ -76,6 +120,7 @@ function SpectrumChart({ data, selectedCollection, averageHeight, timeInterval, 
     downloadCsv(csvContent, "spectrum.csv");
   }
 
+  // Экспорт данных в формат N42
   function exportToN42(data, selectedCollection, averageHeight, timeInterval) {
     if (!timeInterval) {
       timeInterval = 1;
@@ -114,23 +159,17 @@ function SpectrumChart({ data, selectedCollection, averageHeight, timeInterval, 
     document.body.removeChild(link);
   }
 
+  // Функция для вычисления энергии
   function calculateEnergy(index, P0, P1) {
     return P0 + P1 * index;
   }
 
-  if (!data?.length) {
-    return (
-      <div style={{ textAlign: 'center', padding: '20px', color: 'gray' }}>
-        Выберите точку на карте
-      </div>
-    );
-  }
-
+  // Настройки для графика
   const preprocessData = {
-    labels: tableData.map((row) => row.leftE),
+    labels: data.map((_, index) => calculateEnergy(index, P0, P1)),
     datasets: [{
       label: 'Спектр',
-      data: tableData.map(point => point.rate),
+      data: data.map(point => point.value),
       fill: false,
       borderColor: 'rgba(0, 0, 255, 1)',
       backgroundColor: 'rgba(0, 0, 255, 0.1)',
@@ -138,7 +177,7 @@ function SpectrumChart({ data, selectedCollection, averageHeight, timeInterval, 
       tension: 0.1
     }]
   };
-  
+
   const options = {
     responsive: true,
     plugins: {
@@ -181,13 +220,23 @@ function SpectrumChart({ data, selectedCollection, averageHeight, timeInterval, 
     }
   };
 
-  const handleCellEditCommit = (params) => {
-    const updatedData = [...tableData];
-    const index = updatedData.findIndex((row) => row.id === params.id);
-    updatedData[index] = { ...updatedData[index], [params.field]: params.value };
-    setTableData(updatedData);
+  // Обработка обновления строки
+  const processRowUpdate = (updatedRow, originalRow) => {
+    const updatedEnergyRanges = energyRanges.map((range) =>
+      range.id === updatedRow.id ? { ...range, leftE: updatedRow.leftE, rightE: updatedRow.rightE } : range
+    );
+
+    setEnergyRanges(updatedEnergyRanges);
+
+    return updatedRow;
   };
 
+  // Обработка ошибки обновления строки
+  const handleProcessRowUpdateError = (error) => {
+    console.error('Ошибка обновления строки:', error);
+  };
+
+  // Определение столбцов для таблицы
   const columns = [
     { field: 'id', headerName: '#', width: 50 },
     { field: 'leftE', headerName: 'leftE', width: 150, editable: true },
@@ -197,7 +246,7 @@ function SpectrumChart({ data, selectedCollection, averageHeight, timeInterval, 
   ];
   
   return (
-    <div style={{ position: 'relative', padding: '10px' }}>
+    <div style={{ cursor: 'pointer', position: 'relative', padding: '10px' }}>
       <Line ref={chartRef} data={preprocessData} options={options} />
       <Box sx={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px' }}>
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -241,18 +290,22 @@ function SpectrumChart({ data, selectedCollection, averageHeight, timeInterval, 
           </Button>
         </Box>
       </Box>
-      <Box sx={{ height: 400, width: '100%', marginTop: '20px' }}>
+      <Box sx={{ height: 300, width: '100%', marginTop: '20px' }}> {/* Уменьшили высоту таблицы */}
         <DataGrid 
           rows={tableData} 
           columns={columns} 
           pageSize={5} 
-          rowsPerPageOptions={[5]} 
-          onCellEditCommit={handleCellEditCommit}
+          hideFooter={true} // Убрали футер
+          processRowUpdate={processRowUpdate}
+          onProcessRowUpdateError={handleProcessRowUpdateError}
+          sx={{
+            '& .MuiDataGrid-row': { maxHeight: '30px' }, // Уменьшили высоту строк
+            '& .MuiDataGrid-cell': { padding: '2px 8px' } // Уменьшили внутренний отступ
+          }}
         />
       </Box>
     </div>
   );
 }
-
 
 export default SpectrumChart;

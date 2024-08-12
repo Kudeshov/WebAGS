@@ -1150,133 +1150,147 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
           </>
         );
       case 4: // Прочееcase 3: // Прочее
-        return (
-          <>
-            <TextField
-              margin="dense"
-              id="NSPCHANNELS"
-              label="Количество спектральных каналов"
-              type="number"
-              fullWidth
-              size="small"
-              variant="outlined"
-              value={settings.NSPCHANNELS}
-              onChange={(e) => setSettings({...settings, NSPCHANNELS: e.target.value})}
-            />
-            <TextField
-              margin="dense"
-              id="SPECDEFTIME"
-              label="Частота (скважность) измерений, с"
-              type="number"
-              fullWidth
-              size="small"
-              variant="outlined"
-              value={settings.SPECDEFTIME}
-              onChange={(e) => setSettings({...settings, SPECDEFTIME: e.target.value})}
-            />
-             <TextField
-              margin="dense"
-              id="MAX_ALLOWED_HEIGHT"
-              label="Максимально допустимая высота"
-              type="number"
-              fullWidth
-              size = "small"
-              variant="outlined"
-              value={settings.MAX_ALLOWED_HEIGHT}
-              onChange={(e) => setSettings({...settings, MAX_ALLOWED_HEIGHT: e.target.value})}
-            />
-            <TextField
-              margin="dense"
-              id="flightsDirectory"
-              label="Каталог файлов полетов"
-              fullWidth
-              size = "small"
-              variant="outlined"
-              value={settings.flightsDirectory}
-              onChange={(e) => setSettings({...settings, flightsDirectory: e.target.value})}
-            />
-            <TextField
-              margin="dense"
-              id="latInit"
-              label="Исходная широта"
-              type="number"
-              fullWidth
-              size = "small"
-              variant="outlined"
-              value={settings.latInit}
-              onChange={(e) => setSettings({...settings, latInit: e.target.value})}
-            />
-            <TextField
-              margin="dense"
-              id="lonInit"
-              label="Исходная долгота"
-              type="number"
-              fullWidth
-              size = "small"
-              variant="outlined"
-              value={settings.lonInit}
-              onChange={(e) => setSettings({...settings, lonInit: e.target.value})}
-            />
-            <TextField
-              margin="dense"
-              id="altInit"
-              label="Исходная высота"
-              type="number"
-              fullWidth
-              size = "small"
-              variant="outlined"
-              value={settings.altInit}
-              onChange={(e) => setSettings({...settings, altInit: e.target.value})}
-            />
-            <TextField
-              margin="dense"
-              id="path"
-              name="path"
-              label="COM-порт"
-              fullWidth
-              size="small"
-              variant="outlined"
-              value={settings.serialPort.path}
-              onChange={handleSerialPortChange}
-            />
-            <TextField
-              margin="dense"
-              id="baudRate"
-              name="baudRate"
-              label="Скорость передачи данных (Baud Rate)"
-              fullWidth
-              size="small"
-              variant="outlined"
-              value={settings.serialPort.baudRate}
-              onChange={handleSerialPortChange}
-              type="number"
-            />  
-            <TextField
-              margin="dense"
-              id="chartWindow"
-              name="chartWindow"
-              label="Онлайн-полет: отображать последние N секунд на графике"
-              fullWidth
-              size="small"
-              variant="outlined"
-              value={settings.chartWindow}
-              onChange={(e) => setSettings({...settings, chartWindow: e.target.value})}
-              />  
+      return (
+        <>
+          <TextField
+            margin="dense"
+            id="NSPCHANNELS"
+            label="Количество спектральных каналов"
+            type="number"
+            fullWidth
+            size="small"
+            variant="outlined"
+            value={settings.NSPCHANNELS}
+            onChange={(e) => setSettings({ ...settings, NSPCHANNELS: e.target.value })}
+          />
+          <TextField
+            margin="dense"
+            id="SPECDEFTIME"
+            label="Частота (скважность) измерений, с"
+            type="number"
+            fullWidth
+            size="small"
+            variant="outlined"
+            value={settings.SPECDEFTIME}
+            onChange={(e) => setSettings({ ...settings, SPECDEFTIME: e.target.value })}
+          />
+          <TextField
+            margin="dense"
+            id="MAX_ALLOWED_HEIGHT"
+            label="Максимально допустимая высота"
+            type="number"
+            fullWidth
+            size="small"
+            variant="outlined"
+            value={settings.MAX_ALLOWED_HEIGHT}
+            onChange={(e) => setSettings({ ...settings, MAX_ALLOWED_HEIGHT: e.target.value })}
+          />
+          <TextField
+            margin="dense"
+            id="flightsDirectory"
+            label="Каталог файлов полетов"
+            fullWidth
+            size="small"
+            variant="outlined"
+            value={settings.flightsDirectory}
+            onChange={(e) => setSettings({ ...settings, flightsDirectory: e.target.value })}
+          />
+          <Grid container spacing={2}>
+            <Grid item xs={4}>
+              <TextField
+                margin="dense"
+                id="latInit"
+                label="Исходная широта"
+                type="number"
+                fullWidth
+                size="small"
+                variant="outlined"
+                value={settings.latInit}
+                onChange={(e) => setSettings({ ...settings, latInit: e.target.value })}
+              />
+            </Grid>
+            <Grid item xs={4}>
+              <TextField
+                margin="dense"
+                id="lonInit"
+                label="Исходная долгота"
+                type="number"
+                fullWidth
+                size="small"
+                variant="outlined"
+                value={settings.lonInit}
+                onChange={(e) => setSettings({ ...settings, lonInit: e.target.value })}
+              />
+            </Grid>
+            <Grid item xs={4}>
+              <TextField
+                margin="dense"
+                id="altInit"
+                label="Исходная высота"
+                type="number"
+                fullWidth
+                size="small"
+                variant="outlined"
+                value={settings.altInit}
+                onChange={(e) => setSettings({ ...settings, altInit: e.target.value })}
+              />
+            </Grid>
+          </Grid>
+          <Grid container spacing={2}>
+            <Grid item xs={6}>
+              <TextField
+                margin="dense"
+                id="path"
+                name="path"
+                label="COM-порт"
+                fullWidth
+                size="small"
+                variant="outlined"
+                value={settings.serialPort.path}
+                onChange={handleSerialPortChange}
+              />
+            </Grid>
+            <Grid item xs={6}>
+              <TextField
+                margin="dense"
+                id="baudRate"
+                name="baudRate"
+                label="Скорость передачи данных (Baud Rate)"
+                fullWidth
+                size="small"
+                variant="outlined"
+                value={settings.serialPort.baudRate}
+                onChange={handleSerialPortChange}
+                type="number"
+              />
+            </Grid>
+          </Grid>
+          <TextField
+            margin="dense"
+            id="chartWindow"
+            name="chartWindow"
+            label="Онлайн-полет: отображать последние N секунд на графике"
+            fullWidth
+            size="small"
+            variant="outlined"
+            value={settings.chartWindow}
+            onChange={(e) => setSettings({ ...settings, chartWindow: e.target.value })}
+          />
           <FormControl fullWidth margin="dense" size="small" variant="outlined">
             <InputLabel id="altitude-source-label">Источник высоты</InputLabel>
             <Select
-                labelId="altitude-source-label"
-                id="altitudeSource"
-                value={settings.altitudeSource}
-                onChange={(e) => setSettings({...settings, altitudeSource: e.target.value})}
-                label="Источник высоты"
+              labelId="altitude-source-label"
+              id="altitudeSource"
+              value={settings.altitudeSource}
+              onChange={(e) => setSettings({ ...settings, altitudeSource: e.target.value })}
+              label="Источник высоты"
             >
-                <MenuItem value="barometric">Барометрическая</MenuItem>
-                <MenuItem value="GPS">GPS</MenuItem>
+              <MenuItem value="barometric">Барометрическая</MenuItem>
+              <MenuItem value="GPS">GPS</MenuItem>
             </Select>
-        </FormControl>
-          </>
-        );
+          </FormControl>
+        </>
+      );
       default:
         return 'Unknown tab';
     }
@@ -1506,11 +1520,11 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
         <Dialog open={settingsDialogOpen} onClose={handleSettingsDialogClose} aria-labelledby="settings-dialog-title" fullWidth maxWidth="md">
           <DialogTitle id="settings-dialog-title">Настройки</DialogTitle>
           <Tabs value={activeTab} variant="scrollable" onChange={handleChangeTab} aria-label="Настройки вкладок">
-            <Tab label="Расчет МЭД(в точке детектора)" />
-            <Tab label="Расчет МЭД(по  окну)" />
-            <Tab label="Расчет МЭД(по счетчикам Гейгера)" />
-            <Tab label="Зоны интереса" />
-            <Tab label="Прочее" />
+            <Tab label="МЭД(в точке)"/>
+            <Tab label="МЭД(спектрометрия)"/>
+            <Tab label="МЭД(Гейгера)"/>
+            <Tab label="Зоны интереса"/>
+            <Tab label="Общие"/>
           </Tabs>
           <DialogContent>
             {isSettingsLoading ? (
