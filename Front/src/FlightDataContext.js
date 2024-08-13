@@ -40,6 +40,8 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
  
   const [onlineFlightId, setOnlineFlightId] = useState(null); // Состояние для хранения ID онлайн полета
 
+  const [sourceCoordinates, setSourceCoordinates] = useState(null); // Состояние для хранения найденных координат источника
+
   const [globalSettings, setGlobalSettings] = useState({
     latInit: 55.704034038232834,
     lonInit: 37.62119540524117
@@ -315,6 +317,8 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
       setOnlineFlightId,
       globalSettings,
       setGlobalSettings,
+      sourceCoordinates,            // координаты источника
+      setSourceCoordinates,         // координаты источника - сеттер
       saveDataToFile,
       databaseName,
       setDatabaseName

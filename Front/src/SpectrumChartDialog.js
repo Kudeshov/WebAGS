@@ -57,16 +57,19 @@ function SpectrumChart({ data, selectedCollection, averageHeight, timeInterval, 
   useEffect(() => {
     if (data && energyRanges.length > 0) {
       const updatedTableData = energyRanges.map((range) => {
-        const leftIndex = Math.max(Math.floor((range.leftE - P0) / P1), 0);
-        const rightIndex = Math.min(Math.ceil((range.rightE - P0) / P1), data.length - 1);
-
+        // Для leftIndex используем Math.ceil для точного попадания в интервал
+        const leftIndex = Math.max(Math.ceil((range.leftE - P0) / P1), 0);
+        // Для rightIndex используем Math.floor для точного попадания в интервал
+        const rightIndex = Math.min(Math.floor((range.rightE - P0) / P1), data.length - 1);
+  
         // Обновляем логику для пересчета скорости счета
         const rateSum = data.slice(leftIndex, rightIndex + 1).reduce((sum, point) => sum + point.value, 0);
         const numberOfPoints = rightIndex - leftIndex + 1; // Количество точек
-        const rate = rateSum / (numberOfPoints || 1); // Делим на количество точек
-
+        const rate = rateSum / (numberOfPoints * globalSettings.SPECDEFTIME || globalSettings.SPECDEFTIME); // Делим на количество точек
+        
+        console.log('numberOfPoints', numberOfPoints, leftIndex, rightIndex, P0, P1, leftIndex * P1 + P0, rightIndex * P1 + P0);
         const correspondingRow = tableData.find(row => row.id === range.id);
-
+  
         return {
           ...correspondingRow,
           leftE: range.leftE,
@@ -74,10 +77,12 @@ function SpectrumChart({ data, selectedCollection, averageHeight, timeInterval, 
           rate: rate.toFixed(2)
         };
       });
-
+  
       setTableData(updatedTableData);
     }
-  }, [data, energyRanges, P0, P1]); // Убрали timeInterval, чтобы пересчет происходил при изменении energyRanges
+  }, [data, energyRanges, P0, P1, globalSettings.SPECDEFTIME]);
+   
+
 
   // Функция для загрузки CSV
   function downloadCsv(csvContent, fileName) {
@@ -290,16 +295,17 @@ function SpectrumChart({ data, selectedCollection, averageHeight, timeInterval, 
           </Button>
         </Box>
       </Box>
-      <Box sx={{ height: 300, width: '100%', marginTop: '20px' }}> {/* Уменьшили высоту таблицы */}
+      <Box sx={{ height: 158, width: '100%', marginTop: '20px' }}> {/* Уменьшили высоту таблицы */}
         <DataGrid 
           rows={tableData} 
-          columns={columns} 
+          columns={columns}
+          rowHeight={25}
           pageSize={5} 
           hideFooter={true} // Убрали футер
           processRowUpdate={processRowUpdate}
           onProcessRowUpdateError={handleProcessRowUpdateError}
           sx={{
-            '& .MuiDataGrid-row': { maxHeight: '30px' }, // Уменьшили высоту строк
+       
             '& .MuiDataGrid-cell': { padding: '2px 8px' } // Уменьшили внутренний отступ
           }}
         />

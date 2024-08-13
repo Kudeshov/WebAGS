@@ -14,6 +14,7 @@ import { createRoot } from 'react-dom/client';
 import 'leaflet-easyprint';
 import { convertDateTime } from './dateUtils';
 import SpectrumChart from './SpectrumChart'; 
+import crossIcon from './icons/cross.svg';
 
 delete L.Icon.Default.prototype._getIconUrl;
 
@@ -73,6 +74,7 @@ function TimeLineChart({ data, globalSettings }) {
   );
 }
 
+
 function MapEffect({ setMapInstance }) {
   const map = useMap();
   React.useEffect(() => {
@@ -85,6 +87,8 @@ function MapEffect({ setMapInstance }) {
 }
 
 function MyMapComponent({ chartOpen, heightFilterActive }) {
+
+  
   const [mapInstance, setMapInstance] = React.useState(null);
   const googleMapsUrl = 'http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}&hl=ru';
   const googleSatelliteUrl = 'http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}&hl=ru';
@@ -94,6 +98,8 @@ function MyMapComponent({ chartOpen, heightFilterActive }) {
   const { geoCenter } = useContext(FlightDataContext);
   const { minDoseValue, maxDoseValue } = useContext(FlightDataContext);
   const { setSaveMapAsImage } = useContext(FlightDataContext);
+  const { sourceCoordinates } = useContext(FlightDataContext);
+  
   const [spectrumData, setSpectrumData] = useState(null);
   const infoPanelRef = useRef(null); // Ссылка на DOM-элемент панели
   const spectrumPanelRef = useRef(null); 
@@ -114,6 +120,28 @@ function MyMapComponent({ chartOpen, heightFilterActive }) {
   const { setSelectionSource } = useContext(FlightDataContext);
   const { globalSettings } = useContext(FlightDataContext);
   const { selectedDatabase } = useContext(FlightDataContext);
+
+  useEffect(() => {
+    if (mapInstance && sourceCoordinates) {
+      const crossMarker = addCrossMarker(mapInstance, sourceCoordinates);
+      
+      return () => {
+        mapInstance.removeLayer(crossMarker);
+      };
+    }
+  }, [mapInstance, sourceCoordinates]);
+  
+  const addCrossMarker = (map, coordinates) => {
+    const crossMarker = L.marker(coordinates, {
+      icon: L.icon({
+        iconUrl: crossIcon, // Укажите путь к иконке
+        iconSize: [24, 24], // Размер иконки
+        iconAnchor: [12, 12], // Центр иконки будет на координатах
+      }),
+    }).addTo(map);
+  
+    return crossMarker;
+  };
 
   const handlePointClick = (event, measurement) => {
     

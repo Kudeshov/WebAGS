@@ -28,10 +28,10 @@
   "gm2Coeff": 0.0024,
   "winCoeff": 0.0073,
   "serialPort": {
-    "path": "CNCB1",
+    "path": "COM3",
     "baudRate": 57600
   },
-  "altitudeSource": "barometric",
+  "altitudeSource": "GPS",
   "sensorTypes": {
     "УДКГ-А01": {
       "zonesOfInterest": [
@@ -79,7 +79,7 @@
           "id": 3,
           "leftE": 530,
           "rightE": 630,
-          "Name": "Уран"
+          "Name": "Уран22"
         },
         {
           "id": 4,

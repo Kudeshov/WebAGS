@@ -9,6 +9,7 @@ import { ReactComponent as CameraIcon } from './icons/camera.svg';
 import { ReactComponent as DownloadIcon } from './icons/download.svg';
 import { ReactComponent as EraserIcon } from './icons/trash.svg';
 import { ReactComponent as CogIcon } from './icons/cog.svg';
+import { ReactComponent as RadiationIcon } from './icons/radiation.svg';
 import Tooltip from '@mui/material/Tooltip';
 import { useTheme } from '@mui/material/styles';
 import { FormControl, InputLabel, Select, AppBar, Grid, Toolbar, IconButton, Menu, MenuItem, ListSubheader, Dialog, DialogTitle, 
@@ -19,7 +20,8 @@ import Divider from '@mui/material/Divider';
 import CircularProgress from '@mui/material/CircularProgress';
 import Backdrop from '@mui/material/Backdrop';
 import { convertDateTimeWithoutSeconds, convertDateTime, convertToTime } from './dateUtils';
-import SpectrumChartDialog from './SpectrumChartDialog'; 
+import SpectrumChartDialog from './SpectrumChartDialog';
+import SourceSearchDialog from './SourceSearchDialog'; 
 
 
 const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, onHeightFilterActive, heightFilterActive,
@@ -69,7 +71,16 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   const [spectrumData, setSpectrumData] = useState([]);
   const [averageHeight, setAverageHeight] = useState(0);
   const [timeInterval, setTimeInterval] = useState(0);
-  
+
+  const [sourceSearchDialogOpen, setSourceSearchDialogOpen] = useState(false);
+  const handleOpenSourceSearchDialog = () => {
+    console.log('Диалог выбора');
+    setSourceSearchDialogOpen(true);
+  };
+  const handleCloseSourceSearchDialog = () => {
+    setSourceSearchDialogOpen(false);
+  };    
+
   // Calculate average spectrum data and height
   const calculateAverageSpectrum = useCallback((selectedPoints) => {
     if (selectedPoints.length === 0 || !selectedCollection) {
@@ -1552,6 +1563,15 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
             <DownloadIcon style={{ fill: (measurements.length === 0 || onlineFlightId !== null)?"lightgray": "white", width: 24, height: 24 }} />
           </Tooltip>
         </IconButton>
+
+        <IconButton color="inherit" disabled={(measurements.length === 0 || onlineFlightId !== null)} onClick={handleOpenSourceSearchDialog}>
+          <Tooltip title="Поиск источника радиации">
+            <RadiationIcon style={{ fill: (measurements.length === 0 || onlineFlightId !== null)?"lightgray": "white", width: 24, height: 24 }} />
+          </Tooltip>
+        </IconButton>
+
+      <SourceSearchDialog open={sourceSearchDialogOpen} onClose={handleCloseSourceSearchDialog} />
+  
 
       {/* Spectrum Dialog */}
       <Dialog 
