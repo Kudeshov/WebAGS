@@ -14,7 +14,7 @@ import { createRoot } from 'react-dom/client';
 import 'leaflet-easyprint';
 import { convertDateTime } from './dateUtils';
 import SpectrumChart from './SpectrumChart'; 
-import crossIcon from './icons/cross.svg';
+import crossIcon from './icons/radiation.svg';
 
 delete L.Icon.Default.prototype._getIconUrl;
 
