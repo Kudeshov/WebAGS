@@ -949,29 +949,39 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
       },
     }));
   };  
-  const [currentSensorType, setCurrentSensorType] = useState("УДКГ-А01");
 
- 
-    const handleSensorTypeChange = (event) => {
-      setCurrentSensorType(event.target.value);
-    };
-  
-    const handleZoneChange = (index, field, value) => {
-      const updatedZones = settings.sensorTypes[currentSensorType].zonesOfInterest.map((zone, idx) =>
-        idx === index ? { ...zone, [field]: value } : zone
-      );
-      setSettings({
-        ...settings,
-        sensorTypes: {
-          ...settings.sensorTypes,
-          [currentSensorType]: {
-            ...settings.sensorTypes[currentSensorType],
-            zonesOfInterest: updatedZones
-          }
+  const { currentSensorType, setCurrentSensorType } = useContext(FlightDataContext);
+  const [selectedZone, setSelectedZone] = useState('');
+  const [zoneBoundaries, setZoneBoundaries] = useState({ leftE: '', rightE: '' });
+
+
+  const handleBoundaryChange = (field, value) => {
+    setZoneBoundaries(prevState => ({
+      ...prevState,
+      [field]: value
+    }));
+  };
+
+  const handleSensorTypeChange = (event) => {
+    setCurrentSensorType(event.target.value); // Меняем тип сенсора
+  };
+
+     const handleZoneChange = (index, field, value) => {
+    const updatedZones = settings.sensorTypes[currentSensorType].zonesOfInterest.map((zone, idx) =>
+      idx === index ? { ...zone, [field]: value } : zone
+    );
+    setSettings({
+      ...settings,
+      sensorTypes: {
+        ...settings.sensorTypes,
+        [currentSensorType]: {
+          ...settings.sensorTypes[currentSensorType],
+          zonesOfInterest: updatedZones
         }
-      });
-    };
-  
+      }
+    });
+  };
+
   const tabPanelContent = (index) => {
     switch(index) {
       case 0: // Расчет МЭД(в точке детектора)

@@ -11,7 +11,7 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
   const [measurements, setMeasurements] = useState([]);
   const [onlineMeasurements, setOnlineMeasurements] = useState([]);
   const [databaseName, setDatabaseName] = useState('');
-
+  const [currentSensorType, setCurrentSensorType] = useState("УДКГ-А01");
   const [validMeasurements, setValidMeasurements] = useState([]);
   const [selectedPoints, setSelectedPoints] = useState([]);
   const [selectionSource, setSelectionSource] = useState('table'); // 'map' или 'table'
@@ -279,6 +279,8 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
       selectedDatabase,
       setSelectedDatabase,
       selectedCollection,
+      currentSensorType,
+      setCurrentSensorType,
       setSelectedCollection,
       measurements,
       setMeasurements,
