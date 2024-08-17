@@ -1507,17 +1507,17 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
           borderRadius: '50%',
           padding: '0px',  
         }}>
-          <IconButton color="inherit"  disabled={selectedCollection?.is_online===true} onClick={handleChartToggle} >
+          <IconButton color="inherit" disabled={(measurements.length === 0 || onlineFlightId !== null)} onClick={handleChartToggle} >
             <Tooltip title="Показать спектр на карте">
               <ChartIcon style={{ fill: selectedCollection?.is_online?"lightgray": (chartOpen ? theme.palette.primary.main : "white"), width: 24, height: 24 }} />
             </Tooltip>
           </IconButton>
         </div>
 
-        <IconButton color="inherit" onClick={handleOpenSpectrumDialog}>
-        <Tooltip title="Показать спектр в отдельном окне">
-          <SignalIcon style={{ fill: "white", width: 24, height: 24 }} />
-        </Tooltip>
+        <IconButton color="inherit" disabled={(measurements.length === 0 || onlineFlightId !== null)} onClick={handleOpenSpectrumDialog} >
+          <Tooltip title="Показать спектр в отдельном окне">
+            <SignalIcon style={{ fill: (measurements.length === 0 || onlineFlightId !== null)?"lightgray": "white", width: 24, height: 24 }} />
+          </Tooltip>
         </IconButton>
 
         <div style={{

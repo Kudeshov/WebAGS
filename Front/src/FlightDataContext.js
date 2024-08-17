@@ -41,6 +41,8 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
   const [onlineFlightId, setOnlineFlightId] = useState(null); // Состояние для хранения ID онлайн полета
 
   const [sourceCoordinates, setSourceCoordinates] = useState(null); // Состояние для хранения найденных координат источника
+  const [sourceActivity, setSourceActivity] = useState(0); // Состояние для активности
+  const [sourceDeviation, setSourceDeviation] = useState(0); // Состояние для погрешности
 
   const [globalSettings, setGlobalSettings] = useState({
     latInit: 55.704034038232834,
@@ -129,6 +131,9 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
   const fetchMeasurements = useCallback(() => {
     if (selectedDatabase && selectedCollection && !onlineFlightId) {
       setIsLoadingFlight(true); // Начинаем загрузку
+      setSourceCoordinates(null);
+      setSourceActivity(0);
+      setSourceDeviation(0);
       const apiUrl = `/api/data/${selectedDatabase}/${selectedCollection?._id || null}`;
       fetch(apiUrl)
         .then(response => response.json())
@@ -321,6 +326,10 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
       setGlobalSettings,
       sourceCoordinates,            // координаты источника
       setSourceCoordinates,         // координаты источника - сеттер
+      sourceActivity,
+      setSourceActivity,
+      sourceDeviation,
+      setSourceDeviation,
       saveDataToFile,
       databaseName,
       setDatabaseName

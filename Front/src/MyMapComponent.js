@@ -14,7 +14,7 @@ import { createRoot } from 'react-dom/client';
 import 'leaflet-easyprint';
 import { convertDateTime } from './dateUtils';
 import SpectrumChart from './SpectrumChart'; 
-import crossIcon from './icons/radiation.svg';
+import crossIcon from './icons/radiation-alt.svg';
 
 delete L.Icon.Default.prototype._getIconUrl;
 
@@ -98,7 +98,7 @@ function MyMapComponent({ chartOpen, heightFilterActive }) {
   const { geoCenter } = useContext(FlightDataContext);
   const { minDoseValue, maxDoseValue } = useContext(FlightDataContext);
   const { setSaveMapAsImage } = useContext(FlightDataContext);
-  const { sourceCoordinates } = useContext(FlightDataContext);
+  const { sourceCoordinates, sourceActivity, sourceDeviation } = useContext(FlightDataContext);
   
   const [spectrumData, setSpectrumData] = useState(null);
   const infoPanelRef = useRef(null); // Ссылка на DOM-элемент панели
@@ -132,17 +132,34 @@ function MyMapComponent({ chartOpen, heightFilterActive }) {
   }, [mapInstance, sourceCoordinates]);
   
   const addCrossMarker = (map, coordinates) => {
+    // Создание иконки маркера
     const crossMarker = L.marker(coordinates, {
       icon: L.icon({
         iconUrl: crossIcon, // Укажите путь к иконке
-        iconSize: [24, 24], // Размер иконки
-        iconAnchor: [12, 12], // Центр иконки будет на координатах
+        iconSize: [32, 32], // Размер иконки
+        iconAnchor: [16, 16], // Центр иконки будет на координатах
       }),
     }).addTo(map);
   
+    // Добавление всплывающего окна с информацией о источнике
+    crossMarker.bindTooltip(`
+      <div style="text-align: left;">
+        <strong>Координаты:</strong><br>
+        ${sourceCoordinates.lat.toFixed(6)}, ${sourceCoordinates.lon.toFixed(6)}<br>
+        <strong>Активность:</strong><br>
+        ${sourceActivity}<br>
+        <strong>Отклонение:</strong><br>
+        ${sourceDeviation}
+      </div>
+    `, { 
+      permanent: false, // Всплывающее окно не будет постоянным
+      direction: 'top', // Всплывающее окно будет отображаться сверху
+      className: 'source-tooltip' // CSS класс для стилизации всплывающего окна
+    });
+  
     return crossMarker;
   };
-
+  
   const handlePointClick = (event, measurement) => {
     
     const nativeEvent = event.originalEvent || event;

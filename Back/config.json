@@ -37,27 +37,27 @@
       "zonesOfInterest": [
         {
           "id": 1,
-          "leftE": 100,
-          "rightE": 200,
-          "Name": "Cs-137"
+          "leftE": "300",
+          "rightE": "400",
+          "Name": "Йод-131"
         },
         {
           "id": 2,
-          "leftE": 300,
-          "rightE": 400,
-          "Name": "Калий-40"
+          "leftE": "500",
+          "rightE": "600",
+          "Name": "Стронций-90"
         },
         {
           "id": 3,
-          "leftE": 500,
-          "rightE": 600,
-          "Name": "Уран"
+          "leftE": "600",
+          "rightE": "700",
+          "Name": "Цезий-137"
         },
         {
           "id": 4,
-          "leftE": 700,
-          "rightE": 800,
-          "Name": "Торий"
+          "leftE": "1000",
+          "rightE": "1200",
+          "Name": "Плутоний-239"
         }
       ]
     },

@@ -20,42 +20,50 @@ function SourceSearchDialog({ open, onClose }) {
   const [energyRange, setEnergyRange] = useState({ low: 0, high: 0 });
   const [peakCenter, setPeakCenter] = useState('');
   const [averageHeight, setAverageHeight] = useState(0);
-  const [sourceActivity, setSourceActivity] = useState(''); // Состояние для активности
-  const [sourceDeviation, setSourceDeviation] = useState(''); // Состояние для погрешности
-  const [selectedZone, setSelectedZone] = useState(''); // Состояние для выбранной зоны
+  const [selectedZone, setSelectedZone] = useState('Весь спектр'); // Инициализация на "Весь спектр"
 
-  const { currentSensorType = "УДКГ-А01", globalSettings, sourceCoordinates, setSourceCoordinates } = useContext(FlightDataContext);
+  const { currentSensorType = "УДКГ-А01", globalSettings,
+    sourceCoordinates, setSourceCoordinates, sourceActivity, setSourceActivity, sourceDeviation, setSourceDeviation } = useContext(FlightDataContext);
   const { validMeasurements, selectedCollection, selectedPoints } = useContext(FlightDataContext); // Доступ к данным и настройкам через контекст
-  const { P0 = 0, P1 = 1 } = selectedCollection || {}; // Значения по умолчанию, если нет данных
-
-  useEffect(() => {
-    calculateValues();
-  }, [energyRange, validMeasurements, P0, P1]);
-
-  useEffect(() => {
-    if (open) {
-      calculateValues();
-    }
-  }, [open]);
+  const { P0 = 70, P1 = 11 } = selectedCollection || {}; // Значения по умолчанию, если нет данных
 
   const handleChange = (event) => {
     const { name, value } = event.target;
     setEnergyRange(prev => ({ ...prev, [name]: parseFloat(value) }));
   };
 
+  useEffect(() => {
+    if (open && energyRange.low === 0 && energyRange.high === 0) {
+          setEnergyRange({
+            low: P0,
+            high: P0 + P1 * (globalSettings.NSPCHANNELS - 1)
+          });
+          calculateValues(); 
+        }
+  }, [open, selectedZone, validMeasurements, P0, P1, globalSettings, currentSensorType]);
+  
   const handleZoneChange = (event) => {
     const zoneName = event.target.value;
     setSelectedZone(zoneName);
-
-    // Проверяем наличие настроек для текущего сенсора
-    if (globalSettings?.sensorTypes?.[currentSensorType]) {
+  
+    // Обновляем диапазон энергий только если значения не были изменены вручную
+    if (zoneName === 'Весь спектр') {
+       
+        setEnergyRange({
+            low: P0,
+            high: P0 + P1 * (globalSettings.NSPCHANNELS - 1)
+        });
+       
+    } else if (globalSettings?.sensorTypes?.[currentSensorType]) {
       const zone = globalSettings.sensorTypes[currentSensorType].zonesOfInterest.find(z => z.Name === zoneName);
       if (zone) {
-        setEnergyRange({ low: zone.leftE, high: zone.rightE });
+        //if (energyRange.low === zone.leftE && energyRange.high === zone.rightE) {
+          setEnergyRange({ low: zone.leftE, high: zone.rightE });
+        //}
       }
     }
   };
-
+  
   const calculateValues = () => {
     const measurements = selectedPoints && selectedPoints.length > 0 ? selectedPoints : validMeasurements;
     if (!validMeasurements || !P0 || !P1) return;
@@ -93,17 +101,18 @@ function SourceSearchDialog({ open, onClose }) {
 
   const handleCalculateSource = () => {
     const measurements = selectedPoints && selectedPoints.length > 0 ? selectedPoints : validMeasurements;
-    const { coordinates, activity, deviation } = findSourceCoordinates(measurements, energyRange, P0, P1);
-
-    if (coordinates) {
-      setSourceCoordinates(coordinates);
-      setSourceActivity(activity.toExponential(5) + ' γ/с');
-      setSourceDeviation(deviation.toExponential(5) + ' γ/с');
+    const result = findSourceCoordinates(measurements, energyRange, P0, P1);
+    console.log('result', result);
+    if (result && result.coordinates) {
+      setSourceCoordinates(result.coordinates);
+      setSourceActivity(result.activity.toExponential(5) + ' γ/с');
+      setSourceDeviation(result.deviation.toExponential(5) + ' γ/с');
+      onClose(); // Закрыть окно после нахождения точки
     } else {
       alert("Не удалось определить координаты источника.");
     }
   };
-
+  
   return (
     <Dialog open={open} onClose={onClose}>
       <DialogTitle>Поиск источника</DialogTitle>
@@ -113,24 +122,26 @@ function SourceSearchDialog({ open, onClose }) {
           <p>Датчик: {currentSensorType}</p>
         </Box>
         <Grid container spacing={2}>
-        <Grid item xs={12} sm={12}>
-        {/* Выпадающий список для выбора зоны интереса */}
-        <FormControl fullWidth margin="dense" variant="outlined">
-          <InputLabel id="zone-select-label">Зона интереса</InputLabel>
-          <Select
-            labelId="zone-select-label"
-            value={selectedZone}
-            onChange={handleZoneChange}
-            label="Зона интереса"
-          >
-            {globalSettings?.sensorTypes?.[currentSensorType]?.zonesOfInterest?.map((zone) => (
-              <MenuItem key={zone.Name} value={zone.Name}>
-                {zone.Name}
-              </MenuItem>
-            )) || <MenuItem disabled>Нет доступных зон</MenuItem>}
-          </Select>
-        </FormControl>
-        </Grid>
+          <Grid item xs={12} sm={12}>
+            {/* Выпадающий список для выбора зоны интереса */}
+            <FormControl fullWidth margin="dense" variant="outlined" size="small">
+              <InputLabel id="zone-select-label">Зона интереса</InputLabel>
+              <Select
+                size="small"
+                labelId="zone-select-label"
+                value={selectedZone}
+                onChange={handleZoneChange}
+                label="Зона интереса"
+              >
+                <MenuItem value="Весь спектр" size="small">Весь спектр</MenuItem>
+                {globalSettings?.sensorTypes?.[currentSensorType]?.zonesOfInterest?.map((zone) => (
+                  <MenuItem key={zone.Name} value={zone.Name} size="small">
+                    {zone.Name}
+                  </MenuItem>
+                )) || <MenuItem disabled>Нет доступных зон</MenuItem>}
+              </Select>
+            </FormControl>
+          </Grid>
           <Grid item xs={12} sm={6}>
             <TextField
               autoFocus
@@ -143,6 +154,7 @@ function SourceSearchDialog({ open, onClose }) {
               variant="outlined"
               value={energyRange.low}
               onChange={handleChange}
+              size="small"
             />
           </Grid>
           <Grid item xs={12} sm={6}>
@@ -156,6 +168,7 @@ function SourceSearchDialog({ open, onClose }) {
               variant="outlined"
               value={energyRange.high}
               onChange={handleChange}
+              size="small"
             />
           </Grid>
           <Grid item xs={12}>
@@ -168,6 +181,7 @@ function SourceSearchDialog({ open, onClose }) {
               variant="outlined"
               value={peakCenter}
               disabled
+              size="small"
             />
           </Grid>
           <Grid item xs={12}>
@@ -180,6 +194,7 @@ function SourceSearchDialog({ open, onClose }) {
               variant="outlined"
               value={averageHeight}
               disabled
+              size="small"
             />
           </Grid>
           {sourceCoordinates && (
@@ -193,9 +208,10 @@ function SourceSearchDialog({ open, onClose }) {
                   variant="outlined"
                   value={`${sourceCoordinates.lat.toFixed(6)}, ${sourceCoordinates.lon.toFixed(6)}`}
                   disabled
+                  size="small"
                 />
               </Grid>
-              <Grid item xs={12}>
+              <Grid item xs={6}>
                 <TextField
                   margin="dense"
                   id="source-activity"
@@ -205,9 +221,10 @@ function SourceSearchDialog({ open, onClose }) {
                   variant="outlined"
                   value={sourceActivity}
                   disabled
+                  size="small"
                 />
               </Grid>
-              <Grid item xs={12}>
+              <Grid item xs={6}>
                 <TextField
                   margin="dense"
                   id="source-deviation"
@@ -217,6 +234,7 @@ function SourceSearchDialog({ open, onClose }) {
                   variant="outlined"
                   value={sourceDeviation}
                   disabled
+                  size="small"
                 />
               </Grid>
             </>
@@ -224,8 +242,8 @@ function SourceSearchDialog({ open, onClose }) {
         </Grid>
       </DialogContent>
       <DialogActions>
-        <Button onClick={handleCalculateSource}>Найти</Button>
-        <Button onClick={onClose}>Закрыть</Button>
+        <Button onClick={handleCalculateSource} variant="contained">Найти</Button>
+        <Button onClick={onClose} variant="outlined">Закрыть</Button>
       </DialogActions>
     </Dialog>
   );
