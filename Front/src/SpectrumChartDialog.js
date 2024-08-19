@@ -171,7 +171,7 @@ function SpectrumChart({ data, selectedCollection, averageHeight, timeInterval, 
   }
 
   // Настройки для графика
-  const preprocessData = {
+/*   const preprocessData = {
     labels: data.map((_, index) => calculateEnergy(index, P0, P1)),
     datasets: [{
       label: 'Спектр',
@@ -182,7 +182,55 @@ function SpectrumChart({ data, selectedCollection, averageHeight, timeInterval, 
       pointRadius: 0,
       tension: 0.1
     }]
+  }; */
+
+  // Используем один цвет для всех зон интереса
+  const highlightColor = 'rgba(0, 128, 255, 0.2)'; // Голубой цвет с прозрачностью
+
+  const preprocessData = {
+    labels: data.map((_, index) => calculateEnergy(index, P0, P1)),
+    datasets: [
+      // Основной спектр
+      {
+        label: 'Спектр',
+        data: data.map(point => point.value),
+        fill: false,
+        borderColor: 'rgba(0, 0, 255, 1)',
+        backgroundColor: 'rgba(0, 0, 255, 0.1)',
+        pointRadius: 0,
+        tension: 0.1
+      },
+      // Подсветка для зон интереса
+      ...zonesOfInterest.map((zone) => {
+        // Используем точное преобразование значений энергий в индексы
+        const leftEnergy = zone.leftE;
+        const rightEnergy = zone.rightE;
+  
+        // Находим индексы для левой и правой границ зоны
+        const leftIndex = data.findIndex((_, index) => calculateEnergy(index, P0, P1) >= leftEnergy);
+        const rightIndex = data.findIndex((_, index) => calculateEnergy(index, P0, P1) >= rightEnergy);
+  
+        // Создание массива для подсветки только в пределах зон интереса
+        const highlightData = data.map((point, index) => {
+          if (index >= leftIndex && index <= rightIndex) {
+            return point.value; // Только внутри диапазона зона интереса
+          }
+          return null; // Снаружи зоны - нет заполнения
+        });
+  
+        return {
+          label: `Зона: ${zone.Name}`,
+          data: highlightData,
+          fill: 'origin', // Заполнение от оси X
+          backgroundColor: highlightColor, // Один голубой цвет
+          pointRadius: 0,
+          borderWidth: 0, // Без границы, только цветная область
+          tension: 0.1,
+        };
+      })
+    ]
   };
+  
 
   const options = {
     responsive: true,
@@ -221,7 +269,8 @@ function SpectrumChart({ data, selectedCollection, averageHeight, timeInterval, 
         title: {
           display: true,
           text: 'Скорость счета 1/с'
-        }
+        },
+        min: 0
       }
     }
   };
