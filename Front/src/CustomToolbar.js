@@ -978,7 +978,8 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
       coeffs_above_550: updatedSettingsParam.coeffs_above_550.map(Number), // Аналогично
       gm1Coeff: parseFloat(updatedSettingsParam.gm1Coeff),
       gm2Coeff: parseFloat(updatedSettingsParam.gm2Coeff),
-      winCoeff: parseFloat(updatedSettingsParam.winCoeff)
+      winCoeff: parseFloat(updatedSettingsParam.winCoeff),
+      selectedAlgorithm: updatedSettingsParam.selectedAlgorithm,
     };
 
     fetch('/api/settings', {
@@ -1370,6 +1371,21 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
             >
               <MenuItem value="barometric">Барометрическая</MenuItem>
               <MenuItem value="GPS">GPS</MenuItem>
+            </Select>
+          </FormControl>
+
+          {/* Выпадающий список для выбора алгоритма поиска источника */}
+          <FormControl fullWidth margin="dense" size="small" variant="outlined">
+            <InputLabel id="algorithm-select-label">Алгоритм поиска источника</InputLabel>
+            <Select
+              labelId="algorithm-select-label"
+              id="algorithm-select"
+              value={settings.selectedAlgorithm}
+              onChange={(e) => setSettings({ ...settings, selectedAlgorithm: e.target.value })}
+              label="Алгоритм поиска источника"
+            >
+              <MenuItem value="algorithm1">Алгоритм 1 (2D)</MenuItem>
+              <MenuItem value="algorithm2">Алгоритм 2 (3D)</MenuItem>
             </Select>
           </FormControl>
         </>

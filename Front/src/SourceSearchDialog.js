@@ -14,7 +14,7 @@ import {
   Box
 } from '@mui/material';
 import { FlightDataContext } from './FlightDataContext'; // Импорт контекста
-import { findSourceCoordinates } from './SourceFinder'; // Импорт функции поиска
+import { findSourceCoordinates, findSourceCoordinates3D } from './SourceFinder'; // Импорт функции поиска
 
 function SourceSearchDialog({ open, onClose }) {
   const [energyRange, setEnergyRange] = useState({ low: 0, high: 0 });
@@ -99,12 +99,13 @@ function SourceSearchDialog({ open, onClose }) {
     setAverageHeight(averageHeight.toFixed(2));
     setPeakCenter(peakEnergy.toFixed(2)); // значение в килоэлектронвольтах
   };
-
+/* 
   const handleCalculateSource = () => {
     
     const measurements = selectedPoints && selectedPoints.length > 0 ? selectedPoints : validMeasurements;
     console.log('meas1', measurements);
-    const result = findSourceCoordinates(measurements, energyRange, P0, P1);
+
+    const result = findSourceCoordinates3D(measurements, energyRange, P0, P1);
     console.log('result', result);
     if (result && result.coordinates) {
       setSourceCoordinates(result.coordinates);
@@ -115,7 +116,37 @@ function SourceSearchDialog({ open, onClose }) {
       alert("Не удалось определить координаты источника.");
     }
   };
+   */
+
+  const handleCalculateSource = () => {
+    const measurements = selectedPoints && selectedPoints.length > 0 ? selectedPoints : validMeasurements;
+    console.log('meas1', measurements);
   
+    let result;
+    
+    // Проверка на наличие выбранного алгоритма
+    if (!globalSettings.selectedAlgorithm || globalSettings.selectedAlgorithm === 'algorithm1') {
+      // Если алгоритм не задан или выбран algorithm1 — вызываем findSourceCoordinates (2D)
+      result = findSourceCoordinates(measurements, energyRange, P0, P1);
+    } else {
+      // Иначе вызываем findSourceCoordinates3D (3D)
+      result = findSourceCoordinates3D(measurements, energyRange, P0, P1);
+    }
+  
+    console.log('result', result);
+  
+    if (result && result.coordinates) {
+      setSourceCoordinates(result.coordinates);
+      setSourceActivity(result.activity.toExponential(5) + ' γ/с');
+      setSourceDeviation(result.deviation.toExponential(5) + ' γ/с');
+      onClose(); // Закрыть окно после нахождения точки
+    } else {
+      alert("Не удалось определить координаты источника.");
+    }
+  };
+  
+
+
   return (
     <Dialog open={open} onClose={onClose}>
       <DialogTitle>Поиск источника</DialogTitle>

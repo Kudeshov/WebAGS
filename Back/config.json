@@ -28,7 +28,7 @@
   "gm2Coeff": 0.0024,
   "winCoeff": 0.0073,
   "serialPort": {
-    "path": "COM3",
+    "path": "CNCA0",
     "baudRate": 57600
   },
   "altitudeSource": "GPS",
@@ -89,5 +89,6 @@
         }
       ]
     }
-  }
+  },
+  "selectedAlgorithm": "algorithm2"
 }
