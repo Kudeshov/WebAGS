@@ -66,7 +66,8 @@ function SourceSearchDialog({ open, onClose }) {
   
   const calculateValues = () => {
     const measurements = selectedPoints && selectedPoints.length > 0 ? selectedPoints : validMeasurements;
-    if (!validMeasurements || !P0 || !P1) return;
+    //console.log('meas', measurements);
+    if (!measurements || !P0 || !P1) return;
 
     const leftIndex = Math.ceil((energyRange.low - P0) / P1);
     const rightIndex = Math.floor((energyRange.high - P0) / P1);
@@ -100,7 +101,9 @@ function SourceSearchDialog({ open, onClose }) {
   };
 
   const handleCalculateSource = () => {
+    
     const measurements = selectedPoints && selectedPoints.length > 0 ? selectedPoints : validMeasurements;
+    console.log('meas1', measurements);
     const result = findSourceCoordinates(measurements, energyRange, P0, P1);
     console.log('result', result);
     if (result && result.coordinates) {

@@ -740,48 +740,20 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 }
 
 function insertOnlineMeasurement(db, flightId, measurementData) {
-  const insertSql = `
-      INSERT INTO online_measurement 
-      (flightId, dateTime, gpsX, gpsY, gpsZ, rHeight, srtmHeight, calcHeight, geiger1, geiger2, winCount) 
-      VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, ?)`;
-
-  db.run(insertSql, [
-    flightId, measurementData.dateTime, measurementData.gpsX, measurementData.gpsY, measurementData.gpsZ, 
-    measurementData.rHeight, measurementData.geiger1, measurementData.geiger2, measurementData.winCount
-  ], function(err) {
-    if (err) {
-      console.error('Ошибка при добавлении записи в online_measurement:', err.message);
-      return;
-    }
-
-    let coords = toLLA(measurementData.gpsX, measurementData.gpsY, measurementData.gpsZ);
-
-    console.log(`Запись измерения добавлена. ID: ${this.lastID}`);
-
-    let windose = getDose(measurementData.winCount, coords.alt, false, 1, config.gm1Coeff, config.gm2Coeff, config.winCoeff); // Используем функцию getDose для расчета дозы в окне
-    const gmDose1 = getDose(0, coords.alt, true, 1, config.gm1Coeff, config.gm2Coeff, config.winCoeff); // Примерный вызов для gmdose1 с предположением, что geiger1 = 0
-    const gmDose2 = getDose(0, coords.alt, true, 2, config.gm1Coeff, config.gm2Coeff, config.winCoeff); // Примерный вызов для gmdose2 с предположением, что geiger2 = 0
-    if (windose>3) {
-        windose = 3
-      }
-  
-    // Подготовка данных для отправки через WebSocket с учетом требуемого формата
+  // Проверка типа данных
+  if (measurementData.type === 2) {
+    // Для посылок типа 2 не записываем в БД, только отправляем по WebSocket
     const flightDataForWebSocket = {
-      id: this.lastID,
+      type: 2,
       flightId,
       datetime: measurementData.dateTime,
-      lat: coords.lat, // Нужно будет добавить в measurementData
-      lon: coords.lon, // Нужно будет добавить в measurementData
-      alt: coords.alt, // Нужно будет добавить в measurementData
-      height: measurementData.rHeight,
-      countw: measurementData.winCount,
-      dosew: windose, // Это значение должно быть рассчитано заранее
-      dose: windose,
-      geiger1: measurementData.geiger1,
-      geiger2: measurementData.geiger2,
-      gmdose1: measurementData.gmDose1, // Это значение должно быть рассчитано заранее
-      gmdose2: measurementData.gmDose2, // Это значение должно быть рассчитано заранее
-      spectrum: [] // Добавьте спектр, если он доступен
+      lat: measurementData.Lat || null,
+      lon: measurementData.Lon || null,
+      alt: measurementData.HeightBar || null,
+      pressure: measurementData.Pressure || null,
+      temperature: measurementData.temper || null,
+      speed: measurementData.speed || null,
+      sats: measurementData.Sats || null
     };
 
     // Отправка данных всем подключенным клиентам через WebSocket
@@ -790,9 +762,64 @@ function insertOnlineMeasurement(db, flightId, measurementData) {
         client.send(JSON.stringify(flightDataForWebSocket));
       }
     });
-  });
-}
+    console.log('Посылка типа 2 отправлена на фронтенд без сохранения в БД');
+  } else if (measurementData.type === 1) {
+    // Для посылок типа 1 сохраняем в БД и отправляем по WebSocket
+      const insertSql = `
+          INSERT INTO online_measurement 
+          (flightId, dateTime, gpsX, gpsY, gpsZ, rHeight, srtmHeight, calcHeight, geiger1, geiger2, winCount) 
+          VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, ?)`;
 
+      db.run(insertSql, [
+        flightId, measurementData.dateTime, measurementData.gpsX, measurementData.gpsY, measurementData.gpsZ, 
+        measurementData.rHeight, measurementData.geiger1, measurementData.geiger2, measurementData.winCount
+      ], function(err) {
+        if (err) {
+          console.error('Ошибка при добавлении записи в online_measurement:', err.message);
+          return;
+        }
+
+        let coords = toLLA(measurementData.gpsX, measurementData.gpsY, measurementData.gpsZ);
+
+        console.log(`Запись измерения добавлена. ID: ${this.lastID}`);
+
+        let windose = getDose(measurementData.winCount, coords.alt, false, 1, config.gm1Coeff, config.gm2Coeff, config.winCoeff); // Используем функцию getDose для расчета дозы в окне
+        const gmDose1 = getDose(0, coords.alt, true, 1, config.gm1Coeff, config.gm2Coeff, config.winCoeff); // Примерный вызов для gmdose1 с предположением, что geiger1 = 0
+        const gmDose2 = getDose(0, coords.alt, true, 2, config.gm1Coeff, config.gm2Coeff, config.winCoeff); // Примерный вызов для gmdose2 с предположением, что geiger2 = 0
+        if (windose>3) {
+            windose = 3
+          }
+      
+        // Подготовка данных для отправки через WebSocket с учетом требуемого формата
+        const flightDataForWebSocket = {
+          type: 1,
+          id: this.lastID,
+          flightId,
+          datetime: measurementData.dateTime,
+          lat: coords.lat, // Нужно будет добавить в measurementData
+          lon: coords.lon, // Нужно будет добавить в measurementData
+          alt: coords.alt, // Нужно будет добавить в measurementData
+          height: measurementData.rHeight,
+          countw: measurementData.winCount,
+          dosew: windose, // Это значение должно быть рассчитано заранее
+          dose: windose,
+          geiger1: measurementData.geiger1,
+          geiger2: measurementData.geiger2,
+          gmdose1: measurementData.gmDose1, // Это значение должно быть рассчитано заранее
+          gmdose2: measurementData.gmDose2, // Это значение должно быть рассчитано заранее
+          spectrum: [] // Добавьте спектр, если он доступен
+        };
+
+        // Отправка данных всем подключенным клиентам через WebSocket
+        wss.clients.forEach(client => {
+          if (client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify(flightDataForWebSocket));
+          }
+          console.log('Посылка типа 1 записана в БД и отправлена на фронтенд');
+        });
+    });
+  }
+}
 
 app.delete('/delete-flight/:dbname/:_id', async (req, res) => {
   const dbname = req.params.dbname;
@@ -930,7 +957,6 @@ function generateMeasurementData(db, flightId) {
     geiger2: 0, // Примерное значение, подставьте реальные данные
     winCount: winCount,
   };
-
   insertOnlineMeasurement(db, flightId, measurementData);  
 }
 
@@ -943,7 +969,7 @@ function parseType2Data(values) {
   const minute = parseInt(dateTimeString.slice(8, 10), 10);
   const second = parseInt(dateTimeString.slice(10, 12), 10);
   console.log(year, month, day, hour, minute, second);
-  const dateTime = new Date(Date.UTC(year, month, day, hour, minute, second));
+  const dateTime = new Date(Date.UTC(year, month - 1, day, hour, minute, second)); // month -1, т.к. месяцы в JS 0-11
 
   return {
     type: 2,
@@ -951,11 +977,10 @@ function parseType2Data(values) {
     Lat: parseFloat(values[3]),
     Lon: parseFloat(values[4]),
     HeightBar: parseFloat(values[5]),
-    rHeight: parseFloat(values[5]),
     Pressure: parseFloat(values[6]),
     temper: parseFloat(values[7]),
     speed: parseFloat(values[8]),
-    Sats: parseFloat(values[9])
+    Sats: parseInt(values[9], 10),
   };
 }
 
@@ -1009,8 +1034,6 @@ function parseType1Data(values) {
   };
 }
 
-
-
 function parseData(dataString) {
   try {
     const trimmedData = dataString.trim().slice(1, -1);
@@ -1020,10 +1043,8 @@ function parseData(dataString) {
     if (type === 1 && values.length === 15) {
       return parseType1Data(values);
     } else if (type === 2 && values.length >= 10) {
-      console.log('Skip type 2 now');
-      return null;
-      //return parseType2Data(values);
-    } else {lue
+      return parseType2Data(values);
+    } else {
       console.log('Unknown data type or incorrect data format');
       return null;
     }
@@ -1143,7 +1164,6 @@ app.post('/start-flight', (req, res) => {
 
               portUsed.on('open', () => {
                   console.log('Serial Port Opened for receiving data.', portUsed);
-                  //res.json({ message: "Flight data collection started", _id });
                   res.json({ message: "Полет запущен", _id, onlineFlightStatus });
               });
 

@@ -106,7 +106,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
     return avgSpectrum;
   }, [selectedCollection]);
   
-  useEffect(() => {
+/*   useEffect(() => {
 
     console.log('Selected points length in Toolbar '+selectedPoints.length);
     if (selectedPoints.length > 0 && selectedCollection) {
@@ -134,7 +134,37 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
     {
       setSpectrumData([]);
     }
-  }, [selectedPoints, calculateAverageSpectrum, selectedCollection]);
+  }, [selectedPoints, calculateAverageSpectrum, selectedCollection]); */
+
+  useEffect(() => {
+    // Определяем массив данных для расчета: либо selectedPoints, либо validMeasurements
+    const pointsToUse = (selectedPoints && selectedPoints.length > 0) ? selectedPoints : (validMeasurements || []);
+    
+    if (pointsToUse.length > 0 && selectedCollection) {
+        // Рассчитываем среднюю высоту
+        const totalHeight = pointsToUse.reduce((acc, point) => acc + point.height, 0);
+        setAverageHeight(totalHeight / pointsToUse.length);
+
+        // Рассчитываем интервал времени
+        const times = pointsToUse.map(point => new Date(point.datetime).getTime());
+        const minTime = Math.min(...times);
+        const maxTime = Math.max(...times);
+        setTimeInterval((maxTime - minTime) / 1000);
+
+        // Проверяем, есть ли спектр у первой выбранной точки и содержит ли он массив каналов
+        const hasSpectrumChannels = pointsToUse[0].spectrum && Array.isArray(pointsToUse[0].spectrum.channels);
+        
+        // Если нет спектра или каналов, возвращаем пустой массив
+        if (!hasSpectrumChannels) {
+            setSpectrumData([]);
+        } else {
+            const avgSpectrumData = calculateAverageSpectrum(pointsToUse);
+            setSpectrumData(avgSpectrumData);
+        }
+    } else {
+        setSpectrumData([]);
+    }
+}, [selectedPoints, validMeasurements, calculateAverageSpectrum, selectedCollection]);
   
 
   // Проверка на отсутствие данных в течение заданного времени (например, 30 секунд)
@@ -197,88 +227,120 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
     setStartFlightDialogOpen(false);
   };
 
-  const setupWebSocket = (onlineFlightId, globalSettings) => {
+  // Состояния для данных посылок второго типа
+/*   const [type2Data, setType2Data] = useState({
+    sats: 'N/A',
+    pressure: 'N/A'
+  });
+ */
 
+  let type2Data = {
+    sats: 'N/A',
+    pressure: 'N/A',
+    temperature: 'N/A',
+  };
+
+  const setupWebSocket = (onlineFlightId, globalSettings) => {
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsHost = process.env.REACT_APP_WEBSOCKET_HOST || window.location.host;
     console.log(wsProtocol, wsHost);
+  
     let ws = new WebSocket(`${wsProtocol}//${wsHost}`);
+  
     const connectWebSocket = () => {
-        // Установка обработчиков событий WebSocket
-        ws.onopen = () => {
-          console.log('WebSocket соединение установлено');
-          setLastDataTimestamp(Date.now());
-          setWebsocketConnected(true);
-        };
+      // Установка обработчиков событий WebSocket
+      ws.onopen = () => {
+        console.log('WebSocket соединение установлено');
+        setLastDataTimestamp(Date.now());
+        setWebsocketConnected(true);
+      };
+  
+      console.log('Установка обработчика ws.onmessage');
+      ws.onmessage = (event) => {
+        console.log(event.data);
+        const dataCheck = JSON.parse(event.data);
+        console.log('dataCheck', dataCheck.type, dataCheck);
+  
+        // Обработка посылок второго типа
+        if (dataCheck.type === 2) {
+          type2Data = {
+            sats: dataCheck.sats ? dataCheck.sats : 'N/A',
+            pressure: dataCheck.pressure ? Number(dataCheck.pressure).toFixed(2) : 'N/A',
+            temperature: dataCheck.temperature ? Number(dataCheck.temperature).toFixed(2) : 'N/A',
+          };
 
-        console.log('Установка обработчика ws.onmessage');
-        ws.onmessage = (event) => {
-          const data = JSON.parse(event.data);
-          console.log(data);
-          setWebsocketConnected(true);
-          // Проверка на сообщение о завершении полета
-          if (data.type && data.type === 'flightEnded') {
-            console.log('Полет завершен:', data.flightId);
-            setSnackbarMessage('Полет завершен в штатном режиме');
-            setSnackbarOpen(true); // Открываем Snackbar с сообщением
-            setOnlineFlightId(null); // Сброс ID симуляции
-            setDataToShow('');
-            if (websocket) {
-              websocket.close(); // Закрытие WebSocket соединения
-              setWebsocket(null);
-            }
-            return; // Завершаем выполнение функции, чтобы не обрабатывать данные дальше
-          }          
-
-          setLastDataTimestamp(Date.now());
-
-          setOnlineMeasurements(currentMeasurements => {
+          //console.log('updatedType2Data', updatedType2Data);
+          //setType2Data(updatedType2Data);
+          return; // Завершаем выполнение функции, чтобы не обрабатывать данные дальше
+        } 
+  
+        const data = JSON.parse(event.data);
+        
+        setWebsocketConnected(true);
+        
+        // Проверка на сообщение о завершении полета
+        if (data.type && data.type === 'flightEnded') {
+          console.log('Полет завершен:', data.flightId);
+          setSnackbarMessage('Полет завершен в штатном режиме');
+          setSnackbarOpen(true); // Открываем Snackbar с сообщением
+          setOnlineFlightId(null); // Сброс ID симуляции
+          setDataToShow('');
+          if (websocket) {
+            websocket.close(); // Закрытие WebSocket соединения
+            setWebsocket(null);
+          }
+          return; // Завершаем выполнение функции, чтобы не обрабатывать данные дальше
+        } 
+  
+        setLastDataTimestamp(Date.now());
+  
+        setOnlineMeasurements(currentMeasurements => {
           // Проверяем, что широта и долгота существуют и не равны null
           if (data.lat != null && data.lon != null) {
             const isDuplicate = currentMeasurements.some(item => item.id === data.id);
             if (!isDuplicate) {
-              
               // Если элемент уникален, добавляем его в массив
               return [...currentMeasurements, data];
-            }
-            else
-            {
+            } else {
               return currentMeasurements;
             }
           } else {
             // Если условие не выполняется, возвращаем текущее состояние без изменений
             return currentMeasurements;
           }
-          });
-          setDataToShow(`Время: ${convertToTime(data.datetime)}, Широта: ${Number(data.lat)>0 ? Number(data.lat).toFixed(6) : 'N/A'}, ` +
-                            `Долгота: ${Number(data.lon)>0 ? Number(data.lon).toFixed(6) : 'N/A'}, ` +
-                            `Высота: ${data.alt ? Number(data.alt).toFixed(2) : '0.00'}, ` +
-                            `Счет в окне: ${data.countw ? data.countw : '0'}`);
-        };
-
-        ws.onerror = (error) => {
-          console.error('Ошибка WebSocket:', error);
-          // Дополнительное логирование
-          console.log(error.message);
-        };
-
-        ws.onclose = () => {
-          setWebsocketConnected(false);
-          console.log('WebSocket соединение закрыто');
-          setTimeout(() => {
-              console.log('Попытка переподключения...');
-              const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-              const wsHost = process.env.REACT_APP_WEBSOCKET_HOST || window.location.host;
-              console.log(wsProtocol, wsHost);
-              ws = new WebSocket(`${wsProtocol}//${wsHost}`);
-              connectWebSocket(); // Попытка переподключения
-          }, 1000); // Переподключение через 1 секунду
-        };
+        });
+  
+        // Обновляем строку информации, включая данные из посылок обоих типов
+        setDataToShow(`Время: ${convertToTime(data.datetime)}, Широта: ${Number(data.lat)>0 ? Number(data.lat).toFixed(6) : 'N/A'}, ` +
+                      `Долгота: ${Number(data.lon)>0 ? Number(data.lon).toFixed(6) : 'N/A'}, ` +
+                      `Высота: ${data.alt ? Number(data.alt).toFixed(2) : '0.00'}, ` +
+                      `Счет в окне: ${data.countw ? data.countw : '0'}, ` +
+                      `Спутники: ${type2Data.sats}, Давление: ${type2Data.pressure}, Температура: ${type2Data.temperature}`);
+      };
+  
+      ws.onerror = (error) => {
+        console.error('Ошибка WebSocket:', error);
+        console.log(error.message);
+      };
+  
+      ws.onclose = () => {
+        setWebsocketConnected(false);
+        console.log('WebSocket соединение закрыто');
+        setTimeout(() => {
+          console.log('Попытка переподключения...');
+          const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+          const wsHost = process.env.REACT_APP_WEBSOCKET_HOST || window.location.host;
+          console.log(wsProtocol, wsHost);
+          ws = new WebSocket(`${wsProtocol}//${wsHost}`);
+          connectWebSocket(); // Попытка переподключения
+        }, 1000); // Переподключение через 1 секунду
+      };
     };
-
+  
     connectWebSocket(); // Первоначальное подключение
     setWebsocket(ws);
   };
+  
 
   useEffect(() => {
 
@@ -1588,22 +1650,23 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
         open={spectrumDialogOpen} 
         onClose={handleCloseSpectrumDialog} 
         aria-labelledby="spectrum-dialog-title" 
-        fullWidth 
-        maxWidth="md"
+        fullWidth
+        maxWidth={false} 
         className="dialog-cursor-default"
+        sx={{ '& .MuiDialog-paper': { width: '1200px', maxWidth: '100%' } }}  
       >
-        <DialogTitle id="spectrum-dialog-title">Спектр</DialogTitle>
+       {/*  <DialogTitle id="spectrum-dialog-title">Спектр</DialogTitle> */}
         <DialogContent>
           <DialogContentText>
-            <div style={{ position: 'relative', paddingBottom: '40px' }}>
+            <div style={{ position: 'relative', paddingBottom: '2px' }}>
               <SpectrumChartDialog
                 averageHeight={averageHeight}
                 timeInterval={timeInterval}
                 selectedCollection={selectedCollection}
                 data={spectrumData}
                 isLoading={false}
-                width={850}
-                height={400}
+                width={1000}
+                height={600}
               />
             </div>
           </DialogContentText>

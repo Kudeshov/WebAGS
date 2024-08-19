@@ -10,13 +10,14 @@ import {
   Title,
   Tooltip,
   Legend,
+  
   Filler
 } from 'chart.js';
 
 import { DataGrid } from '@mui/x-data-grid';
 import { convertDateTime } from './dateUtils';
 import zoomPlugin from 'chartjs-plugin-zoom';
-import { Box, Typography, Checkbox, Button } from '@mui/material';
+import { Box, Typography, Checkbox, Grid, Button } from '@mui/material';
 import { FlightDataContext } from './FlightDataContext';
 
 // Регистрация компонентов ChartJS
@@ -244,72 +245,100 @@ function SpectrumChart({ data, selectedCollection, averageHeight, timeInterval, 
   // Определение столбцов для таблицы
   const columns = [
     { field: 'id', headerName: '#', width: 50 },
-    { field: 'leftE', headerName: 'leftE', width: 150, editable: true },
-    { field: 'rightE', headerName: 'rightE', width: 150, editable: true },
-    { field: 'rate', headerName: 'S(1/c)', width: 150 },
+    { field: 'leftE', headerName: 'leftE', width: 100, editable: true },
+    { field: 'rightE', headerName: 'rightE', width: 100, editable: true },
+    { field: 'rate', headerName: 'S(1/c)', width: 100 },
     { field: 'name', headerName: 'Name', width: 150 },
   ];
   
   return (
-    <div style={{ cursor: 'pointer', position: 'relative', padding: '10px' }}>
-      <Line ref={chartRef} data={preprocessData} options={options} />
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px' }}>
-        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          <Checkbox
-            checked={scale === 'log'}
-            onChange={(e) => setScale(e.target.checked ? 'log' : 'linear')}
-            id="scaleCheckboxDialog"
-          />
-          <Typography htmlFor="scaleCheckboxDialog">Логарифмическая шкала</Typography>
-        </Box>
-        <Typography>Сохранить спектр</Typography>
+    <div style={{ cursor: 'pointer', position: 'relative', padding: '0px' }}>
+
+      <Box sx={{ height: '340px', width: '100%' }}> {/* Установите нужную высоту */}
+      <Line 
+        ref={chartRef} 
+        data={preprocessData} 
+        options={{ 
+          ...options, 
+          maintainAspectRatio: false  // Отключаем соотношение сторон, чтобы график адаптировался по высоте
+        }} 
+      />
       </Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px' }}>
+     {/*  <Line ref={chartRef} data={preprocessData} options={options} style={{ height: '300px' }} /> */}
+
+     <Grid container spacing={2}> {/* Добавляем отступы между элементами */}
+  <Grid item xs={3} sm={3}>
+    {/* Внешний контейнер с вертикальной ориентацией */}
+    <Box sx={{ display: 'flex', flexDirection: 'column', marginTop: '10px' }}>
+      {/* Чекбокс с логарифмической шкалой */}
+      <Box sx={{ display: 'flex', alignItems: 'center', marginBottom: '10px' }}>
+        <Checkbox
+          checked={scale === 'log'}
+          onChange={(e) => setScale(e.target.checked ? 'log' : 'linear')}
+          id="scaleCheckboxDialog"
+        />
+        <Typography htmlFor="scaleCheckboxDialog">Логарифмическая шкала</Typography>
+      </Box>
+
+      {/* Кнопка сброса масштаба */}
+      <Button
+        onClick={() => {
+          const chart = chartRef.current;
+          if (chart) {
+            chart.resetZoom();
+          }
+        }}
+        variant="contained"
+        color="primary"
+        sx={{ marginBottom: '10px' }}  
+      >
+        Сбросить масштаб
+      </Button>
+
+      {/* Блок сохранения спектра */}
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}> {/* Выравниваем кнопки по началу */}
+        <Typography>Сохранить спектр</Typography>
         <Button
-          onClick={() => {
-            const chart = chartRef.current;
-            if (chart) {
-              chart.resetZoom();
-            }
-          }}
+          onClick={() => exportToCsv(data)}
+          variant="contained"
+          color="primary"
+          sx={{ marginBottom: '5px' }}  
+        >
+          .CSV
+        </Button>
+        <Button
+          onClick={() => exportToN42(data, selectedCollection, averageHeight, timeInterval)}
           variant="contained"
           color="primary"
         >
-          Сбросить масштаб
+          .N42
         </Button>
-        <Box>
-          <Button
-            onClick={() => exportToCsv(data)}
-            variant="contained"
-            color="primary"
-            sx={{ marginRight: '10px' }}
-          >
-            .CSV
-          </Button>
-          <Button
-            onClick={() => exportToN42(data, selectedCollection, averageHeight, timeInterval)}
-            variant="contained"
-            color="primary"
-          >
-            .N42
-          </Button>
-        </Box>
       </Box>
-      <Box sx={{ height: 158, width: '100%', marginTop: '20px' }}> {/* Уменьшили высоту таблицы */}
-        <DataGrid 
-          rows={tableData} 
-          columns={columns}
-          rowHeight={25}
-          pageSize={5} 
-          hideFooter={true} // Убрали футер
-          processRowUpdate={processRowUpdate}
-          onProcessRowUpdateError={handleProcessRowUpdateError}
-          sx={{
-       
-            '& .MuiDataGrid-cell': { padding: '2px 8px' } // Уменьшили внутренний отступ
-          }}
-        />
-      </Box>
+    </Box>
+  </Grid>
+
+  <Grid item xs={9} sm={9} sx={{ display: 'flex', justifyContent: 'flex-end' }}> {/* Выравниваем таблицу по правой стороне */}
+    {/* Таблица должна быть выровнена по правой стороне */}
+    <Box sx={{ width: '100%', marginBottom: '10px' }}>
+      <Typography align="right" sx={{ marginBottom: '5px' }}>Зоны интереса</Typography> {/* Выровнено по правой стороне */}
+      <DataGrid 
+        rows={tableData} 
+        columns={columns}
+        rowHeight={25}
+        pageSize={5} 
+        hideFooter={true}
+        processRowUpdate={processRowUpdate}
+        onProcessRowUpdateError={handleProcessRowUpdateError}
+        sx={{ 
+          '& .MuiDataGrid-cell': { padding: '2px 8px' }, 
+          justifyContent: 'flex-end'  // Выравнивание ячеек по правому краю 
+        }}
+      />
+    </Box>
+  </Grid>
+</Grid>
+
+
     </div>
   );
 }
