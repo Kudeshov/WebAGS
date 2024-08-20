@@ -10,7 +10,6 @@ import {
   Title,
   Tooltip,
   Legend,
-  
   Filler
 } from 'chart.js';
 
@@ -54,21 +53,16 @@ function SpectrumChart({ data, selectedCollection, averageHeight, timeInterval, 
     }
   }, [zonesOfInterest]);
 
-  // Эффект для обновления скоростей счета в таблице
   useEffect(() => {
     if (data && energyRanges.length > 0) {
+      // Обновление таблицы
       const updatedTableData = energyRanges.map((range) => {
-        // Для leftIndex используем Math.ceil для точного попадания в интервал
         const leftIndex = Math.max(Math.ceil((range.leftE - P0) / P1), 0);
-        // Для rightIndex используем Math.floor для точного попадания в интервал
         const rightIndex = Math.min(Math.floor((range.rightE - P0) / P1), data.length - 1);
-  
-        // Обновляем логику для пересчета скорости счета
         const rateSum = data.slice(leftIndex, rightIndex + 1).reduce((sum, point) => sum + point.value, 0);
-        const numberOfPoints = rightIndex - leftIndex + 1; // Количество точек
-        const rate = rateSum / (numberOfPoints * globalSettings.SPECDEFTIME || globalSettings.SPECDEFTIME); // Делим на количество точек
-        
-        console.log('numberOfPoints', numberOfPoints, leftIndex, rightIndex, P0, P1, leftIndex * P1 + P0, rightIndex * P1 + P0);
+        const numberOfPoints = rightIndex - leftIndex + 1;
+        const rate = rateSum / (numberOfPoints * globalSettings.SPECDEFTIME || globalSettings.SPECDEFTIME);
+  
         const correspondingRow = tableData.find(row => row.id === range.id);
   
         return {
@@ -80,10 +74,43 @@ function SpectrumChart({ data, selectedCollection, averageHeight, timeInterval, 
       });
   
       setTableData(updatedTableData);
+  
+      // Обновление данных для графика
+      const updatedPreprocessData = {
+        labels: data.map((_, index) => calculateEnergy(index, P0, P1)),
+        datasets: [
+          {
+            label: 'Спектр',
+            data: data.map(point => point.value),
+            fill: false,
+            borderColor: 'rgba(0, 0, 255, 1)',
+            backgroundColor: 'rgba(0, 0, 255, 0.1)',
+            pointRadius: 0,
+            tension: 0.1
+          },
+          ...energyRanges.map((range) => {
+            const leftIndex = Math.max(Math.ceil((range.leftE - P0) / P1), 0);
+            const rightIndex = Math.min(Math.floor((range.rightE - P0) / P1), data.length - 1);
+  
+            const highlightData = data.map((point, index) => (index >= leftIndex && index <= rightIndex ? point.value : null));
+  
+            return {
+              label: `Зона: ${range.name}`,
+              data: highlightData,
+              fill: 'origin',
+              backgroundColor: highlightColor,
+              pointRadius: 0,
+              borderWidth: 0,
+              tension: 0.1,
+            };
+          }),
+        ]
+      };
+  
+      setChartData(updatedPreprocessData);
     }
   }, [data, energyRanges, P0, P1, globalSettings.SPECDEFTIME]);
-   
-
+  
 
   // Функция для загрузки CSV
   function downloadCsv(csvContent, fileName) {
@@ -170,67 +197,13 @@ function SpectrumChart({ data, selectedCollection, averageHeight, timeInterval, 
     return P0 + P1 * index;
   }
 
-  // Настройки для графика
-/*   const preprocessData = {
-    labels: data.map((_, index) => calculateEnergy(index, P0, P1)),
-    datasets: [{
-      label: 'Спектр',
-      data: data.map(point => point.value),
-      fill: false,
-      borderColor: 'rgba(0, 0, 255, 1)',
-      backgroundColor: 'rgba(0, 0, 255, 0.1)',
-      pointRadius: 0,
-      tension: 0.1
-    }]
-  }; */
-
   // Используем один цвет для всех зон интереса
   const highlightColor = 'rgba(0, 128, 255, 0.2)'; // Голубой цвет с прозрачностью
-
-  const preprocessData = {
-    labels: data.map((_, index) => calculateEnergy(index, P0, P1)),
-    datasets: [
-      // Основной спектр
-      {
-        label: 'Спектр',
-        data: data.map(point => point.value),
-        fill: false,
-        borderColor: 'rgba(0, 0, 255, 1)',
-        backgroundColor: 'rgba(0, 0, 255, 0.1)',
-        pointRadius: 0,
-        tension: 0.1
-      },
-      // Подсветка для зон интереса
-      ...zonesOfInterest.map((zone) => {
-        // Используем точное преобразование значений энергий в индексы
-        const leftEnergy = zone.leftE;
-        const rightEnergy = zone.rightE;
   
-        // Находим индексы для левой и правой границ зоны
-        const leftIndex = data.findIndex((_, index) => calculateEnergy(index, P0, P1) >= leftEnergy);
-        const rightIndex = data.findIndex((_, index) => calculateEnergy(index, P0, P1) >= rightEnergy);
-  
-        // Создание массива для подсветки только в пределах зон интереса
-        const highlightData = data.map((point, index) => {
-          if (index >= leftIndex && index <= rightIndex) {
-            return point.value; // Только внутри диапазона зона интереса
-          }
-          return null; // Снаружи зоны - нет заполнения
-        });
-  
-        return {
-          label: `Зона: ${zone.Name}`,
-          data: highlightData,
-          fill: 'origin', // Заполнение от оси X
-          backgroundColor: highlightColor, // Один голубой цвет
-          pointRadius: 0,
-          borderWidth: 0, // Без границы, только цветная область
-          tension: 0.1,
-        };
-      })
-    ]
-  };
-  
+  const [chartData, setChartData] = useState({
+    labels: [],
+    datasets: []
+  }); // Инициализируем chartData с валидной структурой
 
   const options = {
     responsive: true,
@@ -280,9 +253,7 @@ function SpectrumChart({ data, selectedCollection, averageHeight, timeInterval, 
     const updatedEnergyRanges = energyRanges.map((range) =>
       range.id === updatedRow.id ? { ...range, leftE: updatedRow.leftE, rightE: updatedRow.rightE } : range
     );
-
     setEnergyRanges(updatedEnergyRanges);
-
     return updatedRow;
   };
 
@@ -301,93 +272,103 @@ function SpectrumChart({ data, selectedCollection, averageHeight, timeInterval, 
   ];
   
   return (
-    <div style={{ cursor: 'pointer', position: 'relative', padding: '0px' }}>
-
-      <Box sx={{ height: '340px', width: '100%' }}> {/* Установите нужную высоту */}
+    <div style={{ cursor: 'pointer', position: 'relative', padding: '0px', marginRight: '-17px', marginLeft: '-5px', marginTop: '-5px' }}>
+      <Box sx={{ height: '350px', width: '100%'  }}>  
       <Line 
         ref={chartRef} 
-        data={preprocessData} 
+        data={chartData} 
         options={{ 
           ...options, 
           maintainAspectRatio: false  // Отключаем соотношение сторон, чтобы график адаптировался по высоте
         }} 
       />
       </Box>
-     {/*  <Line ref={chartRef} data={preprocessData} options={options} style={{ height: '300px' }} /> */}
+      <Box sx={{ height: '220px', width: '100%' }}> 
+      <Grid container spacing={0}>
+      <Grid item xs={3} sm={3}>
+        {/* Внешний контейнер с вертикальной ориентацией */}
+        <Box sx={{ display: 'flex', flexDirection: 'column', marginTop: '0px' }}>
+          {/* Чекбокс с логарифмической шкалой */}
+          {/* <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>  */}
+{/*           <Box sx={{ display: 'flex', alignItems: 'center', marginLeft: '-12px', marginBottom: '3px', marginTop: '-9px' }}>
+            <Checkbox
+              checked={scale === 'log'}
+              onChange={(e) => setScale(e.target.checked ? 'log' : 'linear')}
+              id="scaleCheckboxDialog"
+            />
+            <Typography htmlFor="scaleCheckboxDialog" sx={{ whiteSpace: 'nowrap' }}>Логарифмическая шкала</Typography>
+          </Box>
+ */}
 
-     <Grid container spacing={2}> {/* Добавляем отступы между элементами */}
-  <Grid item xs={3} sm={3}>
-    {/* Внешний контейнер с вертикальной ориентацией */}
-    <Box sx={{ display: 'flex', flexDirection: 'column', marginTop: '10px' }}>
-      {/* Чекбокс с логарифмической шкалой */}
-      <Box sx={{ display: 'flex', alignItems: 'center', marginBottom: '10px' }}>
-        <Checkbox
-          checked={scale === 'log'}
-          onChange={(e) => setScale(e.target.checked ? 'log' : 'linear')}
-          id="scaleCheckboxDialog"
-        />
-        <Typography htmlFor="scaleCheckboxDialog">Логарифмическая шкала</Typography>
-      </Box>
+<Box sx={{ display: 'flex', flexDirection: 'row-reverse', marginRight: '-42px', alignItems: 'center', marginBottom: '10px', marginTop: '-9px' }}>
+  <Checkbox
+    checked={scale === 'log'}
+    onChange={(e) => setScale(e.target.checked ? 'log' : 'linear')}
+    id="scaleCheckboxDialog"
+  />
+  <Typography htmlFor="scaleCheckboxDialog" sx={{ whiteSpace: 'nowrap', marginLeft: '22px', marginRight: '8px' }}> {/* Отступ для текста */}
+    Логарифмическая шкала
+  </Typography>
+</Box>
+          {/* Кнопка сброса масштаба */}
+          <Button
+            onClick={() => {
+              const chart = chartRef.current;
+              if (chart) {
+                chart.resetZoom();
+              }
+            }}
+            variant="contained"
+            color="primary"
+            sx={{ marginBottom: '10px' }}  
+          >
+            Сбросить масштаб
+          </Button>
 
-      {/* Кнопка сброса масштаба */}
-      <Button
-        onClick={() => {
-          const chart = chartRef.current;
-          if (chart) {
-            chart.resetZoom();
-          }
-        }}
-        variant="contained"
-        color="primary"
-        sx={{ marginBottom: '10px' }}  
-      >
-        Сбросить масштаб
-      </Button>
-
-      {/* Блок сохранения спектра */}
-      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}> {/* Выравниваем кнопки по началу */}
-        <Typography>Сохранить спектр</Typography>
-        <Button
-          onClick={() => exportToCsv(data)}
-          variant="contained"
-          color="primary"
-          sx={{ marginBottom: '5px' }}  
-        >
-          .CSV
-        </Button>
-        <Button
-          onClick={() => exportToN42(data, selectedCollection, averageHeight, timeInterval)}
-          variant="contained"
-          color="primary"
-        >
-          .N42
-        </Button>
-      </Box>
+          {/* Блок сохранения спектра */}
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', marginTop: '20px' }}>  
+            <Typography sx={{  marginBottom: '8px' }}>Сохранить спектр</Typography>
+            <Box sx={{ display: 'flex', flexDirection: 'row', gap: 2, alignItems: 'flex-start' }}>  
+            <Button
+              onClick={() => exportToCsv(data)}
+              variant="contained"
+              color="primary"
+              sx={{ marginBottom: '5px' }}  
+            >
+              .CSV
+            </Button>
+            <Button
+              onClick={() => exportToN42(data, selectedCollection, averageHeight, timeInterval)}
+              variant="contained"
+              color="primary"
+            >
+              .N42
+            </Button>
+            </Box>
+          </Box>
+        </Box>
+      </Grid>
+       
+      <Grid item xs={9} sm={9} sx={{ display: 'flex', justifyContent: 'flex-end' }}> {/* Выравниваем таблицу по правой стороне */}
+        <Box sx={{ width: '520px', height: '159px', marginBottom: '0px', marginRight: '17px' }}>
+          <Typography align="left" sx={{ marginBottom: '5px' }}>Зоны интереса</Typography> {/* Выровнено по правой стороне */}
+          <DataGrid 
+            rows={tableData} 
+            columns={columns}
+            rowHeight={25}
+            pageSize={5} 
+            hideFooter={true}
+            processRowUpdate={processRowUpdate}
+            onProcessRowUpdateError={handleProcessRowUpdateError}
+            sx={{ 
+              '& .MuiDataGrid-cell': { padding: '2px 8px' }, 
+              justifyContent: 'flex-end'  // Выравнивание ячеек по правому краю 
+            }}
+          />
+        </Box>
+      </Grid>
+    </Grid>
     </Box>
-  </Grid>
-
-  <Grid item xs={9} sm={9} sx={{ display: 'flex', justifyContent: 'flex-end' }}> {/* Выравниваем таблицу по правой стороне */}
-    {/* Таблица должна быть выровнена по правой стороне */}
-    <Box sx={{ width: '100%', marginBottom: '10px' }}>
-      <Typography align="right" sx={{ marginBottom: '5px' }}>Зоны интереса</Typography> {/* Выровнено по правой стороне */}
-      <DataGrid 
-        rows={tableData} 
-        columns={columns}
-        rowHeight={25}
-        pageSize={5} 
-        hideFooter={true}
-        processRowUpdate={processRowUpdate}
-        onProcessRowUpdateError={handleProcessRowUpdateError}
-        sx={{ 
-          '& .MuiDataGrid-cell': { padding: '2px 8px' }, 
-          justifyContent: 'flex-end'  // Выравнивание ячеек по правому краю 
-        }}
-      />
-    </Box>
-  </Grid>
-</Grid>
-
-
     </div>
   );
 }

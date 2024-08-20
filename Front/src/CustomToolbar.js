@@ -1635,8 +1635,8 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
             )}
           </DialogContent>
           <DialogActions>
-            <Button onClick={handleSettingsDialogClose}>Отмена</Button>
-            <Button onClick={() => handleSaveSettings(settings)} disabled={isSettingsLoading}>Сохранить</Button>
+            <Button variant="contained" onClick={handleSettingsDialogClose}>Отмена</Button>
+            <Button variant="contained" onClick={() => handleSaveSettings(settings)} disabled={isSettingsLoading}>Сохранить</Button>
           </DialogActions>
         </Dialog>
 
@@ -1669,26 +1669,26 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
         fullWidth
         maxWidth={false} 
         className="dialog-cursor-default"
-        sx={{ '& .MuiDialog-paper': { width: '1200px', maxWidth: '100%' } }}  
+        sx={{ '& .MuiDialog-paper': { width: '850px', maxWidth: '100%' } }}  
       >
        {/*  <DialogTitle id="spectrum-dialog-title">Спектр</DialogTitle> */}
         <DialogContent>
           <DialogContentText>
-            <div style={{ position: 'relative', paddingBottom: '2px' }}>
+            <div style={{ position: 'relative', paddingBottom: '0px' }}>
               <SpectrumChartDialog
                 averageHeight={averageHeight}
                 timeInterval={timeInterval}
                 selectedCollection={selectedCollection}
                 data={spectrumData}
                 isLoading={false}
-                width={1000}
-                height={600}
+                width={850}
+                height={500}
               />
             </div>
           </DialogContentText>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseSpectrumDialog} color="primary">
+        <DialogActions sx={{ paddingBottom: '16px', paddingRight: '16px', marginTop: '-35px' }}> {/* Уменьшаем отступы снизу и смещаем кнопку вверх */}
+          <Button onClick={handleCloseSpectrumDialog} variant="contained" color="primary">
             Закрыть
           </Button>
         </DialogActions>
