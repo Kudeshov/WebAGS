@@ -74,7 +74,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
 
   const [sourceSearchDialogOpen, setSourceSearchDialogOpen] = useState(false);
   const handleOpenSourceSearchDialog = () => {
-    console.log('Диалог выбора');
+    //console.log('Диалог выбора');
     setSourceSearchDialogOpen(true);
   };
   const handleCloseSourceSearchDialog = () => {
@@ -429,7 +429,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
           // Установка WebSocket соединения
           setupWebSocket(statusData._id, globalSettings);
         } else {
-          console.log('Онлайн-полет не активен');
+          //console.log('Онлайн-полет не активен');
         }
       } catch (error) {
         console.error('Ошибка при запросе статуса онлайн-полета:', error);

@@ -44,6 +44,8 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
   const [sourceActivity, setSourceActivity] = useState(0); // Состояние для активности
   const [sourceDeviation, setSourceDeviation] = useState(0); // Состояние для погрешности
 
+  const [mapBounds, setMapBounds] = useState(null); // Состояние для хранения выделенной области
+
   const [globalSettings, setGlobalSettings] = useState({
     latInit: 55.704034038232834,
     lonInit: 37.62119540524117
@@ -107,7 +109,7 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
   const [isLoadingFlight, setIsLoadingFlight] = useState(false);
 
   const fetchCollections = useCallback(() => {
-    console.log('вызвана fetchCollections, onlineFlightID', onlineFlightId);
+    //console.log('вызвана fetchCollections, onlineFlightID', onlineFlightId);
     if (!onlineFlightId && selectedDatabase) {
       fetch(`/api/collection/${selectedDatabase}`)
         .then(response => response.json())
@@ -132,6 +134,7 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
     if (selectedDatabase && selectedCollection && !onlineFlightId) {
       setIsLoadingFlight(true); // Начинаем загрузку
       setSourceCoordinates(null);
+      setMapBounds(null);
       setSourceActivity(0);
       setSourceDeviation(0);
       const apiUrl = `/api/data/${selectedDatabase}/${selectedCollection?._id || null}`;
@@ -211,7 +214,7 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
           setOnlineMeasurements(measurementsData); // Сохраняем данные измерений онлайн-полета
           setValidMeasurements(measurementsData);
         } else {
-          console.log('Онлайн-полет не активен');
+          //console.log('Онлайн-полет не активен');
         }
       } catch (error) {
         console.error('Ошибка при загрузке данных онлайн-полета:', error);
@@ -332,7 +335,9 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
       setSourceDeviation,
       saveDataToFile,
       databaseName,
-      setDatabaseName
+      setDatabaseName,
+      mapBounds,                    // координаты выбранной на карте области
+      setMapBounds
     }}>
       {children}
     </FlightDataContext.Provider>

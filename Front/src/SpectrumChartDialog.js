@@ -289,27 +289,16 @@ function SpectrumChart({ data, selectedCollection, averageHeight, timeInterval, 
         {/* Внешний контейнер с вертикальной ориентацией */}
         <Box sx={{ display: 'flex', flexDirection: 'column', marginTop: '0px' }}>
           {/* Чекбокс с логарифмической шкалой */}
-          {/* <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>  */}
-{/*           <Box sx={{ display: 'flex', alignItems: 'center', marginLeft: '-12px', marginBottom: '3px', marginTop: '-9px' }}>
+          <Box sx={{ display: 'flex', flexDirection: 'row-reverse', marginRight: '-42px', alignItems: 'center', marginBottom: '10px', marginTop: '-9px' }}>
             <Checkbox
               checked={scale === 'log'}
               onChange={(e) => setScale(e.target.checked ? 'log' : 'linear')}
               id="scaleCheckboxDialog"
             />
-            <Typography htmlFor="scaleCheckboxDialog" sx={{ whiteSpace: 'nowrap' }}>Логарифмическая шкала</Typography>
+            <Typography htmlFor="scaleCheckboxDialog" sx={{ whiteSpace: 'nowrap', marginLeft: '22px', marginRight: '8px' }}> {/* Отступ для текста */}
+              Логарифмическая шкала
+            </Typography>
           </Box>
- */}
-
-<Box sx={{ display: 'flex', flexDirection: 'row-reverse', marginRight: '-42px', alignItems: 'center', marginBottom: '10px', marginTop: '-9px' }}>
-  <Checkbox
-    checked={scale === 'log'}
-    onChange={(e) => setScale(e.target.checked ? 'log' : 'linear')}
-    id="scaleCheckboxDialog"
-  />
-  <Typography htmlFor="scaleCheckboxDialog" sx={{ whiteSpace: 'nowrap', marginLeft: '22px', marginRight: '8px' }}> {/* Отступ для текста */}
-    Логарифмическая шкала
-  </Typography>
-</Box>
           {/* Кнопка сброса масштаба */}
           <Button
             onClick={() => {

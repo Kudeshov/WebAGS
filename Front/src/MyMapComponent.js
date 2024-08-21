@@ -99,6 +99,7 @@ function MyMapComponent({ chartOpen, heightFilterActive }) {
   const { minDoseValue, maxDoseValue } = useContext(FlightDataContext);
   const { setSaveMapAsImage } = useContext(FlightDataContext);
   const { sourceCoordinates, sourceActivity, sourceDeviation } = useContext(FlightDataContext);
+  const { setMapBounds } = useContext(FlightDataContext);
   
   const [spectrumData, setSpectrumData] = useState(null);
   const infoPanelRef = useRef(null); // Ссылка на DOM-элемент панели
@@ -279,7 +280,7 @@ function MyMapComponent({ chartOpen, heightFilterActive }) {
       const minTime = Math.min(...times);
       const maxTime = Math.max(...times);
       const timeInterval = (maxTime - minTime) / 1000; // Разница в секундах
-      console.log(selectedPoints, timeInterval)
+      //console.log(selectedPoints, timeInterval)
       // Обновление панели спектра
       if (spectrumPanelRef.current && spectrumPanelRef.current._root) {
         spectrumPanelRef.current._root.render(
@@ -347,14 +348,12 @@ function MyMapComponent({ chartOpen, heightFilterActive }) {
     }
   }, [selectMode]);
 
-/*   const heatPoints = validMeasurements.map(measurement => {
-    const intensity = (measurement.dose - minDoseValue) / (maxDoseValue - minDoseValue);
-    return [measurement.lat, measurement.lon, intensity];
-  }); */
-
   const handleSelectionComplete = (bounds) => {
     // Разбиваем bounds на отдельные переменные для удобства
     const { _southWest, _northEast } = bounds;
+
+    // Сохраняем bounds в контексте
+    setMapBounds(bounds);
   
     // Фильтруем измерения, чтобы найти те, которые находятся внутри прямоугольника
     const selected = validMeasurements.filter((measurement) => {
@@ -379,6 +378,7 @@ function MyMapComponent({ chartOpen, heightFilterActive }) {
       mapElement.style.cursor = 'crosshair';
     } else {
       mapElement.style.cursor = ''; // Resets to default cursor
+      setMapBounds(null);
     }
   }, [selectMode]);
 

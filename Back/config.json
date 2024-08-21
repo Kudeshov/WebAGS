@@ -31,7 +31,7 @@
     "path": "COM3",
     "baudRate": 57600
   },
-  "altitudeSource": "GPS",
+  "altitudeSource": "barometric",
   "sensorTypes": {
     "УДКГ-А01": {
       "zonesOfInterest": [
@@ -90,5 +90,5 @@
       ]
     }
   },
-  "selectedAlgorithm": "algorithm1"
+  "selectedAlgorithm": "algorithm2"
 }
