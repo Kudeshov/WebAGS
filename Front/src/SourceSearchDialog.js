@@ -29,12 +29,23 @@ function SourceSearchDialog({ open, onClose }) {
   
   const { P0 = 70, P1 = 11 } = selectedCollection || {}; // Значения по умолчанию, если нет данных
 
+  const [isEnergyRangeValid, setIsEnergyRangeValid] = useState(true); // Новый стейт для проверки корректности границ
+
   const handleChange = (event) => {
     const { name, value } = event.target;
-    setEnergyRange(prev => ({ ...prev, [name]: parseFloat(value) }));
-    calculateValues();
+    const newEnergyRange = { ...energyRange, [name]: parseFloat(value) };
+    setEnergyRange(newEnergyRange);
+  
+    // Проверяем корректность диапазона энергии
+    if (newEnergyRange.low >= newEnergyRange.high) {
+      setIsEnergyRangeValid(false); // Некорректные значения
+      setPeakCenter('NaN'); // Обнуляем центр пика
+    } else {
+      setIsEnergyRangeValid(true); // Корректные значения
+      calculateValues(); // Пересчитываем значения, если корректные границы
+    }
   };
-
+  
   useEffect(() => {
     if (open) {
       if (energyRange.low === 0 && energyRange.high === 0) {
@@ -49,7 +60,11 @@ function SourceSearchDialog({ open, onClose }) {
     }
   }, [open, selectedZone, energyRange, validMeasurements, P0, P1, globalSettings, currentSensorType]);
   
-  
+  // Сбрасываем energyRange при изменении массива данных или типа датчика
+  useEffect(() => {
+    setEnergyRange({ low: 0, high: 0 }); // Обнуляем диапазон энергии
+  }, [validMeasurements, currentSensorType]);
+
   const handleZoneChange = (event) => {
     const zoneName = event.target.value;
     setSelectedZone(zoneName);
@@ -73,6 +88,12 @@ function SourceSearchDialog({ open, onClose }) {
   };
 
   const calculateValues = () => {
+    if (!isEnergyRangeValid) {
+      // Если диапазон некорректный, не производим вычисления
+      setPeakCenter('NaN');
+      return;
+    }
+  
     const measurements = selectedPoints && selectedPoints.length > 0 ? selectedPoints : validMeasurements;
     if (!measurements || !P0 || !P1 || !globalSettings.SPECDEFTIME) return;
   
@@ -127,32 +148,29 @@ function SourceSearchDialog({ open, onClose }) {
     setAverageHeight(averageHeight.toFixed(2));
     setPeakCenter(peakEnergy.toFixed(2));
   };
-  
 
 
   const handleCalculateSource = () => {
-    const measurements = /* selectedPoints && selectedPoints.length > 0 ? selectedPoints : */ validMeasurements;
-    //console.log('meas1', measurements);
-  
-    let result;
-    
-    // Проверка на наличие выбранного алгоритма
-    if (!globalSettings.selectedAlgorithm || globalSettings.selectedAlgorithm === 'algorithm1') {
-      // Если алгоритм не задан или выбран algorithm1 — вызываем findSourceCoordinates (2D)
-      result = findSourceCoordinates(measurements, energyRange, P0, P1);
-    } else {
-      // Иначе вызываем findSourceCoordinates3D (3D)
-      console.log('mapBounds', mapBounds);
-      result = findSourceCoordinates3D(measurements, energyRange, peakCenter, P0, P1, mapBounds);
+    if (!isEnergyRangeValid) {
+      alert("Неправильные границы энергии. Пожалуйста, исправьте значения.");
+      return;
     }
   
-    //console.log('result', result);
+    const measurements = validMeasurements;
+  
+    let result;
+  
+    if (!globalSettings.selectedAlgorithm || globalSettings.selectedAlgorithm === 'algorithm1') {
+      result = findSourceCoordinates(measurements, energyRange, P0, P1);
+    } else {
+      result = findSourceCoordinates3D(measurements, energyRange, peakCenter, P0, P1, mapBounds);
+    }
   
     if (result && result.coordinates) {
       setSourceCoordinates(result.coordinates);
       setSourceActivity(result.activity.toExponential(5) + ' γ/с');
       setSourceDeviation(result.deviation.toExponential(5) + ' γ/с');
-      onClose(); // Закрыть окно после нахождения точки
+      onClose();
     } else {
       alert("Не удалось определить координаты источника.");
     }
@@ -227,6 +245,7 @@ function SourceSearchDialog({ open, onClose }) {
               fullWidth
               variant="outlined"
               value={peakCenter}
+              onChange={(e) => setPeakCenter(e.target.value)}  // Добавляем обработчик для ввода значения
               size="small"
             />
           </Grid>
@@ -288,7 +307,7 @@ function SourceSearchDialog({ open, onClose }) {
         </Grid>
       </DialogContent>
       <DialogActions>
-        <Button onClick={handleCalculateSource} variant="contained">Найти</Button>
+        <Button onClick={handleCalculateSource} variant="contained" disabled={!isEnergyRangeValid}>Найти</Button>
         <Button onClick={onClose} variant="outlined">Закрыть</Button>
       </DialogActions>
     </Dialog>
