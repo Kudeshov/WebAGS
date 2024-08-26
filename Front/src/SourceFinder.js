@@ -89,7 +89,7 @@ export const findSourceCoordinates3D = (measurements, energyRange, peakEnergy, P
   const refinedSelect = cellSelect(X0 - xmar, Y0 - ymar, nx, ny, xmar, ymar, measurements, wL, wH, C, mu, LDEG, A, AMean, D, NSamples);
 
   console.log( 'Уточненная оценка, индексы квадрата', refinedSelect );
-  console.log( 'A', A );
+//  console.log( 'A', A );
 
   sourceCoordinates.lat = (X0 / ((Math.PI / 180) * 6371000)) + minX;  // Обратное преобразование широты
   sourceCoordinates.lon = (Y0 / ((Math.PI / 180) * 6371000 * Math.cos(minX * Math.PI / 180))) + minY;  // Обратное преобразование долготы с учетом широты
@@ -99,12 +99,13 @@ export const findSourceCoordinates3D = (measurements, energyRange, peakEnergy, P
   const bestIndex = refinedSelect.J0 * ny + refinedSelect.K0;
 
   let a3 = 0;
+  /* 
   let totalD = 0.0;
 
   // 1. Расчет активности a1 (по формуле, аналогичной C++)
   let sda = 0.0;
   let a1 = 0.0;
-/*   for (let i = 0; i < NSamples; i++) {
+  for (let i = 0; i < NSamples; i++) {
     sda += 1 / dA[i * nx * ny + bestIndex];
   }
 
@@ -131,13 +132,11 @@ export const findSourceCoordinates3D = (measurements, energyRange, peakEnergy, P
   
   let minDist = Infinity;
   let closestIndex = -1;
-  //const bestIndex = refinedSelect.J0 * ny + refinedSelect.K0;
   // Поиск ближайшей точки с ненулевым значением A
+  console.log('---Поиск ближайшей точки с ненулевым значением A---');
   for (let ns = 1; ns < measurements.length - 1; ns++) {
     const dist = (measurements[ns].lat - X0) ** 2 + (measurements[ns].lon - Y0) ** 2;
     const closestInd = ns * nx * ny + refinedSelect.J0 * ny + refinedSelect.K0; // Правильный индекс для точки 
-
-//    const closestInd = ns * nx * ny + bestIndex;
     if (dist < minDist) {
       if ( A[closestInd] !== 0 )
       {
@@ -150,14 +149,6 @@ export const findSourceCoordinates3D = (measurements, energyRange, peakEnergy, P
         console.log('В точке dist ',dist, ' closestInd ', closestInd, ' нулевое значение А', measurements[ns], ''); 
       }
     }
-/*     else
-    { 
-      if (A[closestInd] === 0)
-      {  
-        
-      }
-
-    } */
   }
 
   // Если найдено ненулевое значение
@@ -169,12 +160,11 @@ export const findSourceCoordinates3D = (measurements, energyRange, peakEnergy, P
     a3 = 0; // Обработка случая, если ненулевые значения не найдены
   }
  
-
   // 3. Вычисление отклонения da
   const ind = bestIndex;
   const da = 3.84 * Math.sqrt(D[ind] / NSamples);
 
-  console.log('Activity a1:', a1, 'Activity a3 (nearest point):', a3, 'Deviation:', da);
+  console.log('Финальный результат: Activity a3 (nearest point):', a3, 'Deviation:', da);
 
   return {
     coordinates: sourceCoordinates,
@@ -302,7 +292,7 @@ const cellSelect = (Xb, Yb, nx, ny, xmar, ymar, measurements, wL, wH, C, mu, LDE
   let Dmin = Infinity;  // Начальное значение для минимального отклонения (для поиска минимума)
   const NStep = 1000;  // Количество шагов для нормализации интеграла
   const NN = Math.floor(NStep / 2);  // Количество промежуточных шагов для интегрирования
-  let first33times = 2;
+  let first33times = 3;
   console.log('nx, ny', nx, ny);
   // Основные циклы по сетке
   for (let j = 0; j < nx; j++) {
@@ -363,7 +353,7 @@ const cellSelect = (Xb, Yb, nx, ny, xmar, ymar, measurements, wL, wH, C, mu, LDE
 
         if (first33times>0) 
         { 
-          console.log('Проход ', 34-first33times,  ' Integral', Integral, ' C', C, ' intensity', intensity, 
+          console.log('Проход ', 3-first33times,  ' Integral', Integral, ' C', C, ' intensity', intensity, 
             ' A_value', A[ind], ' ind', ind, 'D_local', D_local);
           first33times--;
         }
