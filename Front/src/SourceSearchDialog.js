@@ -14,7 +14,7 @@ import {
   Box
 } from '@mui/material';
 import { FlightDataContext } from './FlightDataContext'; // Импорт контекста
-import { findSourceCoordinates, findSourceCoordinates3D } from './SourceFinder'; // Импорт функции поиска
+import { /* findSourceCoordinates, */ findSourceCoordinates3D } from './SourceFinder'; // Импорт функции поиска
 
 function SourceSearchDialog({ open, onClose }) {
   const [energyRange, setEnergyRange] = useState({ low: 0, high: 0 });
@@ -63,6 +63,7 @@ function SourceSearchDialog({ open, onClose }) {
   // Сбрасываем energyRange при изменении массива данных или типа датчика
   useEffect(() => {
     setEnergyRange({ low: 0, high: 0 }); // Обнуляем диапазон энергии
+    setSelectedZone('Весь спектр'); 
   }, [validMeasurements, currentSensorType]);
 
   const handleZoneChange = (event) => {
@@ -156,12 +157,13 @@ function SourceSearchDialog({ open, onClose }) {
       return;
     }
   
-    const measurements = validMeasurements;
+    //  const measurements = [...validMeasurements];  
+    const measurements = JSON.parse(JSON.stringify(validMeasurements));
   
     let result;
   
     if (!globalSettings.selectedAlgorithm || globalSettings.selectedAlgorithm === 'algorithm1') {
-      result = findSourceCoordinates(measurements, energyRange, P0, P1);
+      result = null; //findSourceCoordinates(measurements, energyRange, P0, P1);
     } else {
       result = findSourceCoordinates3D(measurements, energyRange, peakCenter, P0, P1, mapBounds);
     }
