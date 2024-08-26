@@ -135,7 +135,12 @@ export const findSourceCoordinates3D = (measurements, energyRange, peakEnergy, P
   // Поиск ближайшей точки с ненулевым значением A
   console.log('---Поиск ближайшей точки с ненулевым значением A---');
   for (let ns = 1; ns < measurements.length - 1; ns++) {
-    const dist = (measurements[ns].lat - X0) ** 2 + (measurements[ns].lon - Y0) ** 2;
+    //const dist = (measurements[ns].lat - X0) ** 2 + (measurements[ns].lon - Y0) ** 2;
+
+    const dist = (measurements[ns].lat - X0) ** 2 + 
+      (measurements[ns].lon - Y0) ** 2 + 
+      (measurements[ns].height - 0) ** 2; // Источник на земле, высота = 0
+
     const closestInd = ns * nx * ny + refinedSelect.J0 * ny + refinedSelect.K0; // Правильный индекс для точки 
     if (dist < minDist) {
       if ( A[closestInd] !== 0 )
@@ -405,7 +410,6 @@ const cellSelect = (Xb, Yb, nx, ny, xmar, ymar, measurements, wL, wH, C, mu, LDE
 
 const transform = (measurements, mapBounds) => {
   const R = 6371000.0; // Радиус Земли в метрах
-  //const LDEG = 111320.0; // Средняя длина одного градуса долготы на экваторе в метрах
 
   let minX = Infinity, maxX = -Infinity;
   let minY = Infinity, maxY = -Infinity;
