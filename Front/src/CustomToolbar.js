@@ -1177,7 +1177,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
                 ))}
               </Select>
             </FormControl>
-
+      
             <Box mt={2}>
               {settings.sensorTypes[currentSensorType].zonesOfInterest.map((zone, index) => (
                 <Grid container spacing={2} key={zone.id}>
@@ -1193,7 +1193,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
                       disabled
                     />
                   </Grid>
-                  <Grid item xs={3}>
+                  <Grid item xs={2}>
                     <TextField
                       margin="dense"
                       label="LeftE"
@@ -1205,7 +1205,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
                       onChange={(e) => handleZoneChange(index, 'leftE', e.target.value)}
                     />
                   </Grid>
-                  <Grid item xs={3}>
+                  <Grid item xs={2}>
                     <TextField
                       margin="dense"
                       label="RightE"
@@ -1228,11 +1228,23 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
                       onChange={(e) => handleZoneChange(index, 'Name', e.target.value)}
                     />
                   </Grid>
+                  <Grid item xs={2}>
+                    <TextField
+                      margin="dense"
+                      label="Выход линии, %"
+                      type="number"
+                      fullWidth
+                      size="small"
+                      variant="outlined"
+                      value={zone.lineOutput} // Assuming this is the key in the data for "Выход линии"
+                      onChange={(e) => handleZoneChange(index, 'lineOutput', e.target.value)}
+                    />
+                  </Grid>
                 </Grid>
               ))}
             </Box>
           </>
-        );
+        );  
       case 4: // Прочееcase 3: // Прочее
       return (
         <>

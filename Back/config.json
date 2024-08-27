@@ -39,25 +39,29 @@
           "id": 1,
           "leftE": "300",
           "rightE": "400",
-          "Name": "Йод-131"
+          "Name": "Йод-131",
+          "lineOutput": "5"
         },
         {
           "id": 2,
           "leftE": "500",
           "rightE": "600",
-          "Name": "Стронций-90"
+          "Name": "Стронций-90",
+          "lineOutput": "4"
         },
         {
           "id": 3,
           "leftE": "600",
           "rightE": "700",
-          "Name": "Цезий-137"
+          "Name": "Цезий-137",
+          "lineOutput": "4"
         },
         {
           "id": 4,
           "leftE": "1000",
           "rightE": "1200",
-          "Name": "Плутоний-239"
+          "Name": "Плутоний-239",
+          "lineOutput": ""
         }
       ]
     },
@@ -67,25 +71,29 @@
           "id": 1,
           "leftE": 110,
           "rightE": "211",
-          "Name": "Cs-137"
+          "Name": "Cs-137",
+          "lineOutput": "55"
         },
         {
           "id": 2,
           "leftE": 320,
           "rightE": 420,
-          "Name": "Калий-40"
+          "Name": "Калий-40",
+          "lineOutput": "66"
         },
         {
           "id": 3,
           "leftE": 530,
           "rightE": 630,
-          "Name": "Уран"
+          "Name": "Уран",
+          "lineOutput": "47"
         },
         {
           "id": 4,
           "leftE": 740,
           "rightE": 840,
-          "Name": "Торий"
+          "Name": "Торий",
+          "lineOutput": "65"
         }
       ]
     }
