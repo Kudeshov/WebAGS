@@ -37,31 +37,31 @@
       "zonesOfInterest": [
         {
           "id": 1,
-          "leftE": "300",
-          "rightE": "400",
-          "Name": "Йод-131",
-          "lineOutput": "5"
+          "leftE": "600",
+          "rightE": "700",
+          "Name": "Cs-137",
+          "lineOutput": "85"
         },
         {
           "id": 2,
-          "leftE": "500",
-          "rightE": "600",
-          "Name": "Стронций-90",
-          "lineOutput": "4"
+          "leftE": "1400",
+          "rightE": "1500",
+          "Name": "K-40",
+          "lineOutput": "10.7"
         },
         {
           "id": 3,
-          "leftE": "600",
-          "rightE": "700",
-          "Name": "Цезий-137",
-          "lineOutput": "4"
+          "leftE": "1700",
+          "rightE": "1800",
+          "Name": "Bi-214",
+          "lineOutput": "15.9"
         },
         {
           "id": 4,
-          "leftE": "1000",
-          "rightE": "1200",
-          "Name": "Плутоний-239",
-          "lineOutput": ""
+          "leftE": "2550",
+          "rightE": "2700",
+          "Name": "Tl-208",
+          "lineOutput": "99.8"
         }
       ]
     },

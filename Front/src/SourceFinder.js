@@ -13,10 +13,7 @@ export const findSourceCoordinates3D = (measurements, energyRange, peakEnergy, P
 
   console.log('Предварительное вычисление C=',C,' YE=',YE,' eps=',eps);
 
-  // Константы преобразования
-  const Mr = 6367449.0;
-  const LDEG = 110900.0;
-
+ 
   // Функция установки энергии
   const setEnergy = (energy) => {
       const w = [13.6759, 135.0362, -18.74111, 24.51013, -4.12014, -2.89794, 0.89535];
@@ -74,7 +71,7 @@ export const findSourceCoordinates3D = (measurements, energyRange, peakEnergy, P
   console.log('Xzone_b, Yzone_b, nx, ny, xmar, ymar', Xzone_b, Yzone_b, nx, ny, xmar, ymar);
   console.log('wL, wH, C, mu', wL, wH, C, mu);
 
-  const { J0, K0 } = cellSelect(Xzone_b, Yzone_b, nx, ny, xmar, ymar, measurements, wL, wH, C, mu, LDEG, A, AMean, D, NSamples);
+  const { J0, K0 } = cellSelect(Xzone_b, Yzone_b, nx, ny, xmar, ymar, measurements, wL, wH, C, mu, A, AMean, D, NSamples);
 
   console.log( 'Грубая оценка - индексы квадрата', J0, K0 );
   // Плотная сетка на основе первых вычислений
@@ -86,7 +83,7 @@ export const findSourceCoordinates3D = (measurements, energyRange, peakEnergy, P
 
   console.log( 'Шаг плотной сетки, м (x,y)', xmar, ymar );
 
-  const refinedSelect = cellSelect(X0 - xmar, Y0 - ymar, nx, ny, xmar, ymar, measurements, wL, wH, C, mu, LDEG, A, AMean, D, NSamples);
+  const refinedSelect = cellSelect(X0 - xmar, Y0 - ymar, nx, ny, xmar, ymar, measurements, wL, wH, C, mu, A, AMean, D, NSamples);
 
   console.log( 'Уточненная оценка, индексы квадрата', refinedSelect );
 //  console.log( 'A', A );
@@ -284,14 +281,13 @@ const calculateIntegralSimpson = (x1, y1, z1, x2, y2, z2, X, Y, Z, mu) => {
  * @param {number} C - Константа для расчета интенсивности.
  * @param {number} mu - Коэффициент затухания.
  * @param {number} F_Fi - Коэффициента для преобразования координат широты.
- * @param {number} LDEG - Коэффициент для преобразования координат долготы.
  * @param {Array} A - Массив значений интенсивности для каждой ячейки.
  * @param {Array} AMean - Массив средних значений интенсивности для каждой ячейки.
  * @param {Array} D - Массив отклонений для каждой ячейки.
  * @param {number} NSamples - Количество сэмплов (точек измерений).
  * @returns {Object} - Объект с координатами ячейки с минимальным отклонением.
  */
-const cellSelect = (Xb, Yb, nx, ny, xmar, ymar, measurements, wL, wH, C, mu, LDEG, A, AMean, D, NSamples) => {
+const cellSelect = (Xb, Yb, nx, ny, xmar, ymar, measurements, wL, wH, C, mu, A, AMean, D, NSamples) => {
   cnt = 0;
   let J0 = 0, K0 = 0;  // Инициализация переменных для хранения индексов лучшей ячейки
   let Dmin = Infinity;  // Начальное значение для минимального отклонения (для поиска минимума)
