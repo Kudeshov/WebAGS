@@ -51,6 +51,9 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
     lonInit: 37.62119540524117
   }); // Инициализация состояния для хранения глобальных настроек
 
+  // Локальные состояния для выпадающего списка зон интереса
+  const [doseType, setDoseType] = useState(1); // Выбранное значение по умолчанию
+
   useEffect(() => {
     const fetchSettings = () => {
       fetch('/api/settings')
@@ -337,7 +340,9 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
       databaseName,
       setDatabaseName,
       mapBounds,                    // координаты выбранной на карте области
-      setMapBounds
+      setMapBounds,
+      doseType, 
+      setDoseType
     }}>
       {children}
     </FlightDataContext.Provider>

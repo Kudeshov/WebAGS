@@ -4,15 +4,26 @@ import Slider from '@mui/material/Slider';
 import { calculateColorThresholds } from './colorUtils';
 import './VerticalSlidersPanel.css'; // Импорт стилей
 import Button from '@mui/material/Button'; // Импорт компонента кнопки MUI
+import Select from '@mui/material/Select'; // Импорт выпадающего списка MUI
+import MenuItem from '@mui/material/MenuItem'; // Импорт пункта списка MUI
+import InputLabel from '@mui/material/InputLabel'; // Импорт метки для выпадающего списка MUI
+import FormControl from '@mui/material/FormControl'; // Импорт контейнера для поля ввода MUI
 
 const VerticalSlidersPanel = () => {
   const { heightFrom, heightTo, heightFilterFrom, heightFilterTo, setHeightFilterFrom, 
           setHeightFilterTo, colorThresholds, setColorThresholds, minDoseValue, maxDoseValue,
-          minDoseValueR, maxDoseValueR } = useContext(FlightDataContext);
+          minDoseValueR, maxDoseValueR, selectedCollection, globalSettings, currentSensorType,
+          doseType, setDoseType } = useContext(FlightDataContext);
 
   // Локальные состояния для управления ползунками
   const [localHeightFrom, setLocalHeightFrom] = useState(heightFilterFrom);
   const [localHeightTo, setLocalHeightTo] = useState(heightFilterTo);
+
+  const [zonesOfInterest, setZonesOfInterest] = useState([]); // Список зон интереса для сенсора
+
+  const handleDoseTypeChange = (event) => {
+    setDoseType(event.target.value);
+  };
 
   // Обработчик изменения положения ползунков
   const handleHeightChange = (event, newValue) => {
@@ -25,6 +36,16 @@ const VerticalSlidersPanel = () => {
     setHeightFilterFrom(newValue[0]);
     setHeightFilterTo(newValue[1]);
   };
+
+  // Загрузка списка зон интереса при изменении типа сенсора
+  useEffect(() => {
+    console.log(globalSettings);
+    if (globalSettings?.sensorTypes?.[currentSensorType]) {
+      const sensorTypeData = globalSettings.sensorTypes[currentSensorType];
+      const zones = sensorTypeData.zonesOfInterest || []; // Ищем зоны интереса для сенсора
+      setZonesOfInterest(zones); // Устанавливаем зоны в состоянии
+    }
+  }, [currentSensorType, globalSettings]);
 
   // Обновление локальных состояний при изменении глобальных
   useEffect(() => {
@@ -98,7 +119,45 @@ const VerticalSlidersPanel = () => {
       </div>
       
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <div className="sliderTitle">МЭД, мкЗв/ч</div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        {selectedCollection?.is_online? (
+          <>
+            <div className="sliderTitle">МЭД, мкЗв/ч</div>
+ 
+          </>
+        ) : (
+          <FormControl sx={{ m: 1, minWidth: 120, fontSize: '12px' }} size="small" >
+            <InputLabel sx={{ fontSize: '12px' }}>Тип МЭД</InputLabel>
+            <Select
+              value={doseType}
+              onChange={handleDoseTypeChange}
+              sx={{ fontSize: '12px' }} // Уменьшение шрифта для отображаемого значения
+              MenuProps={{
+                PaperProps: {
+                  sx: {
+                    fontSize: '12px', // Уменьшение шрифта для элементов списка
+                  },
+                },
+              }}
+              label="Тип МЭД"
+               labelId="dose-type-label"
+            >
+              <MenuItem value={1} sx={{ fontSize: '12px' }}>МЭД(1м)</MenuItem>
+              <MenuItem value={2} sx={{ fontSize: '12px' }}>МЭД(точка)</MenuItem>
+              <MenuItem value={3} sx={{ fontSize: '12px' }}>МЭД(окно)</MenuItem>
+              {/* Динамическое добавление зон интереса */}
+              {zonesOfInterest.map((zone, index) => (
+                <MenuItem key={index} value={4 + index} sx={{ fontSize: '12px' }}>
+                  {zone.Name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          )}
+        </div>
+
+      {/*   <div className="sliderTitle">МЭД, мкЗв/ч</div> */}
         <div className="sliderValue">{`${maxDoseValueR}`}</div>
         <div style={{ marginTop: '15px', marginBottom: '15px', display: 'flex', alignItems: 'center' }}>
           <Slider
