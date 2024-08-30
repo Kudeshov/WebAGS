@@ -181,7 +181,7 @@ function MyMapComponent({ chartOpen, heightFilterActive }) {
     // This assumes there's an array of selected points
     if (selectedPoints.length > 0) {
       // Calculate sums and ranges
-      let sumDose = 0, sumDoseW = 0, sumGeiger1 = 0, sumGeiger2 = 0, sumGMDose1 = 0, sumGMDose2 = 0;
+      let sumDose = 0, /* sumDoseW = 0,  */sumGeiger1 = 0, sumGeiger2 = 0, sumGMDose1 = 0, sumGMDose2 = 0;
       let minTime = new Date('9999-12-31T23:59:59Z'), maxTime = new Date('1000-01-01T00:00:00Z');
       let minLat = Infinity, maxLat = -Infinity;
       let minLong = Infinity, maxLong = -Infinity;
@@ -189,7 +189,7 @@ function MyMapComponent({ chartOpen, heightFilterActive }) {
         // Iterate over selectedPoints to accumulate values and find min/max
         selectedPoints.forEach(point => {
           sumDose += parseFloat(point.dose);
-          sumDoseW += point.dosew;
+          //sumDoseW += point.dosew;
           sumGeiger1 += point.geiger1;
           sumGeiger2 += point.geiger2;
           sumGMDose1 += point.gmdose1;
@@ -206,7 +206,7 @@ function MyMapComponent({ chartOpen, heightFilterActive }) {
   
       // Calculate averages
       const avgDose = sumDose / selectedPoints.length;
-      const avgCountW = sumDoseW / selectedPoints.length;
+      //const avgCountW = sumDoseW / selectedPoints.length;
       const avgGeiger1 = sumGeiger1 / selectedPoints.length;
       const avgGeiger2 = sumGeiger2 / selectedPoints.length;
       const avgGMDose1 = sumGMDose1 / selectedPoints.length;
@@ -219,7 +219,7 @@ function MyMapComponent({ chartOpen, heightFilterActive }) {
       // Create the averageMeasurement object
       const tempAverageMeasurement = {
         dose: avgDose,
-        dosew: avgCountW,
+        //dosew: avgCountW,
         timeRange: timeRange,
         latRange: latRange,
         longRange: longRange,
@@ -567,7 +567,8 @@ function MyMapComponent({ chartOpen, heightFilterActive }) {
     if (infoPanelRef.current && averageMeasurement && averageDiapasone) {
       const altitudeLabel = globalSettings.altitudeSource === 'barometric' ? 'Высота баром.' : 'Высота GPS.';
       const altitudeRange = globalSettings.altitudeSource === 'barometric' ? averageDiapasone.heightRange : averageDiapasone.altRange;
-
+//Мощность дозы (по окну): ${parseFloat(averageMeasurement.dosew).toFixed(2)} мкЗв/час<br>
+//Мощность дозы (по окну): ${parseFloat(averageMeasurement.dosew).toFixed(2)} мкЗв/час<br>
       if (selectedPoints.length > 1) {
         infoPanelRef.current.innerHTML = `
           Количество измерений: ${selectedPoints.length}<br>
@@ -578,7 +579,6 @@ function MyMapComponent({ chartOpen, heightFilterActive }) {
           Широта: ${averageDiapasone.latRange[0].toFixed(6)} - ${averageDiapasone.latRange[1].toFixed(6)}<br>
           ${altitudeLabel}: ${altitudeRange[0].toFixed(2)} - ${altitudeRange[1].toFixed(2)} м<br>
           Мощность дозы (полином): ${parseFloat(averageMeasurement.dose).toFixed(2)} мкЗв/час<br>
-          Мощность дозы (по окну): ${parseFloat(averageMeasurement.dosew).toFixed(2)} мкЗв/час<br>
           Счётчик ГМ1: ${averageMeasurement.geiger1.toFixed(6)} имп/с<br>
           Счётчик ГМ2: ${averageMeasurement.geiger2.toFixed(6)} имп/с<br>
           Мощность дозы ГМ: ${averageMeasurement.gmdose1.toFixed(6)} мкЗв/час`
@@ -592,7 +592,6 @@ function MyMapComponent({ chartOpen, heightFilterActive }) {
           Широта: ${averageDiapasone.latRange[0].toFixed(6)} <br>
           ${altitudeLabel}: ${altitudeRange[0].toFixed(2)} м<br>
           Мощность дозы (полином): ${parseFloat(averageMeasurement.dose).toFixed(2)} мкЗв/час<br>
-          Мощность дозы (по окну): ${parseFloat(averageMeasurement.dosew).toFixed(2)} мкЗв/час<br>
           Счётчик ГМ1: ${averageMeasurement.geiger1} имп/с<br>
           Счётчик ГМ2: ${averageMeasurement.geiger2} имп/с<br>
           Мощность дозы ГМ1: ${averageMeasurement.gmdose1} мкЗв/час`        
@@ -630,9 +629,16 @@ function MyMapComponent({ chartOpen, heightFilterActive }) {
     );
 
     const cellSize = 0.003; // Размер ячейки для интерполяции
-  
+
+    // Определяем минимальный ограничивающий прямоугольник (envelope) для всех точек
+    const envelope = turf.envelope(pointsCollection);
+
+    // Опционально можно увеличить область на 10% с помощью transformScale
+    const expandedEnvelope = turf.transformScale(envelope, 1.1); // Увеличиваем на 10%
+
     // Выполнение интерполяции
-    const interpolated = turf.interpolate(pointsCollection, cellSize, { gridType: 'point', property: 'dose' });
+    const interpolated = turf.interpolate(pointsCollection, cellSize, { gridType: 'point', property: 'dose',
+      mask: expandedEnvelope });
 
     // Получение минимального и максимального значений дозы после интерполяции
     const minDose = Math.min(...interpolated.features.map(f => f.properties.dose));
@@ -766,9 +772,17 @@ function MyMapComponent({ chartOpen, heightFilterActive }) {
     );
 
     const cellSize = 0.003; // Размер ячейки для интерполяции
-  
+
+    const bounds = turf.bbox(pointsCollection); // Получаем границы области
+    const expandedBounds = [
+      bounds[0] - 0.01, // Уменьшаем минимальную долготу
+      bounds[1] - 0.01, // Уменьшаем минимальную широту
+      bounds[2] + 0.01, // Увеличиваем максимальную долготу
+      bounds[3] + 0.01  // Увеличиваем максимальную широту
+    ];
+    
     // Выполнение интерполяции
-    const interpolated = turf.interpolate(pointsCollection, cellSize, { gridType: 'point', property: 'dose' });
+    const interpolated = turf.interpolate(pointsCollection, cellSize, { gridType: 'point', property: 'dose', bbox: expandedBounds });
   
     // Получение минимального и максимального значений дозы после интерполяции
     const minDose = Math.min(...interpolated.features.map(f => f.properties.dose));
@@ -780,7 +794,7 @@ function MyMapComponent({ chartOpen, heightFilterActive }) {
       minDose + (maxDose - minDose) * (i / (numBreaks - 1))
     );
     // Создание изобендов на основе рассчитанных уровней
-    const bands = turf.isobands(interpolated, breaks, {zProperty: 'dose'});
+    const bands = turf.isobands(interpolated, breaks, {zProperty: 'dose', bbox: expandedBounds});
   
     // Кэширование рассчитанных изобендов
     setCachedIsobands({

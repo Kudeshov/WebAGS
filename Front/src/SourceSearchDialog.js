@@ -14,13 +14,13 @@ import {
   Box
 } from '@mui/material';
 import { FlightDataContext } from './FlightDataContext'; // Импорт контекста
-import { /* findSourceCoordinates, */ findSourceCoordinates3D } from './SourceFinder'; // Импорт функции поиска
+import { findSourceCoordinatesInterpolate, findSourceCoordinates3D } from './SourceFinder'; // Импорт функции поиска
 
 function SourceSearchDialog({ open, onClose }) {
   const [energyRange, setEnergyRange] = useState({ low: 0, high: 0 });
   const [peakCenter, setPeakCenter] = useState('');
   const [averageHeight, setAverageHeight] = useState(0);
-  const [selectedZone, setSelectedZone] = useState('Весь спектр'); // Инициализация на "Весь спектр"
+  const [selectedZone, setSelectedZone] = useState('');  
 
   const { currentSensorType = "УДКГ-А01", globalSettings,
     sourceCoordinates, setSourceCoordinates, sourceActivity, setSourceActivity, sourceDeviation, setSourceDeviation } = useContext(FlightDataContext);
@@ -62,31 +62,31 @@ function SourceSearchDialog({ open, onClose }) {
   
   // Сбрасываем energyRange при изменении массива данных или типа датчика
   useEffect(() => {
-    setEnergyRange({ low: 0, high: 0 }); // Обнуляем диапазон энергии
-    setSelectedZone('Весь спектр'); 
-  }, [validMeasurements, currentSensorType]);
+    if (globalSettings?.sensorTypes?.[currentSensorType]?.zonesOfInterest?.length) {
+      const firstZoneName = globalSettings.sensorTypes[currentSensorType].zonesOfInterest[0].Name;
+      setSelectedZone(firstZoneName); // Устанавливаем первый выбор
+      handleZoneChange(firstZoneName); // Обновляем диапазон
+    }
+  }, [validMeasurements, currentSensorType, selectedCollection]);
+  
 
-  const handleZoneChange = (event) => {
-    const zoneName = event.target.value;
+  const handleZoneChange = (eventOrZoneName) => {
+    // Проверяем, что было передано: событие или конкретное имя зоны
+    const zoneName = typeof eventOrZoneName === 'string' ? eventOrZoneName : eventOrZoneName.target.value;
+    
     setSelectedZone(zoneName);
   
-    // Обновляем диапазон энергий только если значения не были изменены вручную
-    if (zoneName === 'Весь спектр') {
-       
-        setEnergyRange({
-            low: P0,
-            high: P0 + P1 * (globalSettings.NSPCHANNELS - 1)
-        });
-       
-    } else if (globalSettings?.sensorTypes?.[currentSensorType]) {
+    if (globalSettings?.sensorTypes?.[currentSensorType]) {
       const zone = globalSettings.sensorTypes[currentSensorType].zonesOfInterest.find(z => z.Name === zoneName);
       if (zone) {
         setEnergyRange({ low: zone.leftE, high: zone.rightE });
       }
     }
-
-    calculateValues(); 
+  
+    calculateValues();
   };
+  
+  
 
   const calculateValues = () => {
     if (!isEnergyRangeValid) {
@@ -163,15 +163,15 @@ function SourceSearchDialog({ open, onClose }) {
     let result;
   
     if (!globalSettings.selectedAlgorithm || globalSettings.selectedAlgorithm === 'algorithm1') {
-      result = null; //findSourceCoordinates(measurements, energyRange, P0, P1);
+      result = findSourceCoordinatesInterpolate(measurements, energyRange, peakCenter, P0, P1, mapBounds);
     } else {
       result = findSourceCoordinates3D(measurements, energyRange, peakCenter, P0, P1, mapBounds);
     }
   
     if (result && result.coordinates) {
       setSourceCoordinates(result.coordinates);
-      setSourceActivity(result.activity.toExponential(5) + ' γ/с');
-      setSourceDeviation(result.deviation.toExponential(5) + ' γ/с');
+      setSourceActivity(result.activity?.toExponential(5) + ' γ/с');
+      setSourceDeviation(result.deviation?.toExponential(5) + ' γ/с');
       onClose();
     } else {
       alert("Не удалось определить координаты источника.");
@@ -200,7 +200,6 @@ function SourceSearchDialog({ open, onClose }) {
                 onChange={handleZoneChange}
                 label="Зона интереса"
               >
-                <MenuItem value="Весь спектр" size="small">Весь спектр</MenuItem>
                 {globalSettings?.sensorTypes?.[currentSensorType]?.zonesOfInterest?.map((zone) => (
                   <MenuItem key={zone.Name} value={zone.Name} size="small">
                     {zone.Name}

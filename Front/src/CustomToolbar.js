@@ -343,12 +343,6 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   
 
   useEffect(() => {
-
-    //let validData = onlineMeasurements.filter(m => m.lat >= 0 && m.lon >= 0 && m.dose >= 0 && m.dosew >= 0 && m.countw<1000000);
-    //console.log('filter by height');
-    //setValidMeasurements(onlineMeasurements);
-
-    //setValidMeasurements(onlineMeasurements);
     setMeasurements(onlineMeasurements);
     //console.log('onlineMeasurements', onlineMeasurements);
   }, [onlineMeasurements, setMeasurements, setValidMeasurements]);
@@ -1396,8 +1390,8 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
               onChange={(e) => setSettings({ ...settings, selectedAlgorithm: e.target.value })}
               label="Алгоритм поиска источника"
             >
-              <MenuItem value="algorithm1">Алгоритм 1 (2D)</MenuItem>
-              <MenuItem value="algorithm2">Алгоритм 2 (3D)</MenuItem>
+              <MenuItem value="algorithm1">Алгоритм интерполяции</MenuItem>
+              <MenuItem value="algorithm2">Алгоритм сеточного поиска</MenuItem>
             </Select>
           </FormControl>
         </>

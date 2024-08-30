@@ -145,10 +145,10 @@ const VerticalSlidersPanel = () => {
             >
               <MenuItem value={1} sx={{ fontSize: '12px' }}>МЭД(1м)</MenuItem>
               <MenuItem value={2} sx={{ fontSize: '12px' }}>МЭД(точка)</MenuItem>
-              <MenuItem value={3} sx={{ fontSize: '12px' }}>МЭД(окно)</MenuItem>
+              {/* <MenuItem value={3} sx={{ fontSize: '12px' }}>МЭД(окно)</MenuItem> */}
               {/* Динамическое добавление зон интереса */}
               {zonesOfInterest.map((zone, index) => (
-                <MenuItem key={index} value={4 + index} sx={{ fontSize: '12px' }}>
+                <MenuItem key={index} value={3 + index} sx={{ fontSize: '12px' }}>
                   {zone.Name}
                 </MenuItem>
               ))}

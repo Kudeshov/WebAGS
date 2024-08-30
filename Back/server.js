@@ -379,8 +379,10 @@ async function handleOnlineFlights(db, collectionId) {
             alt: coords.alt,
             height: heightRounded,
             countw: row.winCount,
-            dosew: windose,
-            dose: windose, // Возможно, здесь следует использовать другое значение в зависимости от контекста
+           // dosew: 0,
+            dose1: 0,
+            dosep: 0,
+            dose: windose,
             geiger1: row.geiger1,
             geiger2: row.geiger2,
             gmdose1: gmDose1,
@@ -441,6 +443,7 @@ async function handleOfflineFlights(db, collectionId) {
           const spectrum = new Spectrum(spectrumData, config.SPECDEFTIME);
           const countInWindow = spectrum.valueInChannels(config.winLow, config.winHigh, false);
           const windose = getDose(countInWindow, row.rHeight, false, 1, config.gm1Coeff, config.gm2Coeff, config.winCoeff); 
+          const dose_h1 = getDose(countInWindow, 1, false, 1, config.gm1Coeff, config.gm2Coeff, config.winCoeff); 
           const gmDose1 = getDose(row.geiger1, row.rHeight, true, 1, config.gm1Coeff, config.gm2Coeff, config.winCoeff); 
           const gmDose2 = getDose(row.geiger2, row.rHeight, true, 2, config.gm1Coeff, config.gm2Coeff, config.winCoeff);
           const height = row.rHeight > config.MAX_ALLOWED_HEIGHT ? 0 : row.rHeight; // Обработка условия для высоты
@@ -453,8 +456,10 @@ async function handleOfflineFlights(db, collectionId) {
             alt: coords.alt,
             height,
             countw: countInWindow,
-            dosew: windose,
-            dose: spectrum.calculateTotalDose(eP0, eP1, doseRateConversionFactors),
+            //dosew: windose,
+            dose1: dose_h1,
+            dosep: spectrum.calculateTotalDose(eP0, eP1, doseRateConversionFactors),
+            dose: dose_h1, //spectrum.calculateTotalDose(eP0, eP1, doseRateConversionFactors),
             geiger1: row.geiger1,
             geiger2: row.geiger2,
             gmdose1: gmDose1,
@@ -801,7 +806,7 @@ function insertOnlineMeasurement(db, flightId, measurementData) {
           alt: coords.alt, // Нужно будет добавить в measurementData
           height: measurementData.rHeight,
           countw: measurementData.winCount,
-          dosew: windose, // Это значение должно быть рассчитано заранее
+          //dosew: windose, // Это значение должно быть рассчитано заранее
           dose: windose,
           geiger1: measurementData.geiger1,
           geiger2: measurementData.geiger2,

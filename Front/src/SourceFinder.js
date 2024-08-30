@@ -1,4 +1,6 @@
+import * as turf from '@turf/turf';
 const integrate = require('integrate-adaptive-simpson');
+const R = 6371000.0; // Радиус Земли в метрах
 
 export const findSourceCoordinates3D = (measurements, energyRange, peakEnergy, P0, P1, mapBounds) => {
   const wL = Math.round((energyRange.low - P0) / P1);
@@ -11,9 +13,6 @@ export const findSourceCoordinates3D = (measurements, energyRange, peakEnergy, P
   const YE = 0.85; 
   let C = 4 * Math.PI / (YE * S * eps);
 
-  console.log('Предварительное вычисление C=',C,' YE=',YE,' eps=',eps);
-
- 
   // Функция установки энергии
   const setEnergy = (energy) => {
       const w = [13.6759, 135.0362, -18.74111, 24.51013, -4.12014, -2.89794, 0.89535];
@@ -35,134 +34,81 @@ export const findSourceCoordinates3D = (measurements, energyRange, peakEnergy, P
       C = 4 * Math.PI / (YE * S * eps);  // Обновляем C с новым eps
   };
 
-
   // Устанавливаем значения mu и eps на основе энергии пика
   setEnergy(peakEnergy);
 
-  console.log('Вычисление C=',C,'peakEnergy=',peakEnergy,' YE=',YE,' eps=',eps);
-
-  // Определение количества используемых сэмплов, исключая первый и последний элементы
   const NSamples = measurements.length - 2;
+  console.log('NSamples ', NSamples);
 
+  mapBounds = defineBounds(measurements, mapBounds);
 
-  console.log('Количество точек без двух крайних NSamples=',NSamples);
+  console.log('mapBounds ', mapBounds);
+  console.log('Исходные координаты точки 0, градусы', measurements[0].lat, measurements[0].lon);
 
-  // Преобразуем координаты 
-  console.log( 'Исходные координаты точки 0, градусы', measurements[0].lat, measurements[0].lon );
-  const { Xzone_b, Yzone_b, Xzone_e, Yzone_e, minX, minY } = transform(measurements, mapBounds);
-  console.log( 'Преобразованные координаты точки 0, метры', measurements[0].lat, measurements[0].lon );
-  console.log('Прямоугольник в м: Xzone_b ', Xzone_b,'Xzone_e ', Xzone_e, 'Yzone_b ', Yzone_b, 'Yzone_e ', Yzone_e);
- 
- 
+  // Определяем грубую сетку, без преобразования координат
   const nx = 21;
   const ny = 21;
 
-  let xmar = (Xzone_e - Xzone_b) / (nx - 1);
-  let ymar = (Yzone_e - Yzone_b) / (ny - 1);
-  
-  console.log( 'Шаг грубой сетки, м (x,y)', xmar, ymar );
+  let xmar = (mapBounds._northEast.lat - mapBounds._southWest.lat) / (nx - 1);
+  let ymar = (mapBounds._northEast.lng - mapBounds._southWest.lng) / (ny - 1);
+
   let sourceCoordinates = { lat: 0, lon: 0 };
 
   let A = new Array(nx * ny).fill(0);
   let AMean = new Array(nx * ny).fill(0);
   let D = new Array(nx * ny).fill(0);
 
-  // Вызов функции для начальной грубой сетки
-  console.log('Xzone_b, Yzone_b, nx, ny, xmar, ymar', Xzone_b, Yzone_b, nx, ny, xmar, ymar);
-  console.log('wL, wH, C, mu', wL, wH, C, mu);
+  const { J0, K0 } = cellSelect(mapBounds._southWest.lat, mapBounds._southWest.lng, nx, ny, xmar, ymar, measurements, wL, wH, C, mu, A, AMean, D, NSamples);
 
-  const { J0, K0 } = cellSelect(Xzone_b, Yzone_b, nx, ny, xmar, ymar, measurements, wL, wH, C, mu, A, AMean, D, NSamples);
+  console.log('Грубая оценка - индексы квадрата', J0, K0);
 
-  console.log( 'Грубая оценка - индексы квадрата', J0, K0 );
-  // Плотная сетка на основе первых вычислений
-  const X0 = Xzone_b + J0 * xmar;
-  const Y0 = Yzone_b + K0 * ymar;
-  
+  const X0 = mapBounds._southWest.lat + J0 * xmar;
+  const Y0 = mapBounds._southWest.lng + K0 * ymar;
+
   xmar = 2 * xmar / (nx - 1);
   ymar = 2 * ymar / (ny - 1);
 
-  console.log( 'Шаг плотной сетки, м (x,y)', xmar, ymar );
-
   const refinedSelect = cellSelect(X0 - xmar, Y0 - ymar, nx, ny, xmar, ymar, measurements, wL, wH, C, mu, A, AMean, D, NSamples);
+ 
+  const X01 = refinedSelect.J0 * xmar;
+  const Y01 = refinedSelect.K0 * ymar;
 
-  console.log( 'Уточненная оценка, индексы квадрата', refinedSelect );
-//  console.log( 'A', A );
-
-  sourceCoordinates.lat = (X0 / ((Math.PI / 180) * 6371000)) + minX;  // Обратное преобразование широты
-  sourceCoordinates.lon = (Y0 / ((Math.PI / 180) * 6371000 * Math.cos(minX * Math.PI / 180))) + minY;  // Обратное преобразование долготы с учетом широты
+// const refinedSelect = { J0, K0 };
   
-  console.log( 'Координаты источника: ', sourceCoordinates );
+  sourceCoordinates.lat = X0 ; //+X01;
+  sourceCoordinates.lon = Y0; //+Y01;
+ 
+  console.log('Координаты источника: ', sourceCoordinates);
 
   const bestIndex = refinedSelect.J0 * ny + refinedSelect.K0;
-
   let a3 = 0;
-  /* 
-  let totalD = 0.0;
 
-  // 1. Расчет активности a1 (по формуле, аналогичной C++)
-  let sda = 0.0;
-  let a1 = 0.0;
-  for (let i = 0; i < NSamples; i++) {
-    sda += 1 / dA[i * nx * ny + bestIndex];
-  }
-
-  for (let i = 0; i < NSamples; i++) {
-    const index = i * nx * ny + bestIndex;
-    a1 += A[index] / (dA[index] * sda);
-  } */
-
-  // 2. Расчет активности по ближайшей точке (a3)
-/*   let minDist = Infinity;
-  let closestIndex = 0;
-
-  for (let i = 0; i < NSamples; i++) {
-    const dist = (measurements[i].lat - X0) ** 2 + (measurements[i].lon - Y0) ** 2;
-    if (dist < minDist) {
-      minDist = dist;
-      closestIndex = i;
-    }
-  }
-
-  const closestInd = closestIndex * nx * ny + bestIndex;
-  a3 = A[closestInd]; */
-
-  
   let minDist = Infinity;
   let closestIndex = -1;
-  // Поиск ближайшей точки с ненулевым значением A
-  console.log('---Поиск ближайшей точки с ненулевым значением A---');
+
   for (let ns = 1; ns < measurements.length - 1; ns++) {
-    //const dist = (measurements[ns].lat - X0) ** 2 + (measurements[ns].lon - Y0) ** 2;
-
     const dist = (measurements[ns].lat - X0) ** 2 + 
-      (measurements[ns].lon - Y0) ** 2 + 
-      (measurements[ns].height - 0) ** 2; // Источник на земле, высота = 0
+                 (measurements[ns].lon - Y0) ** 2 + 
+                 (measurements[ns].height - 0) ** 2;
 
-    const closestInd = ns * nx * ny + refinedSelect.J0 * ny + refinedSelect.K0; // Правильный индекс для точки 
+    const closestInd = ns * nx * ny + refinedSelect.J0 * ny + refinedSelect.K0;
+
     if (dist < minDist) {
-      if ( A[closestInd] !== 0 )
-      {
-        console.log('dist', dist, 'minDist', minDist, 'A[closestInd]', A[closestInd], measurements[ns]);
+      if (A[closestInd] !== 0) {
         minDist = dist;
         closestIndex = ns;
       }
-      else
-      {
-        console.log('В точке dist ',dist, ' closestInd ', closestInd, ' нулевое значение А', measurements[ns], ''); 
-      }
     }
   }
 
-  // Если найдено ненулевое значение
   if (closestIndex !== -1) {
     const closestInd = closestIndex * nx * ny + bestIndex;
     a3 = A[closestInd];
   } else {
     console.log("Ненулевое значение в массиве A не найдено.");
-    a3 = 0; // Обработка случая, если ненулевые значения не найдены
+    a3 = 0;
   }
- 
-  // 3. Вычисление отклонения da
+
   const ind = bestIndex;
   const da = 3.84 * Math.sqrt(D[ind] / NSamples);
 
@@ -174,7 +120,6 @@ export const findSourceCoordinates3D = (measurements, energyRange, peakEnergy, P
     deviation: da
   };
 };
-
 
 /**
  * Вычисление интеграла затухания сигнала между двумя точками (сэмплами).
@@ -238,21 +183,26 @@ let cnt = 0;
 
 const calculateIntegralSimpson = (x1, y1, z1, x2, y2, z2, X, Y, Z, mu) => {
 
+    // Преобразование координат X и Y в метры
+    const { x: X1m, y: Y1m } = degToMeters(x1, y1); // Точка 1 в метрах
+    const { x: X2m, y: Y2m } = degToMeters(x2, y2); // Точка 2 в метрах
+    const { x: Xm, y: Ym } = degToMeters(X, Y);     // Ячейка в сетке в метрах
   // Определяем функцию, которую будем интегрировать
   const integrand = (t) => {
     // Промежуточные координаты с параметром t [0, 1] для линейной интерполяции между двумя точками
-    const x = x1 + t * (x2 - x1);
-    const y = y1 + t * (y2 - y1);
-    const z = z1 + t * (z2 - z1);
+        const xt = X1m + t * (X2m - X1m);
+        const yt = Y1m + t * (Y2m - Y1m);
+        const zt = z1 + t * (z2 - z1);
 
-    // Вычисляем расстояние до текущей ячейки сетки
-    const r = Math.sqrt((x - X) ** 2 + (y - Y) ** 2 + (z - Z) ** 2);
+        // Расстояние до текущей ячейки
+        const distanceSquared = (xt - Xm) ** 2 + (yt - Ym) ** 2 + (zt - Z) ** 2;
+        const r = Math.sqrt(distanceSquared);
 
     // Если r близко к 0, возвращаем небольшое значение, чтобы избежать деления на 0
     if (r === 0) return 1e-10;
 
     if (cnt < 10 /* && (mu * r)>1 */ ) {
-      console.log('mu * r=', mu * r, 'mu=', mu, 'r=', r, 'z=', z, 'Math.exp(-mu * r) / r ** 2', Math.exp(-mu * r) / r ** 2);
+      console.log('mu * r=', mu * r, 'mu=', mu, 'r=', r, 'zt=', zt, 'Math.exp(-mu * r) / r ** 2', Math.exp(-mu * r) / r ** 2);
       cnt ++;
     }
 
@@ -405,7 +355,7 @@ const cellSelect = (Xb, Yb, nx, ny, xmar, ymar, measurements, wL, wH, C, mu, A, 
 };
 
 const transform = (measurements, mapBounds) => {
-  const R = 6371000.0; // Радиус Земли в метрах
+
 
   let minX = Infinity, maxX = -Infinity;
   let minY = Infinity, maxY = -Infinity;
@@ -474,4 +424,186 @@ const transform = (measurements, mapBounds) => {
   Yzone_e = (Yzone_e - minY) * (Math.PI / 180) * R * latFactor; // Преобразование долготы с учетом широты
 
   return { Xzone_b: 0, Yzone_b: 0, Xzone_e, Yzone_e, minX, minY };
+};
+
+
+/**
+ * Преобразование координат в метры с учетом кривизны Земли
+ * @param {number} lat - широта в градусах
+ * @param {number} lon - долгота в градусах
+ * @returns {object} - координаты в метрах {x, y}
+ */
+function degToMeters(lat, lon) {
+    const x = lat * (Math.PI / 180) * R;
+    const y = lon * (Math.PI / 180) * R * Math.cos(lat * Math.PI / 180);
+    return { x, y };
+}
+
+
+/**
+ * Определение области поиска (bounds) по всем измерениям, если mapBounds не задан или вырожден.
+ * @param {Array} measurements - Массив с измерениями (точки с координатами lat, lon).
+ * @param {object} mapBounds - Область карты (границы) с параметрами _southWest и _northEast.
+ * @returns {object} - Объект с корректными границами зоны поиска {_southWest: {lat, lng}, _northEast: {lat, lng}}.
+ */
+function defineBounds(measurements, mapBounds) {
+  let minLat = Infinity, maxLat = -Infinity;
+  let minLon = Infinity, maxLon = -Infinity;
+
+  // Находим минимальные и максимальные значения широты и долготы по измерениям
+  for (const measurement of measurements) {
+      const { lat, lon } = measurement;
+      if (lat < minLat) minLat = lat;
+      if (lat > maxLat) maxLat = lat;
+      if (lon < minLon) minLon = lon;
+      if (lon > maxLon) maxLon = lon;
+  }
+
+  console.log('minLat, minLon, maxLat, maxLon (по измерениям)', minLat, minLon, maxLat, maxLon);
+
+  // Проверяем, задан ли mapBounds и не является ли область точкой или прямой
+  if (mapBounds && mapBounds._southWest && mapBounds._northEast) {
+      const { _southWest, _northEast } = mapBounds;
+
+      const isPointOrLine = (_southWest.lat === _northEast.lat || _southWest.lng === _northEast.lng);
+
+      if (!isPointOrLine) {
+          // Если область корректная (не вырожденная), возвращаем mapBounds
+          return mapBounds;
+      }
+  }
+
+  // Если область не задана или вырожденная, возвращаем диапазон по измерениям
+  return {
+      _southWest: { lat: minLat, lng: minLon },
+      _northEast: { lat: maxLat, lng: maxLon }
+  };
+}
+
+ 
+export const findSourceCoordinatesInterpolate = (validMeasurements, energyRange, peakEnergy, P0, P1, mapBounds) => {
+  if (!validMeasurements || validMeasurements.length < 10) {
+      return null; // Недостаточно данных для анализа
+  }
+
+  // Преобразование диапазона энергий в индексы спектральных каналов
+  const leftIndex = Math.ceil((energyRange.low - P0) / P1);
+  const rightIndex = Math.floor((energyRange.high - P0) / P1);
+
+  console.log('leftIndex, rightIndex', leftIndex, rightIndex);
+
+  // Физические параметры
+  let mu = 0.00995; 
+  let eps = 0.26; 
+  const S = (1.51 * 1.51 * Math.PI) * 1.0e-4; 
+  const YE = 0.85; 
+  let C = 4 * Math.PI / (YE * S * eps);
+
+  // Функция установки энергии
+  const setEnergy = (energy) => {
+      const w = [13.6759, 135.0362, -18.74111, 24.51013, -4.12014, -2.89794, 0.89535];
+      let Sum = 0.0;
+      const EMev = energy / 1000.0;  // Преобразование энергии в МэВ
+
+      if (EMev >= 0.1 && EMev <= 0.2) {
+          eps = (-1.28879 * EMev + 1.0503);
+      }
+      if (EMev > 0.2) {
+          eps = 1.0 / Math.pow(-0.384 * EMev * EMev + 2.8682 * EMev + 0.579, 2.0);
+      }
+
+      for (let i = 0; i < 7; i++) {
+          Sum += w[i] * Math.pow(EMev, i);
+      }
+
+      mu = 1.0 / (10.0 * Math.sqrt(Sum));
+      C = 4 * Math.PI / (YE * S * eps);  // Обновляем C с новым eps
+  };
+
+  // Устанавливаем значения mu и eps на основе энергии пика
+  setEnergy(peakEnergy);
+
+  // Определение области поиска
+  if (!mapBounds || !mapBounds._southWest || !mapBounds._northEast) {
+      mapBounds = defineBounds(validMeasurements, mapBounds);
+  }
+
+  const cellSize = 0.003; // Размер ячейки для интерполяции
+
+  // Создаем коллекцию точек, где в качестве свойства используем сумму сигналов спектра
+  const pointsCollection = turf.featureCollection(
+      validMeasurements.map(m => {
+          const spectrumInRange = m.spectrum.channels.slice(leftIndex, rightIndex + 1);
+          const intensity = spectrumInRange.reduce((sum, value) => sum + value, 0);
+          return turf.point([m.lon, m.lat], { intensity });
+      })
+  );
+
+  const bounds = turf.bbox(pointsCollection);
+  const expandedBounds = [
+      bounds[0] - 0.01, // Уменьшаем минимальную долготу
+      bounds[1] - 0.01, // Уменьшаем минимальную широту
+      bounds[2] + 0.01, // Увеличиваем максимальную долготу
+      bounds[3] + 0.01  // Увеличиваем максимальную широту
+  ];
+
+  // Выполнение интерполяции
+  const interpolated = turf.interpolate(pointsCollection, cellSize, { gridType: 'point', property: 'intensity', bbox: expandedBounds });
+
+  // Найти точку с максимальной интерполированной интенсивностью
+  let maxInterpolatedIntensity = -Infinity;
+  let maxInterpolatedPoint = null;
+  for (const feature of interpolated.features) {
+      if (feature.properties.intensity > maxInterpolatedIntensity) {
+          maxInterpolatedIntensity = feature.properties.intensity;
+          maxInterpolatedPoint = feature;
+      }
+  }
+
+  if (!maxInterpolatedPoint) {
+      return null; // Не удалось найти точку с максимальной интенсивностью
+  }
+
+  const [maxLon, maxLat] = maxInterpolatedPoint.geometry.coordinates;
+  // Преобразование координат максимальной точки в метры
+  const maxCoordsMeters = degToMeters(maxLat, maxLon);
+
+  // Считаем расстояния до всех точек и сортируем их, чтобы найти 10 ближайших
+  const distances = validMeasurements.map((measurement, index) => {
+      const measurementMeters = degToMeters(measurement.lat, measurement.lon);
+      const distanceSquared = (measurementMeters.x - maxCoordsMeters.x) ** 2 + 
+                              (measurementMeters.y - maxCoordsMeters.y) ** 2 + 
+                              measurement.height ** 2;
+      return { distance: Math.sqrt(distanceSquared), index };
+  }).sort((a, b) => a.distance - b.distance);
+
+  // Берем 10 ближайших точек
+  const closestPoints = distances.slice(0, 10);
+
+  // Рассчитываем активность источника на основе ближайших 10 точек
+  let totalActivity = 0;
+  let totalSquaredDeviation = 0;
+
+  closestPoints.forEach(({ distance, index }) => {
+      const measurement = validMeasurements[index];
+      const { spectrum } = measurement;
+
+      const spectrumInRange = spectrum.channels.slice(leftIndex, rightIndex + 1);
+      const intensity = spectrumInRange.reduce((sum, value) => sum + value, 0);
+      console.log('distance, intensity', distance, intensity);
+      // Формула для расчета активности
+      const activity = intensity / (eps * S * YE * Math.exp(-mu * distance) / (4 * Math.PI * distance ** 2));
+      totalActivity += activity;
+      totalSquaredDeviation += (activity - totalActivity / closestPoints.length) ** 2;
+  });
+
+  const deviation = Math.sqrt(totalSquaredDeviation / closestPoints.length);
+
+  console.log('Финальный результат: Activity:', totalActivity / closestPoints.length, 'Deviation:', deviation);
+
+  return {
+      coordinates: { lat: maxLat, lon: maxLon },
+      activity: totalActivity / closestPoints.length,
+      deviation: deviation
+  };
 };

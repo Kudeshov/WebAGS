@@ -101,7 +101,7 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
       lon: item.lon,
       alt: item.alt, // Высота GPS
       height: item.height, // Барометрическая высота
-      dosew: item.dosew, // Мощность дозы по окну
+      //dosew: item.dosew, // Мощность дозы по окну
       dose: item.dose
     })); 
 
@@ -147,13 +147,16 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
           onHeightFilterActive(true);
 
           onColorOverrideActive(true);
-          let validData = data.filter(m => m.lat >= 0 && m.lon >= 0 && m.dose >= 0 && m.dosew >= 0 && m.countw<1000000);
-          setValidMeasurements(validData);
+          let validData = data.filter(m => m.lat >= 0 && m.lon >= 0 && m.dose >= 0 && m.countw<1000000);
 
-          if (validData.length > 0) {
+          updateValidMeasurements(validData, true, true, true);
+          //setValidMeasurements(validData);
+
+          /* if (validData.length > 0) {
             const doses = validData.map(m => m.dose);
             const newMinDoseValue = Math.min(...doses);
             const newMaxDoseValue = Math.max(...doses);
+            console.log('newMinDoseValue, newMaxDoseValue',newMinDoseValue, newMaxDoseValue);
             setMinDoseValue(newMinDoseValue);
             setMaxDoseValue(newMaxDoseValue);
 
@@ -180,7 +183,7 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
             setLocalHeightFrom(minHeight);
             setLocalHeightTo(maxHeight);
 
-          }
+          } */
           setMeasurements(data);
         }).finally(() => {
           setIsLoadingFlight(false); // Заканчиваем загрузку
@@ -215,6 +218,7 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
           const measurementsData = await measurementsResponse.json();
           console.log('Загружаем данные текущего онлайн-полета', measurementsData);
           setOnlineMeasurements(measurementsData); // Сохраняем данные измерений онлайн-полета
+          
           setValidMeasurements(measurementsData);
         } else {
           //console.log('Онлайн-полет не активен');
@@ -237,14 +241,43 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
   
 
   const filterMeasurementsByHeight = useCallback(() => {
+    let validData = measurements.filter(m => m.lat >= 0 && m.lon >= 0 /*&& m.dose >= 0  && m.dosew >= 0 */ && m.countw<1000000);
+    if (heightFilterActive) {
+    validData = validData.filter(m => 
+      (m.height >= heightFilterFrom && m.height <= heightFilterTo)) 
+    }
+    console.log('filter by height');
+    // setValidMeasurements(validData);
+    updateValidMeasurements(validData, false, false, false);
+  }, [measurements, heightFilterFrom, heightFilterTo, heightFilterActive, doseType]);
+
+
+  const filterMeasurementsByDoseType = useCallback(() => {
+    let validData = measurements.filter(m => m.lat >= 0 && m.lon >= 0 /* && m.dose >= 0 && m.dosew >= 0 */ && m.countw<1000000);
+    if (heightFilterActive) {
+    validData = validData.filter(m => 
+      (m.height >= heightFilterFrom && m.height <= heightFilterTo)) 
+    }
+    console.log('filter by height');
+    // setValidMeasurements(validData);
+    updateValidMeasurements(validData, true, false, false);
+  }, [measurements, doseType]);
+
+  useEffect(() => {
+    filterMeasurementsByDoseType();
+  }, [doseType, measurements]);
+
+/*   const filterMeasurementsByHeight = useCallback(() => {
     let validData = measurements.filter(m => m.lat >= 0 && m.lon >= 0 && m.dose >= 0 && m.dosew >= 0 && m.countw<1000000);
     if (heightFilterActive) {
     validData = validData.filter(m => 
       (m.height >= heightFilterFrom && m.height <= heightFilterTo)) 
     }
-    //console.log('filter by height');
-    setValidMeasurements(validData);
-  }, [measurements, heightFilterFrom, heightFilterTo, heightFilterActive]);
+    console.log('filter by height');
+    // setValidMeasurements(validData);
+    updateValidMeasurements(validData, true);
+  }, [measurements]); */
+  
 
   useEffect(() => {
     if (onlineMeasurements.length > 0) {
@@ -284,6 +317,127 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
       setHeightFilterTo(100);
     }
   }, [onlineFlightId]); 
+ 
+  const updateValidMeasurements = (measurements, needRecalcDoses, needRecalcHeight, needRecalcCenter) => {
+    // Проверяем, определен ли массив measurements и не пустой ли он
+    if (!measurements || measurements.length === 0) {
+      setValidMeasurements([]);
+      return; // Завершаем функцию
+    }
+  
+    if (globalSettings && globalSettings.sensorTypes && currentSensorType && globalSettings.sensorTypes[currentSensorType]) {
+      
+      // Находим зону интересов по текущему doseType
+      const zoneOfInterest = globalSettings.sensorTypes[currentSensorType].zonesOfInterest.find(zone => zone.id === doseType - 2);
+  
+      console.log('doseType, Зона интересов', doseType, zoneOfInterest);
+  
+      // Извлекаем значения P0 и P1, если они есть в selectedCollection, иначе используем значения по умолчанию
+      const { P0 = 70, P1 = 11 } = selectedCollection || {};
+  
+      const updatedMeasurements = measurements.map(measurement => {
+        // Логика изменения поля dose в зависимости от значения doseType
+        if (doseType === 1) {
+          return {
+            ...measurement,
+            dose: measurement.dose1 // Присваиваем dose значение dosew
+          };
+        }
+  
+        if (doseType === 2) {
+          return {
+            ...measurement,
+            dose: measurement.dosep // Присваиваем dose значение dose1
+          };
+        }
+/*   
+        if (doseType === 3) {
+          return {
+            ...measurement,
+            dose: measurement.dosew // Присваиваем dose значение dosep
+          };
+        } */
+  
+        // Если doseType больше 3, то применяем расчет на основе спектра
+        if (zoneOfInterest) {
+          const leftE = parseInt(zoneOfInterest.leftE, 10);
+          const rightE = parseInt(zoneOfInterest.rightE, 10);
+  
+          console.log('leftE rightE', leftE, rightE);
+  
+          const { spectrum } = measurement;
+  
+          // Проверяем, есть ли данные о спектре
+          if (spectrum && spectrum.channels) {
+            console.log('spectrum.channels', spectrum.channels);
+  
+            // Пересчитываем диапазон энергий в индексы каналов
+            const leftIndex = Math.ceil((leftE - P0) / P1);
+            const rightIndex = Math.floor((rightE - P0) / P1);
+  
+            console.log('leftIndex rightIndex', leftIndex, rightIndex);
+  
+            // Считаем количество сигналов в диапазоне индексов
+            const spectrumInRange = spectrum.channels.slice(leftIndex, rightIndex + 1);
+            const signalCountInWindow = spectrumInRange.reduce((acc, count) => acc + count, 0);
+  
+            // Возвращаем обновленное измерение с измененным полем dose
+            return {
+              ...measurement,
+              dose: signalCountInWindow // Изменяем поле dose на вычисленное значение
+            };
+          }
+        }
+  
+        // Если нет зоны интересов или спектральных данных, возвращаем измерение без изменений
+        return { ...measurement };
+      });
+  
+      // Обновляем состояние validMeasurements с новыми значениями
+      setValidMeasurements(updatedMeasurements);
+  
+      if (updatedMeasurements.length > 0 && needRecalcDoses) {
+        const doses = updatedMeasurements.map(m => m.dose);
+        const newMinDoseValue = Math.min(...doses);
+        const newMaxDoseValue = Math.max(...doses);
+        console.log('newMinDoseValue, newMaxDoseValue', newMinDoseValue, newMaxDoseValue);
+        setMinDoseValue(newMinDoseValue);
+        setMaxDoseValue(newMaxDoseValue);
+  
+        const newColorThresholds = calculateColorThresholds(newMinDoseValue, newMaxDoseValue);
+        setColorThresholds(newColorThresholds);
+  
+
+      }
+
+      if (updatedMeasurements.length > 0 && needRecalcCenter) {
+        if (!onlineFlightId) {
+          const latitudes = updatedMeasurements.map(m => m.lat);
+          const longitudes = updatedMeasurements.map(m => m.lon);
+          const centerLat = (Math.min(...latitudes) + Math.max(...latitudes)) / 2;
+          const centerLng = (Math.min(...longitudes) + Math.max(...longitudes)) / 2;
+          setGeoCenter({ lat: centerLat, lng: centerLng });
+        }
+      }
+        
+      if (updatedMeasurements.length > 0 && needRecalcHeight) {
+        // Находим минимальное и максимальное значение высоты
+        const heights = updatedMeasurements.map(m => m.height); // Предполагаем, что данные о высоте хранятся в свойстве height
+        const minHeight = Math.min(...heights);
+        const maxHeight = Math.max(...heights);
+        setHeightFrom(minHeight);
+        setHeightTo(maxHeight);
+        setHeightFilterFrom(minHeight);
+        setHeightFilterTo(maxHeight);
+        setLocalHeightFrom(minHeight);
+        setLocalHeightTo(maxHeight);
+      }
+  
+      console.log(updatedMeasurements);
+    }
+  };
+  
+  
 
   return (
     <FlightDataContext.Provider value={{
