@@ -24,8 +24,8 @@
   ],
   "gm1Coeff": 0.0024,
   "gm2Coeff": 0.0024,
-  "DGThresholdLow": 50,
-  "DGThresholdHigh": 1000,
+  "DGThresholdLow": 50000,
+  "DGThresholdHigh": 1000000,
   "serialPort": {
     "path": "COM3",
     "baudRate": 57600

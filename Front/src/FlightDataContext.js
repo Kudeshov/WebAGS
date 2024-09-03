@@ -149,7 +149,9 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
           //onHeightFilterActive(true);
 
           //onColorOverrideActive(true);
-          let validData = data; //.filter(/*m => m.lat >= 0 && m.lon >= 0 && m.dose >= 0*  && m.countw<1000000 */);
+         // let validData = data; //.filter(/*m => m.lat >= 0 && m.lon >= 0 && m.dose >= 0*  && m.countw<1000000 */);
+
+          let validData = data.filter(m => m.lat >= 0 && m.lon >= 0 /* && m.dose >= 0 && m.countw<1000000 */);
 
           updateValidMeasurements(validData, true, true, true);
           //setValidMeasurements(validData);

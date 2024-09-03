@@ -88,7 +88,6 @@ function MapEffect({ setMapInstance }) {
 
 function MyMapComponent({ chartOpen, heightFilterActive }) {
 
-  
   const [mapInstance, setMapInstance] = React.useState(null);
   const googleMapsUrl = 'http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}&hl=ru';
   const googleSatelliteUrl = 'http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}&hl=ru';
@@ -578,7 +577,7 @@ function MyMapComponent({ chartOpen, heightFilterActive }) {
           Долгота: ${averageDiapasone.longRange[0].toFixed(6)} - ${averageDiapasone.longRange[1].toFixed(6)}<br>
           Широта: ${averageDiapasone.latRange[0].toFixed(6)} - ${averageDiapasone.latRange[1].toFixed(6)}<br>
           ${altitudeLabel}: ${altitudeRange[0].toFixed(2)} - ${altitudeRange[1].toFixed(2)} м<br>
-          Мощность дозы (полином): ${parseFloat(averageMeasurement.dose).toFixed(2)} мкЗв/час<br>
+          МЭД: ${parseFloat(averageMeasurement.dose).toFixed(2)} мкЗв/час<br>
           Счётчик ГМ1: ${averageMeasurement.geiger1.toFixed(6)} имп/с<br>
           Счётчик ГМ2: ${averageMeasurement.geiger2.toFixed(6)} имп/с<br>
           Мощность дозы ГМ: ${averageMeasurement.gmdose1.toFixed(6)} мкЗв/час`
@@ -591,7 +590,7 @@ function MyMapComponent({ chartOpen, heightFilterActive }) {
           Долгота: ${averageDiapasone.longRange[0].toFixed(6)}<br>
           Широта: ${averageDiapasone.latRange[0].toFixed(6)} <br>
           ${altitudeLabel}: ${altitudeRange[0].toFixed(2)} м<br>
-          Мощность дозы (полином): ${parseFloat(averageMeasurement.dose).toFixed(2)} мкЗв/час<br>
+          МЭД: ${parseFloat(averageMeasurement.dose).toFixed(2)} мкЗв/час<br>
           Счётчик ГМ1: ${averageMeasurement.geiger1} имп/с<br>
           Счётчик ГМ2: ${averageMeasurement.geiger2} имп/с<br>
           Мощность дозы ГМ1: ${averageMeasurement.gmdose1} мкЗв/час`        
@@ -603,7 +602,7 @@ function MyMapComponent({ chartOpen, heightFilterActive }) {
   const [previousValidMeasurements, setPreviousValidMeasurements] = useState();
   const [previousValidMeasurementsBand, setPreviousValidMeasurementsBand] = useState();
 
-  useEffect(() => {
+  /* useEffect(() => {
     if (!isIsolineLayerActive) {
       return;
     }
@@ -660,9 +659,91 @@ function MyMapComponent({ chartOpen, heightFilterActive }) {
       maxDose: maxDose
     });
   
-  }, [validMeasurements, previousValidMeasurements, isIsolineLayerActive]);
+  }, [validMeasurements, previousValidMeasurements, isIsolineLayerActive]); */
 
+useEffect(() => {
+  if (!isIsolineLayerActive) {
+    return;
+  }
 
+  if (previousValidMeasurements === validMeasurements) {
+    return;
+  }
+
+  setPreviousValidMeasurements(validMeasurements);
+
+  if (!validMeasurements || validMeasurements.length < 10) {
+    setCachedIsolines({
+      lines: [],
+      minDose: null,
+      maxDose: null
+    });
+    return;
+  }
+
+  // Создание коллекции точек для интерполяции
+  const points = validMeasurements.map(m => turf.point([m.lon, m.lat], { dose: m.dose }));
+
+  // Вычисляем границы (bbox) реальных точек
+  const [minX, minY, maxX, maxY] = turf.bbox(turf.featureCollection(points));
+
+  // Вычисляем размеры прямоугольника
+  const width = maxX - minX;
+  const height = maxY - minY;
+
+  // Определяем коэффициенты для буфера по осям X и Y
+  const bufferXPercentage = 0.04; // Например, 4% от ширины
+  const bufferYPercentage = 0.03; // Например, 3% от высоты
+
+  // Вычисляем буфер в зависимости от размеров прямоугольника
+  const bufferX = width * bufferXPercentage;
+  const bufferY = height * bufferYPercentage;
+
+  // Вычисляем среднее значение дозы по реальным измерениям
+  const averageDose = validMeasurements.reduce((sum, m) => sum + m.dose, 0) / validMeasurements.length;
+
+  // Добавляем фальшивые точки немного за границы реальных данных
+  const fakePoints = [
+    turf.point([minX - bufferX, minY - bufferY], { dose: averageDose }), // Нижний левый угол
+    turf.point([maxX + bufferX, minY - bufferY], { dose: averageDose }), // Нижний правый угол
+    turf.point([minX - bufferX, maxY + bufferY], { dose: averageDose }), // Верхний левый угол
+    turf.point([maxX + bufferX, maxY + bufferY], { dose: averageDose })  // Верхний правый угол
+  ];
+
+  // Объединяем реальные точки с фальшивыми
+  const pointsCollection = turf.featureCollection([...points, ...fakePoints]);
+
+  const cellSize = 0.003; // Размер ячейки для интерполяции
+
+  // Выполнение интерполяции
+  const interpolated = turf.interpolate(pointsCollection, cellSize, {
+    gridType: 'point',
+    property: 'dose'
+  });
+
+  // Получение минимального и максимального значений дозы после интерполяции
+  const minDose = Math.min(...interpolated.features.map(f => f.properties.dose));
+  const maxDose = Math.max(...interpolated.features.map(f => f.properties.dose));
+
+  // Расчет равномерно распределенных уровней изолиний
+  const numBreaks = 11; // Количество уровней изолиний
+  const breaks = Array.from({ length: numBreaks }, (_, i) => 
+    minDose + (maxDose - minDose) * (i / (numBreaks - 1))
+  );
+
+  // Создание изолиний на основе рассчитанных уровней
+  const lines = turf.isolines(interpolated, breaks, { zProperty: 'dose' });
+
+  // Кэширование рассчитанных изолиний
+  setCachedIsolines({
+    lines: lines,
+    minDose: minDose,
+    maxDose: maxDose
+  });
+
+}, [validMeasurements, previousValidMeasurements, isIsolineLayerActive]);
+
+  
 
   useEffect(() => {
     if (isIsolineLayerActive && mapInstance) {
@@ -744,66 +825,88 @@ function MyMapComponent({ chartOpen, heightFilterActive }) {
     }
   }, [isIsobandLayerActive, cachedIsobands, mapInstance, colorThresholds, maxDoseValue, minDoseValue]);
 
+useEffect(() => {
+  if (!isIsobandLayerActive) {
+    return;
+  }
 
-  useEffect(() => {
-    //console.log('validMeasurements.length = ', validMeasurements.length);
-    if (!isIsobandLayerActive) {
-      return;
-    }
+  if (previousValidMeasurementsBand === validMeasurements) {
+    return;
+  }
 
-    if (previousValidMeasurementsBand === validMeasurements) {
-      return;
-    }
+  setPreviousValidMeasurementsBand(validMeasurements);
 
-    setPreviousValidMeasurementsBand(validMeasurements);
-  
-    if (!validMeasurements || validMeasurements.length < 10) {
-      setCachedIsobands({ // Обновление состояния для хранения изобендов
-        bands: [],
-        minDose: null,
-        maxDose: null
-      });
-      return;
-    }
-  
-    // Создание коллекции точек для интерполяции
-    const pointsCollection = turf.featureCollection(
-      validMeasurements.map(m => turf.point([m.lon, m.lat], { dose: m.dose }))
-    );
-
-    const cellSize = 0.003; // Размер ячейки для интерполяции
-
-    const bounds = turf.bbox(pointsCollection); // Получаем границы области
-    const expandedBounds = [
-      bounds[0] - 0.01, // Уменьшаем минимальную долготу
-      bounds[1] - 0.01, // Уменьшаем минимальную широту
-      bounds[2] + 0.01, // Увеличиваем максимальную долготу
-      bounds[3] + 0.01  // Увеличиваем максимальную широту
-    ];
-    
-    // Выполнение интерполяции
-    const interpolated = turf.interpolate(pointsCollection, cellSize, { gridType: 'point', property: 'dose', bbox: expandedBounds });
-  
-    // Получение минимального и максимального значений дозы после интерполяции
-    const minDose = Math.min(...interpolated.features.map(f => f.properties.dose));
-    const maxDose = Math.max(...interpolated.features.map(f => f.properties.dose));
-  
-    // Расчет равномерно распределенных уровней изобендов
-    const numBreaks = 11; // Количество уровней изобендов
-    const breaks = Array.from({ length: numBreaks }, (_, i) => 
-      minDose + (maxDose - minDose) * (i / (numBreaks - 1))
-    );
-    // Создание изобендов на основе рассчитанных уровней
-    const bands = turf.isobands(interpolated, breaks, {zProperty: 'dose', bbox: expandedBounds});
-  
-    // Кэширование рассчитанных изобендов
+  if (!validMeasurements || validMeasurements.length < 10) {
     setCachedIsobands({
-      bands: bands,
-      minDose: minDose,
-      maxDose: maxDose
+      bands: [],
+      minDose: null,
+      maxDose: null
     });
+    return;
+  }
+
+  // Создание коллекции точек для интерполяции
+  const points = validMeasurements.map(m => turf.point([m.lon, m.lat], { dose: m.dose }));
+
+  // Вычисляем границы (bbox) реальных точек
+  const [minX, minY, maxX, maxY] = turf.bbox(turf.featureCollection(points));
+
+  // Вычисляем размеры прямоугольника
+  const width = maxX - minX;
+  const height = maxY - minY;
+
+  // Определяем коэффициенты для буфера по осям X и Y
+  const bufferXPercentage = 0.04; // Например, 5% от ширины
+  const bufferYPercentage = 0.03; // Например, 2% от высоты
+
+  // Вычисляем буфер в зависимости от размеров прямоугольника
+  const bufferX = width * bufferXPercentage;
+  const bufferY = height * bufferYPercentage;
+
+  // Вычисляем среднее значение дозы по реальным измерениям
+  const averageDose = validMeasurements.reduce((sum, m) => sum + m.dose, 0) / validMeasurements.length;
+
+  // Добавляем фальшивые точки немного за границы реальных данных
+  const fakePoints = [
+    turf.point([minX - bufferX, minY - bufferY], { dose: averageDose }), // Нижний левый угол
+    turf.point([maxX + bufferX, minY - bufferY], { dose: averageDose }), // Нижний правый угол
+    turf.point([minX - bufferX, maxY + bufferY], { dose: averageDose }), // Верхний левый угол
+    turf.point([maxX + bufferX, maxY + bufferY], { dose: averageDose })  // Верхний правый угол
+  ];
+
+  // Объединяем реальные точки с фальшивыми
+  const pointsCollection = turf.featureCollection([...points, ...fakePoints]);
+
+  const cellSize = 0.003;
+
+  // Выполнение интерполяции
+  const interpolated = turf.interpolate(pointsCollection, cellSize, {
+    gridType: 'point',
+    property: 'dose'
+  });
+
+  // Получение минимального и максимального значений дозы после интерполяции
+  const minDose = Math.min(...interpolated.features.map(f => f.properties.dose));
+  const maxDose = Math.max(...interpolated.features.map(f => f.properties.dose));
+
+  // Расчет равномерно распределенных уровней изобендов
+  const numBreaks = 11; // Количество уровней изобендов
+  const breaks = Array.from({ length: numBreaks }, (_, i) =>
+    minDose + (maxDose - minDose) * (i / (numBreaks - 1))
+  );
+
+  // Создание изобендов на основе рассчитанных уровней
+  const bands = turf.isobands(interpolated, breaks, { zProperty: 'dose' });
+
+  // Кэширование рассчитанных изобендов
+  setCachedIsobands({
+    bands: bands,
+    minDose: minDose,
+    maxDose: maxDose
+  });
+
+}, [validMeasurements, previousValidMeasurementsBand, isIsobandLayerActive]);
   
-  }, [validMeasurements, previousValidMeasurementsBand, isIsobandLayerActive]);
 
 const measurementsLayerRef = useRef(null);
 
