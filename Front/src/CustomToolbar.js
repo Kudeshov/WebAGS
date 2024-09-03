@@ -1125,33 +1125,54 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
           </>
         );
       case 2: // Расчет МЭД(по счетчикам Гейгера)
-        return (
-          <>
-            <TextField
-              margin="dense"
-              id="gm1Coeff"
-              label="Коэффициент пересчета ГМ1"
-              type="number"
-              fullWidth
-              size="small"
-              variant="outlined"
-              value={settings.gm1Coeff}
-              onChange={(e) => setSettings({...settings, gm1Coeff: e.target.value})}
-            />
-            <TextField
-              margin="dense"
-              id="gm2Coeff"
-              label="Коэффициент пересчета ГМ2"
-              type="number"
-              fullWidth
-              size="small"
-              variant="outlined"
-              value={settings.gm2Coeff}
-              onChange={(e) => setSettings({...settings, gm2Coeff: e.target.value})}
-            />
-            {/* Дополните сюда поля для рабочих диапазонов ГМ1 и ГМ2, если у вас есть соответствующие данные и функции обработки */}
-          </>
-        );
+      return (
+        <>
+          <TextField
+            margin="dense"
+            id="dgThresholdLow"
+            label="Нижний порог счетчика Гейгера"
+            type="number"
+            fullWidth
+            size="small"
+            variant="outlined"
+            value={settings.DGThresholdLow}
+            onChange={(e) => setSettings({...settings, DGThresholdLow: e.target.value})}
+          />
+          <TextField
+            margin="dense"
+            id="gm1Coeff"
+            label="Коэффициент пересчета ГМ1"
+            type="number"
+            fullWidth
+            size="small"
+            variant="outlined"
+            value={settings.gm1Coeff}
+            onChange={(e) => setSettings({...settings, gm1Coeff: e.target.value})}
+          />
+          <TextField
+            margin="dense"
+            id="dgThresholdHigh"
+            label="Верхний порог счетчика Гейгера"
+            type="number"
+            fullWidth
+            size="small"
+            variant="outlined"
+            value={settings.DGThresholdHigh}
+            onChange={(e) => setSettings({...settings, DGThresholdHigh: e.target.value})}
+          />
+          <TextField
+            margin="dense"
+            id="gm2Coeff"
+            label="Коэффициент пересчета ГМ2"
+            type="number"
+            fullWidth
+            size="small"
+            variant="outlined"
+            value={settings.gm2Coeff}
+            onChange={(e) => setSettings({...settings, gm2Coeff: e.target.value})}
+          />
+        </>
+      );
         case 3: // Зоны интереса
         return (
           <>
