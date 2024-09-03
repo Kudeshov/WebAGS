@@ -2,8 +2,6 @@
   "port": 3009,
   "NSPCHANNELS": 238,
   "SPECDEFTIME": 1,
-  "winLow": 20,
-  "winHigh": 200,
   "MAX_ALLOWED_HEIGHT": 5000,
   "flightsDirectory": "./flights",
   "latInit": 55.704034038232834,
@@ -26,7 +24,8 @@
   ],
   "gm1Coeff": 0.0024,
   "gm2Coeff": 0.0024,
-  "winCoeff": 0.0073,
+  "DGThresholdLow": 50,
+  "DGThresholdHigh": 1000,
   "serialPort": {
     "path": "COM3",
     "baudRate": 57600
@@ -98,5 +97,8 @@
       ]
     }
   },
-  "selectedAlgorithm": "algorithm2"
+  "selectedAlgorithm": "algorithm1",
+  "winLow": 20,
+  "winHigh": 200,
+  "winCoeff": 0.0073
 }

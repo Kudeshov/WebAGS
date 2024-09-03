@@ -191,6 +191,8 @@ function toLLA(x, y, z) {
 
 function getDose(value, height, gm = false, gmNum = 1, gm1Coeff, gm2Coeff, winCoeff) {
   let result = 0;
+
+  console.log('getDose(value, height)', value, height, gm );
   
   if (gm) {
     result = value * (gmNum === 1 ? gm1Coeff : gm2Coeff);
@@ -206,6 +208,38 @@ function getDose(value, height, gm = false, gmNum = 1, gm1Coeff, gm2Coeff, winCo
   }
   // Предполагаем, что результат уже в мкЗв/час
   return result;
+}
+
+function getDoseNew(spectrum, height, Dgeiger1, Dgeiger2, DGThresholdLow, DGThresholdHigh, gm1Coeff, gm2Coeff, eP0, eP1, doseRateConversionFactors) {
+  let dose = 0;
+
+  if (Dgeiger2 > DGThresholdHigh) {
+    // Используем грубый датчик
+    dose = Dgeiger2 * gm2Coeff;
+  } else if (Dgeiger1 > DGThresholdLow) {
+    // Используем чувствительный датчик
+    dose = Dgeiger1 * gm1Coeff;
+  } else {
+    // Расчет по полиному на основе спектра
+    dose = spectrum.calculateTotalDose(eP0, eP1, doseRateConversionFactors);
+  }
+
+  // Доза на высоте 1 метр
+  let dose1m = dose;
+
+  // Коррекция на высоту применяется к dose1m
+  if (height > 1) {
+    const Kh = 0.988 - 0.1768 * Math.log(Math.abs(height));
+    if (Kh && dose1m > 0.15) {
+      dose1m = (dose1m - 0.15) / Kh + 0.15; // перевод в мкЗв/час
+    }
+  }
+
+  // Возвращаем два значения: дозу в точке измерения и дозу на высоте 1 м
+  return {
+    dose: dose,
+    dose1m: dose1m
+  };
 }
 
 const upload = multer({
@@ -365,9 +399,10 @@ async function handleOnlineFlights(db, collectionId) {
         const coords = toLLA(row.gpsX, row.gpsY, row.gpsZ);
 
         // Предполагается, что функции toLLA и getDose уже определены
-        const windose = getDose(row.winCount, coords.alt, false, 1, config.gm1Coeff, config.gm2Coeff, config.winCoeff); 
-        const gmDose1 = getDose(row.geiger1, coords.alt, true, 1, config.gm1Coeff, config.gm2Coeff, config.winCoeff); 
-        const gmDose2 = getDose(row.geiger2, coords.alt, true, 2, config.gm1Coeff, config.gm2Coeff, config.winCoeff);
+        const windose = getDose(row.winCount, row.rHeight, false, 1, config.gm1Coeff, config.gm2Coeff, config.winCoeff); 
+        const gmDose1 = getDose(row.geiger1, row.rHeight, true, 1, config.gm1Coeff, config.gm2Coeff, config.winCoeff); 
+        const gmDose2 = getDose(row.geiger2, row.rHeight, true, 2, config.gm1Coeff, config.gm2Coeff, config.winCoeff);
+        console.log('row.winCount, windose', row.winCount, windose);
         // Округление высоты до сантиметра
         const heightRounded = Math.round(row.rHeight * 100) / 100;
         return {
@@ -380,8 +415,8 @@ async function handleOnlineFlights(db, collectionId) {
             height: heightRounded,
             countw: row.winCount,
            // dosew: 0,
-            dose1: 0,
-            dosep: 0,
+            dose1: windose,
+            dosep: windose,
             dose: windose,
             geiger1: row.geiger1,
             geiger2: row.geiger2,
@@ -396,83 +431,88 @@ async function handleOnlineFlights(db, collectionId) {
   });
 }
 
-async function handleOfflineFlights(db, collectionId) {
-  return new Promise((resolve, reject) => {
-    // Запрос для получения калибровочных коэффициентов
-    const sqlCalibration = `SELECT P0, P1 FROM collection WHERE _id = ?`;
-    db.get(sqlCalibration, [collectionId], async (err, calibration) => {
-      if (err) {
-        console.error(err.message);
-        reject('Error querying the calibration data');
-        return;
-      }
 
-      if (!calibration) {
-        reject('Calibration data not found');
-        return;
-      }
-
-      const eP0 = calibration.P0;
-      const eP1 = calibration.P1;
-      let doseRateConversionFactors = calculateConversionFactors(eP0, eP1);
-
-      const B = parseInt(collectionId, 10) + 0xFFFF;
-      const sql = `SELECT * FROM measurement WHERE (_id >= ?) AND (_id <= ?)`;
-
-      db.all(sql, [collectionId, B], (err, rows) => {
+  async function handleOfflineFlights(db, collectionId) {
+    return new Promise((resolve, reject) => {
+      // Запрос для получения калибровочных коэффициентов
+      const sqlCalibration = `SELECT P0, P1 FROM collection WHERE _id = ?`;
+      db.get(sqlCalibration, [collectionId], async (err, calibration) => {
         if (err) {
           console.error(err.message);
-          reject('Error performing the query on the database');
+          reject('Error querying the calibration data');
           return;
         }
-
-        const results = rows.map(row => {
-          let coords = toLLA(row.gpsX, row.gpsY, row.gpsZ);
-
-          if (row.spectrum === undefined) {
-            console.error("spectrum is undefined for row: ", row);
-            return null;
+  
+        if (!calibration) {
+          reject('Calibration data not found');
+          return;
+        }
+  
+        const eP0 = calibration.P0;
+        const eP1 = calibration.P1;
+        let doseRateConversionFactors = calculateConversionFactors(eP0, eP1);
+  
+        const B = parseInt(collectionId, 10) + 0xFFFF;
+        const sql = `SELECT * FROM measurement WHERE (_id >= ?) AND (_id <= ?)`;
+  
+        db.all(sql, [collectionId, B], (err, rows) => {
+          if (err) {
+            console.error(err.message);
+            reject('Error performing the query on the database');
+            return;
           }
-
-          const buffer = Buffer.from(row.spectrum, 'binary');
-          const spectrumData = [];
-          for (let i = 0; i < config.NSPCHANNELS; i++) {
-            spectrumData.push(buffer.readUInt16LE(i * 2));
-          }
-
-          const spectrum = new Spectrum(spectrumData, config.SPECDEFTIME);
-          const countInWindow = spectrum.valueInChannels(config.winLow, config.winHigh, false);
-          const windose = getDose(countInWindow, row.rHeight, false, 1, config.gm1Coeff, config.gm2Coeff, config.winCoeff); 
-          const dose_h1 = getDose(countInWindow, 1, false, 1, config.gm1Coeff, config.gm2Coeff, config.winCoeff); 
-          const gmDose1 = getDose(row.geiger1, row.rHeight, true, 1, config.gm1Coeff, config.gm2Coeff, config.winCoeff); 
-          const gmDose2 = getDose(row.geiger2, row.rHeight, true, 2, config.gm1Coeff, config.gm2Coeff, config.winCoeff);
-          const height = row.rHeight > config.MAX_ALLOWED_HEIGHT ? 0 : row.rHeight; // Обработка условия для высоты
-
-          return {
-            id: row._id,
-            datetime: row.dateTime,
-            lat: coords.lat,
-            lon: coords.lon,
-            alt: coords.alt,
-            height,
-            countw: countInWindow,
-            //dosew: windose,
-            dose1: dose_h1,
-            dosep: spectrum.calculateTotalDose(eP0, eP1, doseRateConversionFactors),
-            dose: dose_h1, //spectrum.calculateTotalDose(eP0, eP1, doseRateConversionFactors),
-            geiger1: row.geiger1,
-            geiger2: row.geiger2,
-            gmdose1: gmDose1,
-            gmdose2: gmDose2,
-            spectrum: spectrum 
-          };
-        }).filter(item => item !== null);
-
-        resolve(results);
+  
+          const results = rows.map(row => {
+            let coords = toLLA(row.gpsX, row.gpsY, row.gpsZ);
+  
+            if (row.spectrum === undefined) {
+              console.error("spectrum is undefined for row: ", row);
+              return null;
+            }
+  
+            const buffer = Buffer.from(row.spectrum, 'binary');
+            const spectrumData = [];
+            for (let i = 0; i < config.NSPCHANNELS; i++) {
+              spectrumData.push(buffer.readUInt16LE(i * 2));
+            }
+  
+            const spectrum = new Spectrum(spectrumData, config.SPECDEFTIME);
+            const height = row.rHeight > config.MAX_ALLOWED_HEIGHT ? 0 : row.rHeight; // Обработка условия для высоты
+  
+            const { dose, dose1m } = getDoseNew(
+              spectrum,
+              row.rHeight,
+              row.geiger1,
+              row.geiger2,
+              config.DGThresholdLow,
+              config.DGThresholdHigh,
+              config.gm1Coeff,
+              config.gm2Coeff,
+              eP0,
+              eP1,
+              doseRateConversionFactors
+            );
+  
+            return {
+              id: row._id,
+              datetime: row.dateTime,
+              lat: coords.lat,
+              lon: coords.lon,
+              alt: coords.alt,
+              height,
+              dose,
+              dose1: dose1m,
+              dosep: dose,
+              spectrum: spectrum
+            };
+          }).filter(item => item !== null);
+  
+          resolve(results);
+        });
       });
     });
-  });
-}
+  }
+  
 
 app.get('/api/data/:dbname/:collectionId', async (req, res) => {
   const { dbname, collectionId } = req.params;
@@ -767,7 +807,7 @@ function insertOnlineMeasurement(db, flightId, measurementData) {
         client.send(JSON.stringify(flightDataForWebSocket));
       }
     });
-    console.log('Посылка типа 2 отправлена на фронтенд без сохранения в БД');
+    //console.log('Посылка типа 2 отправлена на фронтенд без сохранения в БД');
   } else if (measurementData.type === 1) {
     // Для посылок типа 1 сохраняем в БД и отправляем по WebSocket
       const insertSql = `
@@ -788,12 +828,14 @@ function insertOnlineMeasurement(db, flightId, measurementData) {
 
         console.log(`Запись измерения добавлена. ID: ${this.lastID}`);
 
-        let windose = getDose(measurementData.winCount, coords.alt, false, 1, config.gm1Coeff, config.gm2Coeff, config.winCoeff); // Используем функцию getDose для расчета дозы в окне
+        let windose = getDose(measurementData.winCount, measurementData.rHeight, false, 1, config.gm1Coeff, config.gm2Coeff, config.winCoeff); // Используем функцию getDose для расчета дозы в окне
         const gmDose1 = getDose(0, coords.alt, true, 1, config.gm1Coeff, config.gm2Coeff, config.winCoeff); // Примерный вызов для gmdose1 с предположением, что geiger1 = 0
         const gmDose2 = getDose(0, coords.alt, true, 2, config.gm1Coeff, config.gm2Coeff, config.winCoeff); // Примерный вызов для gmdose2 с предположением, что geiger2 = 0
-        if (windose>3) {
+/*         if (windose>3) {
             windose = 3
-          }
+          } */
+
+        console.log('wincount, windose, rHeight', measurementData.winCount, windose, measurementData.rHeight);  
       
         // Подготовка данных для отправки через WebSocket с учетом требуемого формата
         const flightDataForWebSocket = {
@@ -806,7 +848,7 @@ function insertOnlineMeasurement(db, flightId, measurementData) {
           alt: coords.alt, // Нужно будет добавить в measurementData
           height: measurementData.rHeight,
           countw: measurementData.winCount,
-          //dosew: windose, // Это значение должно быть рассчитано заранее
+          dosew: windose, // Это значение должно быть рассчитано заранее
           dose: windose,
           geiger1: measurementData.geiger1,
           geiger2: measurementData.geiger2,
@@ -820,7 +862,7 @@ function insertOnlineMeasurement(db, flightId, measurementData) {
           if (client.readyState === WebSocket.OPEN) {
             client.send(JSON.stringify(flightDataForWebSocket));
           }
-          console.log('Посылка типа 1 записана в БД и отправлена на фронтенд');
+          //console.log('Посылка типа 1 записана в БД и отправлена на фронтенд');
         });
     });
   }
@@ -952,6 +994,8 @@ function generateMeasurementData(db, flightId) {
       windose = 3
     }
 
+  console.log('Эмуляция', winCount, alt, config.winCoeff, windose);
+
   const measurementData = {
     dateTime: new Date().toISOString(),
     gpsX: ecefCoords.x,
@@ -961,6 +1005,7 @@ function generateMeasurementData(db, flightId) {
     geiger1: 0, // Примерное значение, подставьте реальные данные
     geiger2: 0, // Примерное значение, подставьте реальные данные
     winCount: winCount,
+    type: 1
   };
   insertOnlineMeasurement(db, flightId, measurementData);  
 }

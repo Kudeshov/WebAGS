@@ -1023,7 +1023,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
     setCurrentSensorType(event.target.value); // Меняем тип сенсора
   };
 
-     const handleZoneChange = (index, field, value) => {
+  const handleZoneChange = (index, field, value) => {
     const updatedZones = settings.sensorTypes[currentSensorType].zonesOfInterest.map((zone, idx) =>
       idx === index ? { ...zone, [field]: value } : zone
     );

@@ -24,7 +24,7 @@ function SourceSearchDialog({ open, onClose }) {
 
   const { currentSensorType = "УДКГ-А01", globalSettings,
     sourceCoordinates, setSourceCoordinates, sourceActivity, setSourceActivity, sourceDeviation, setSourceDeviation } = useContext(FlightDataContext);
-  const { validMeasurements, selectedCollection, selectedPoints } = useContext(FlightDataContext); // Доступ к данным и настройкам через контекст
+  const { validMeasurements, selectedCollection, selectedPoints, onlineFlightId } = useContext(FlightDataContext); // Доступ к данным и настройкам через контекст
   const { mapBounds } = useContext(FlightDataContext);
   
   const { P0 = 70, P1 = 11 } = selectedCollection || {}; // Значения по умолчанию, если нет данных
@@ -71,6 +71,7 @@ function SourceSearchDialog({ open, onClose }) {
   
 
   const handleZoneChange = (eventOrZoneName) => {
+ 
     // Проверяем, что было передано: событие или конкретное имя зоны
     const zoneName = typeof eventOrZoneName === 'string' ? eventOrZoneName : eventOrZoneName.target.value;
     
@@ -86,70 +87,77 @@ function SourceSearchDialog({ open, onClose }) {
     calculateValues();
   };
   
-  
-
   const calculateValues = () => {
     if (!isEnergyRangeValid) {
-      // Если диапазон некорректный, не производим вычисления
-      setPeakCenter('NaN');
-      return;
+        // Если диапазон некорректный, не производим вычисления
+        setPeakCenter('NaN');
+        return;
     }
-  
-    const measurements = selectedPoints && selectedPoints.length > 0 ? selectedPoints : validMeasurements;
-    if (!measurements || !P0 || !P1 || !globalSettings.SPECDEFTIME) return;
-  
+
+    const measurements = (selectedPoints && selectedPoints.length > 0) ? selectedPoints : validMeasurements;
+    if (!measurements || measurements.length === 0 || !P0 || !P1 || !globalSettings.SPECDEFTIME) {
+        return;
+    }
+
+    // Объявляем и инициализируем переменную `validMeasurements`
+    const filteredMeasurements = measurements.filter(measure => 
+        measure.spectrum && Array.isArray(measure.spectrum.channels) && measure.spectrum.channels.length > 0
+    );
+
+    if (filteredMeasurements.length === 0) {
+        return;
+    }
+
     let leftIndex = Math.ceil((energyRange.low - P0) / P1);
     let rightIndex = Math.floor((energyRange.high - P0) / P1);
-  
+
     // Корректировка индексов, если они выходят за допустимые границы
     if (leftIndex < 0) leftIndex = 0;
     if (rightIndex >= globalSettings.NSPCHANNELS) rightIndex = globalSettings.NSPCHANNELS - 1;
-  
+
     const lTime = globalSettings.SPECDEFTIME;  // Используем globalSettings.SPECDEFTIME для нормализации
-  
+
     const channelCount = globalSettings.NSPCHANNELS;  // Количество каналов спектра
     const averagedSpectrum = new Array(channelCount).fill(0);  // Массив для усредненного спектра
     let totalHeightSum = 0;
     let count = 0;
-  
+
     // Сначала вычисляем средний спектр
-    measurements.forEach(measure => {
-      const { channels } = measure.spectrum;
-      if (channels.length === 0) return;
-  
-      // Нормализуем каналы по времени и добавляем к усредненному спектру
-      channels.forEach((value, index) => {
-        averagedSpectrum[index] += value / lTime;
-      });
-  
-      totalHeightSum += measure.height;
-      count++;
+    filteredMeasurements.forEach(measure => {
+        const { channels } = measure.spectrum;
+
+        // Нормализуем каналы по времени и добавляем к усредненному спектру
+        channels.forEach((value, index) => {
+            averagedSpectrum[index] += value / lTime;
+        });
+
+        totalHeightSum += measure.height;
+        count++;
     });
-  
+
     // Завершаем вычисление усредненного спектра, деля на количество измерений
     for (let i = 0; i < averagedSpectrum.length; i++) {
-      averagedSpectrum[i] /= count;
+        averagedSpectrum[i] /= count;
     }
-  
+
     // Теперь находим пик в усредненном спектре в пределах [leftIndex, rightIndex]
     let globalPeakValue = -Infinity;
     let globalPeakIndex = 0;
-  
+
     for (let i = leftIndex; i <= rightIndex; i++) {
-      const v = averagedSpectrum[i];
-      if (v > globalPeakValue) {
-        globalPeakValue = v;
-        globalPeakIndex = i;
-      }
+        const v = averagedSpectrum[i];
+        if (v > globalPeakValue) {
+            globalPeakValue = v;
+            globalPeakIndex = i;
+        }
     }
-  
+
     const averageHeight = totalHeightSum / count;
     const peakEnergy = (P0 + globalPeakIndex * P1);  // Энергия пика в килоэлектронвольтах
-  
+
     setAverageHeight(averageHeight.toFixed(2));
     setPeakCenter(peakEnergy.toFixed(2));
   };
-
 
   const handleCalculateSource = () => {
     if (!isEnergyRangeValid) {
@@ -178,8 +186,6 @@ function SourceSearchDialog({ open, onClose }) {
     }
   };
   
-
-
   return (
     <Dialog open={open} onClose={onClose}>
       <DialogTitle>Поиск источника</DialogTitle>
