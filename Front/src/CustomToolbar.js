@@ -1130,7 +1130,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
           <TextField
             margin="dense"
             id="dgThresholdLow"
-            label="Нижний порог счетчика Гейгера"
+            label="Порог счетчика Гейгера 1"
             type="number"
             fullWidth
             size="small"
@@ -1152,7 +1152,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
           <TextField
             margin="dense"
             id="dgThresholdHigh"
-            label="Верхний порог счетчика Гейгера"
+            label="Порог счетчика Гейгера 2"
             type="number"
             fullWidth
             size="small"
