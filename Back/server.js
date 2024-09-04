@@ -213,16 +213,17 @@ function getDose(value, height, gm = false, gmNum = 1, gm1Coeff, gm2Coeff, winCo
 function getDoseNew(spectrum, height, Dgeiger1, Dgeiger2, DGThresholdLow, DGThresholdHigh, gm1Coeff, gm2Coeff, eP0, eP1, doseRateConversionFactors) {
   let dose = 0;
 
-/*   if (Dgeiger2 > DGThresholdHigh) {
+  if (Dgeiger2 >= DGThresholdHigh) {
     // Используем грубый датчик
     dose = Dgeiger2 * gm2Coeff;
-  } else if (Dgeiger1 > DGThresholdLow) {
+  } else if (Dgeiger1 >= DGThresholdLow) {
     // Используем чувствительный датчик
     dose = Dgeiger1 * gm1Coeff;
-  } else */ {
+  } else {
     // Расчет по полиному на основе спектра
     dose = spectrum.calculateTotalDose(eP0, eP1, doseRateConversionFactors);
   }
+  
 
   // Доза на высоте 1 метр
   let dose1m = dose;

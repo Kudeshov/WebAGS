@@ -568,12 +568,14 @@ function MyMapComponent({ chartOpen, heightFilterActive }) {
       const altitudeRange = globalSettings.altitudeSource === 'barometric' ? averageDiapasone.heightRange : averageDiapasone.altRange;
 //Мощность дозы (по окну): ${parseFloat(averageMeasurement.dosew).toFixed(2)} мкЗв/час<br>
 //Мощность дозы (по окну): ${parseFloat(averageMeasurement.dosew).toFixed(2)} мкЗв/час<br>
+//Счёт в окне: ${averageDiapasone.countwRange[0]} - ${averageDiapasone.countwRange[1]} имп/с<br>
+//Счёт в окне: ${averageDiapasone.countwRange[0]} имп/с<br>
       if (selectedPoints.length > 1) {
         infoPanelRef.current.innerHTML = `
           Количество измерений: ${selectedPoints.length}<br>
           Дата: ${convertDateTime(averageDiapasone.timeRange[0])} -  ${convertDateTime(averageDiapasone.timeRange[1])}<br>
           Время измерения: ${(averageDiapasone.timeRange[1].getTime() - averageDiapasone.timeRange[0].getTime()) / 1000} сек<br>
-          Счёт в окне: ${averageDiapasone.countwRange[0]} - ${averageDiapasone.countwRange[1]} имп/с<br>
+          
           Долгота: ${averageDiapasone.longRange[0].toFixed(6)} - ${averageDiapasone.longRange[1].toFixed(6)}<br>
           Широта: ${averageDiapasone.latRange[0].toFixed(6)} - ${averageDiapasone.latRange[1].toFixed(6)}<br>
           ${altitudeLabel}: ${altitudeRange[0].toFixed(2)} - ${altitudeRange[1].toFixed(2)} м<br>
@@ -586,7 +588,7 @@ function MyMapComponent({ chartOpen, heightFilterActive }) {
         infoPanelRef.current.innerHTML = `
           Дата: ${convertDateTime(averageDiapasone.timeRange[0])}<br>
           Время измерения: 1 сек<br>
-          Счёт в окне: ${averageDiapasone.countwRange[0]} имп/с<br>
+          
           Долгота: ${averageDiapasone.longRange[0].toFixed(6)}<br>
           Широта: ${averageDiapasone.latRange[0].toFixed(6)} <br>
           ${altitudeLabel}: ${altitudeRange[0].toFixed(2)} м<br>
