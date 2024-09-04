@@ -604,65 +604,6 @@ function MyMapComponent({ chartOpen, heightFilterActive }) {
   const [previousValidMeasurements, setPreviousValidMeasurements] = useState();
   const [previousValidMeasurementsBand, setPreviousValidMeasurementsBand] = useState();
 
-  /* useEffect(() => {
-    if (!isIsolineLayerActive) {
-      return;
-    }
-
-    if (previousValidMeasurements === validMeasurements) {
-      return;
-    }
-
-    setPreviousValidMeasurements(validMeasurements);
-  
-    if (!validMeasurements || validMeasurements.length < 10) {
-      setCachedIsolines({
-        lines: [],
-        minDose: null,
-        maxDose: null
-      });
-      return;
-    }
-   
-    // Создание коллекции точек для интерполяции
-    const pointsCollection = turf.featureCollection(
-      validMeasurements.map(m => turf.point([m.lon, m.lat], { dose: m.dose }))
-    );
-
-    const cellSize = 0.003; // Размер ячейки для интерполяции
-
-    // Определяем минимальный ограничивающий прямоугольник (envelope) для всех точек
-    const envelope = turf.envelope(pointsCollection);
-
-    // Опционально можно увеличить область на 10% с помощью transformScale
-    const expandedEnvelope = turf.transformScale(envelope, 1.1); // Увеличиваем на 10%
-
-    // Выполнение интерполяции
-    const interpolated = turf.interpolate(pointsCollection, cellSize, { gridType: 'point', property: 'dose',
-      mask: expandedEnvelope });
-
-    // Получение минимального и максимального значений дозы после интерполяции
-    const minDose = Math.min(...interpolated.features.map(f => f.properties.dose));
-    const maxDose = Math.max(...interpolated.features.map(f => f.properties.dose));
-
-    // Расчет равномерно распределенных уровней изолиний
-    const numBreaks = 11; // Количество уровней изолиний
-    const breaks = Array.from({ length: numBreaks }, (_, i) => 
-      minDose + (maxDose - minDose) * (i / (numBreaks - 1))
-    );
-  
-    // Создание изолиний на основе рассчитанных уровней
-    const lines = turf.isolines(interpolated, breaks, {zProperty: 'dose'});
-  
-    // Кэширование рассчитанных изолиний
-    setCachedIsolines({
-      lines: lines,
-      minDose: minDose,
-      maxDose: maxDose
-    });
-  
-  }, [validMeasurements, previousValidMeasurements, isIsolineLayerActive]); */
-
 useEffect(() => {
   if (!isIsolineLayerActive) {
     return;
@@ -783,6 +724,17 @@ useEffect(() => {
     }
   }, [isIsolineLayerActive, cachedIsolines, mapInstance, colorThresholds, maxDoseValue, minDoseValue]);    
 
+
+  const tooltipRef = useRef(null);
+
+  // Функция для поиска точек, попадающих в полигон
+  const findPointsInPolygon = (polygon, points) => {
+    return points.filter(point => {
+      const pt = turf.point([point.lon, point.lat]);
+      return turf.booleanPointInPolygon(pt, polygon);
+    });
+  };
+  
   useEffect(() => {
     if (isIsobandLayerActive && mapInstance) {
       // Удалить предыдущий слой изобендов, если он существует
@@ -792,27 +744,82 @@ useEffect(() => {
   
       // Создать новый слой изобендов из кешированных данных
       if (cachedIsobands) {
-        
+  
         isobandLayerRef.current = L.geoJSON(cachedIsobands.bands, {
           style: feature => {
             const doseRange = feature.properties.dose.split('-').map(Number);
             const doseValue = (doseRange[0] + doseRange[1]) / 2;
-            console.log('colorThresholdsIsobands values ', doseValue, colorThresholds, cachedIsobands.minDose, cachedIsobands.maxDose);
-            const colorThresholdsIsobands = calculateScaledThresholds(colorThresholds, minDoseValue, maxDoseValue, cachedIsobands.minDose, cachedIsobands.maxDose);
-            console.log('colorThresholdsIsobands ',colorThresholdsIsobands);
+            const colorThresholdsIsobands = calculateScaledThresholds(
+              colorThresholds, minDoseValue, maxDoseValue, cachedIsobands.minDose, cachedIsobands.maxDose
+            );
             const fillColor = getColorT(doseValue, colorThresholdsIsobands, cachedIsobands.minDose, cachedIsobands.maxDose);
-
-            console.log('fillColor ',fillColor);
-            //const fillColor = getColor(doseValue, cachedIsobands.minDose, cachedIsobands.maxDose);
             return {
               color: fillColor,
               weight: 0,
               fillColor: fillColor,
               fillOpacity: 0.5
             };
+          },
+          onEachFeature: (feature, layer) => {
+            // Добавляем обработчик для изменения курсора при наведении на полигон
+            layer.on('mouseover', function () {
+              mapInstance.getContainer().style.cursor = 'crosshair'; // Изменение курсора
+            });
+  
+            // Возвращаем курсор к исходному состоянию, когда мышь уходит с полигона
+            layer.on('mouseout', function () {
+              mapInstance.getContainer().style.cursor = ''; // Возвращение к исходному виду
+              if (tooltipRef.current) {
+                mapInstance.removeLayer(tooltipRef.current); // Удаляем тултип, когда мышь уходит с полигона
+                tooltipRef.current = null; // Обнуляем реф
+              }
+            });
           }
         }).addTo(mapInstance);
-
+  
+        // Обработчик наведения мыши на слой изобендов
+        isobandLayerRef.current.on('mousemove', function (e) {
+          const { latlng } = e;  // Проверяем, есть ли latlng
+          if (!latlng || !latlng.lat || !latlng.lng) {
+            return;  // Выходим из обработчика, если нет валидных координат
+          }
+  
+          const layer = e.layer;
+          const polygon = layer.feature.geometry;
+  
+          // Проверка, что тултип существует и его надо удалить
+          if (tooltipRef.current) {
+            mapInstance.removeLayer(tooltipRef.current);
+            tooltipRef.current = null;
+          }
+  
+          // Создаем новый тултип для текущего полигона
+          tooltipRef.current = L.tooltip({
+            permanent: false,
+            direction: 'top',
+            className: 'med-tooltip',
+          });
+  
+          // Добавляем тултип на карту, только если есть валидные точки
+          const pointsInPolygon = findPointsInPolygon(polygon, validMeasurements);
+  
+          if (pointsInPolygon.length > 0) {
+            // Рассчитываем минимальное, максимальное и среднее значения дозы
+            const minDose = Math.min(...pointsInPolygon.map(p => p.dose));
+            const maxDose = Math.max(...pointsInPolygon.map(p => p.dose));
+            const avgDose = pointsInPolygon.reduce((sum, p) => sum + p.dose, 0) / pointsInPolygon.length;
+  
+            // Обновляем тултип с новыми данными и отображаем его
+            tooltipRef.current
+              .setLatLng(latlng)  // Устанавливаем корректные координаты
+              .setContent(`
+                Диапазон МЭД: ${minDose.toFixed(2)} - ${maxDose.toFixed(2)} мкЗв/час<br>
+                Средняя МЭД: ${avgDose.toFixed(2)} мкЗв/час
+              `)
+              .addTo(mapInstance);
+          }
+        });
+  
         if (measurementsLayerRef.current) {
           measurementsLayerRef.current.bringToFront();
         }
@@ -824,8 +831,14 @@ useEffect(() => {
         isobandLayerRef.current.remove();
         isobandLayerRef.current = null;
       }
+      // Удаляем тултип, если слой изобендов отключен
+      if (tooltipRef.current) {
+        mapInstance.removeLayer(tooltipRef.current);
+        tooltipRef.current = null;
+      }
     }
   }, [isIsobandLayerActive, cachedIsobands, mapInstance, colorThresholds, maxDoseValue, minDoseValue]);
+  
 
 useEffect(() => {
   if (!isIsobandLayerActive) {

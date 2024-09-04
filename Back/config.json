@@ -22,8 +22,8 @@
     4.67e-15,
     -9.95e-13
   ],
-  "gm1Coeff": 10,
-  "gm2Coeff": 1000,
+  "gm1Coeff": 0.5,
+  "gm2Coeff": 5,
   "DGThresholdLow": "500",
   "DGThresholdHigh": "10",
   "serialPort": {

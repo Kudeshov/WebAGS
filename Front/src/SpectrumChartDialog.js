@@ -211,6 +211,27 @@ function SpectrumChart({ data, selectedCollection, averageHeight, timeInterval, 
       legend: {
         display: false
       },
+      tooltip: {
+        enabled: true,
+        mode: 'index',
+        intersect: false,
+        callbacks: {
+          title: (tooltipItems) => {
+            // Заголовок тултипа — это энергия
+            const energy = tooltipItems[0].label;
+            return `Энергия: ${energy} keV`;
+          },
+          label: (tooltipItem) => {
+            // Проверим, что это основной график (не зоны интереса)
+            if (tooltipItem.datasetIndex === 0) {
+              const countRate = tooltipItem.raw.toFixed(2); // Округляем до 2 знаков
+              return `Скорость счета: ${countRate} 1/с`;
+            }
+            // Если это залитая зона, не выводим повторяющуюся информацию
+            return null;
+          }
+        }
+      },
       zoom: {
         pan: {
           enabled: true,
@@ -245,8 +266,16 @@ function SpectrumChart({ data, selectedCollection, averageHeight, timeInterval, 
         },
         min: 0
       }
-    }
+    },
+    onHover: (event, chartElement) => {
+      const chart = chartRef.current;
+      if (chart) {
+        chart.canvas.style.cursor = chartElement.length ? 'pointer' : 'default';
+      }
+    },
   };
+  
+  
 
   // Обработка обновления строки
   const processRowUpdate = (updatedRow, originalRow) => {
