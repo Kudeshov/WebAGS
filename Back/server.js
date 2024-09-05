@@ -1236,3 +1236,28 @@ app.post('/start-flight', (req, res) => {
   });
 });
 
+// Добавляем новый эндпойнт для отправки сообщения на открытый COM-порт
+app.post('/api/sendToComPort', (req, res) => {
+  const { message } = req.body; // Предполагаем, что сообщение будет передано в теле запроса
+
+  if (!message) {
+    return res.status(400).json({ error: true, message: 'Сообщение не может быть пустым' });
+  }
+
+  // Проверяем, открыт ли COM-порт
+  if (activeSerialPort && activeSerialPort.isOpen) {
+    // Пытаемся отправить сообщение
+    activeSerialPort.write(message, (err) => {
+      if (err) {
+        console.error('Ошибка при отправке сообщения на COM-порт:', err.message);
+        return res.status(500).json({ error: true, message: 'Ошибка при отправке сообщения на COM-порт' });
+      }
+
+      console.log(`Сообщение "${message}" успешно отправлено на COM-порт`);
+      return res.json({ success: true, message: 'Сообщение успешно отправлено' });
+    });
+  } else {
+    console.log('COM-порт не открыт');
+    return res.status(400).json({ error: true, message: 'COM-порт не открыт' });
+  }
+});

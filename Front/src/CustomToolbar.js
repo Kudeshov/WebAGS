@@ -10,6 +10,8 @@ import { ReactComponent as DownloadIcon } from './icons/download.svg';
 import { ReactComponent as EraserIcon } from './icons/trash.svg';
 import { ReactComponent as CogIcon } from './icons/cog.svg';
 import { ReactComponent as RadiationIcon } from './icons/radiation.svg';
+import { ReactComponent as SensorAlertIcon } from './icons/sensor-alert.svg'; // Иконка для перезагрузки датчика
+import { ReactComponent as SensorOnIcon } from './icons/sensor-on.svg'; // Иконка для установки нулевого уровня высоты
 import Tooltip from '@mui/material/Tooltip';
 import { useTheme } from '@mui/material/styles';
 import { FormControl, InputLabel, Select, AppBar, Grid, Toolbar, IconButton, Menu, MenuItem, ListSubheader, Dialog, DialogTitle, 
@@ -71,6 +73,44 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   const [spectrumData, setSpectrumData] = useState([]);
   const [averageHeight, setAverageHeight] = useState(0);
   const [timeInterval, setTimeInterval] = useState(0);
+
+  const [confirmationOpen, setConfirmationOpen] = useState(false);
+  const [messageToSend, setMessageToSend] = useState('');
+
+  const handleOpenConfirmation = (message) => {
+    setMessageToSend(message);
+    setConfirmationOpen(true);
+  };
+
+  const handleCloseConfirmation = () => {
+    setConfirmationOpen(false);
+  };
+
+  const handleSendMessage = () => {
+    fetch('/api/sendToComPort', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ message: messageToSend }),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.success) {
+          setSnackbarMessage(`Команда "${messageToSend}" успешно отправлена.`);
+        } else {
+          setSnackbarMessage(`Ошибка при отправке команды "${messageToSend}".`);
+        }
+        setSnackbarOpen(true); // Открываем Snackbar с сообщением
+      })
+      .catch((error) => {
+        setSnackbarMessage(`Ошибка: ${error.message}`);
+        setSnackbarOpen(true); // Открываем Snackbar с сообщением
+        console.error('Ошибка:', error);
+      });
+
+    handleCloseConfirmation();
+  };
 
   const [sourceSearchDialogOpen, setSourceSearchDialogOpen] = useState(false);
   const handleOpenSourceSearchDialog = () => {
@@ -1684,6 +1724,43 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
             <RadiationIcon style={{ fill: (measurements.length === 0 || onlineFlightId !== null)?"lightgray": "white", width: 24, height: 24 }} />
           </Tooltip>
         </IconButton>
+
+        <IconButton
+          color="inherit"
+          disabled={!onlineFlightId}
+          onClick={() => handleOpenConfirmation('RSTH0')}
+        >
+          <Tooltip title="Задать нулевой уровень высоты (RSTH0)">
+            <SensorOnIcon style={{ fill: onlineFlightId ? "white" : "lightgray", width: 24, height: 24 }} />
+          </Tooltip>
+        </IconButton>
+
+        <IconButton
+          color="inherit"
+          disabled={!onlineFlightId}
+          onClick={() => handleOpenConfirmation('RESET')}
+        >
+          <Tooltip title="Перезагрузить датчик (RESET)">
+            <SensorAlertIcon style={{ fill: onlineFlightId ? "white" : "lightgray", width: 24, height: 24 }} />
+          </Tooltip>
+        </IconButton>
+
+        <Dialog open={confirmationOpen} onClose={handleCloseConfirmation}>
+        <DialogTitle>Подтвердите действие</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Вы уверены, что хотите отправить команду "{messageToSend}" на датчик?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseConfirmation} color="primary">
+            Отмена
+          </Button>
+          <Button onClick={handleSendMessage} color="primary">
+            Отправить
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <SourceSearchDialog open={sourceSearchDialogOpen} onClose={handleCloseSourceSearchDialog} />
   
