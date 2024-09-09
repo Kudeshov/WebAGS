@@ -8,6 +8,7 @@ const fs = require('fs');
 const path = require('path');
 //const SerialPort = require('serialport');
 const configPath = path.join(__dirname, 'config.json');
+const isotopePath = path.join(__dirname, 'isotope_peaks_data.json');
 // Синхронное чтение и парсинг файла конфигурации
 let config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
 const port = config.port; // Использование номера порта из config.json
@@ -16,6 +17,16 @@ const { ReadlineParser } = require('@serialport/parser-readline');
 let activeSerialPort = null;
 
 app.use(express.json());
+
+app.get('/api/isotope_peaks_data', (req, res) => {
+  fs.readFile(isotopePath, 'utf8', (err, data) => {
+    if (err) {
+      res.status(500).send('Ошибка чтения файла изотопов');
+      return;
+    }
+    res.json(JSON.parse(data));
+  });
+});
 
 // Получение всех настроек
 app.get('/api/settings', (req, res) => {

@@ -77,6 +77,8 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   const [confirmationOpen, setConfirmationOpen] = useState(false);
   const [messageToSend, setMessageToSend] = useState('');
 
+  const [isotopes, setIsotopes] = useState([]); // State to hold isotope data
+
   const handleOpenConfirmation = (message) => {
     setMessageToSend(message);
     setConfirmationOpen(true);
@@ -146,35 +148,6 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
     return avgSpectrum;
   }, [selectedCollection]);
   
-/*   useEffect(() => {
-
-    console.log('Selected points length in Toolbar '+selectedPoints.length);
-    if (selectedPoints.length > 0 && selectedCollection) {
-      const totalHeight = selectedPoints.reduce((acc, point) => acc + point.height, 0);
-      setAverageHeight(totalHeight / selectedPoints.length);
-  
-      const times = selectedPoints.map(point => new Date(point.datetime).getTime());
-      const minTime = Math.min(...times);
-      const maxTime = Math.max(...times);
-      setTimeInterval((maxTime - minTime) / 1000);
-
-      // Проверяем, есть ли спектр у первой выбранной точки и содержит ли он массив каналов
-      const hasSpectrumChannels = selectedPoints[0].spectrum && Array.isArray(selectedPoints[0].spectrum.channels);
-      // Если нет спектра или каналов, возвращаем пустой массив
-      if (!hasSpectrumChannels) {
-        setSpectrumData([]);
-      }
-      else 
-      {
-        const avgSpectrumData = calculateAverageSpectrum(selectedPoints);
-        setSpectrumData(avgSpectrumData);
-      }
-    }
-    else
-    {
-      setSpectrumData([]);
-    }
-  }, [selectedPoints, calculateAverageSpectrum, selectedCollection]); */
 
   useEffect(() => {
     // Определяем массив данных для расчета: либо selectedPoints, либо validMeasurements
@@ -267,12 +240,6 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
     setStartFlightDialogOpen(false);
   };
 
-  // Состояния для данных посылок второго типа
-/*   const [type2Data, setType2Data] = useState({
-    sats: 'N/A',
-    pressure: 'N/A'
-  });
- */
 
   let type2Data = {
     sats: 'N/A',
@@ -940,7 +907,6 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
     return !isDBSelectedOrInputValid || !isFlightNameValid || !isWindowRangeValid;
   };
 
-
   const [settings, setSettings] = useState({}); // Для хранения настроек из config.json
 
   const handleCoeffChange = (value, index, arrayName) => {
@@ -995,8 +961,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
       return;
     }
 
-
-    
+   
     const updatedSettings = {
       ...updatedSettingsParam,
       NSPCHANNELS: parseInt(updatedSettingsParam.NSPCHANNELS, 10),
@@ -1030,6 +995,18 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
     .catch(error => console.error('Ошибка при обновлении настроек:', error));
   };
 
+  useEffect(() => {
+    // Выполняем запрос к API для получения данных о пиках изотопов
+    fetch('/api/isotope_peaks_data')
+      .then(response => response.json()) // Преобразуем ответ в JSON
+      .then(data => {
+        console.log('Fetched Isotopes:', data); // Выводим полученные данные в консоль для отладки
+        setIsotopes(data); // Обновляем состояние с данными изотопов
+      })
+      .catch(error => console.error('Error fetching isotopes:', error)); // Обрабатываем ошибку, если запрос не удался
+  }, []); // Пустой массив зависимостей означает, что этот код выполнится один раз при монтировании компонента
+
+
   const [activeTab, setActiveTab] = useState(0);
 
   const handleChangeTab = (event, newValue) => {
@@ -1048,26 +1025,17 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   };  
 
   const { currentSensorType, setCurrentSensorType } = useContext(FlightDataContext);
-  const [selectedZone, setSelectedZone] = useState('');
-  const [zoneBoundaries, setZoneBoundaries] = useState({ leftE: '', rightE: '' });
-
-
-  const handleBoundaryChange = (field, value) => {
-    setZoneBoundaries(prevState => ({
-      ...prevState,
-      [field]: value
-    }));
-  };
 
   const handleSensorTypeChange = (event) => {
     setCurrentSensorType(event.target.value); // Меняем тип сенсора
   };
 
   const handleZoneChange = (index, field, value) => {
+    
     const updatedZones = settings.sensorTypes[currentSensorType].zonesOfInterest.map((zone, idx) =>
       idx === index ? { ...zone, [field]: value } : zone
     );
-    setSettings({
+   setSettings({
       ...settings,
       sensorTypes: {
         ...settings.sensorTypes,
@@ -1076,8 +1044,8 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
           zonesOfInterest: updatedZones
         }
       }
-    });
-  };
+    }); 
+  }; 
 
   const tabPanelContent = (index) => {
     switch(index) {
@@ -1213,93 +1181,107 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
           />
         </>
       );
-        case 3: // Зоны интереса
-        return (
-          <>
-            <FormControl fullWidth margin="dense" size="small" variant="outlined">
-              <InputLabel id="sensor-type-label">Тип датчика</InputLabel>
-              <Select
-                labelId="sensor-type-label"
-                id="sensorType"
-                value={currentSensorType}
-                onChange={handleSensorTypeChange}
-                label="Тип датчика"
-              >
-                {Object.keys(settings.sensorTypes).map((type) => (
-                  <MenuItem key={type} value={type}>
-                    {type}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-      
-            <Box mt={2}>
-              {settings.sensorTypes[currentSensorType].zonesOfInterest.map((zone, index) => (
-                <Grid container spacing={2} key={zone.id}>
-                  <Grid item xs={2}>
-                    <TextField
-                      margin="dense"
-                      label="ID"
-                      type="number"
-                      fullWidth
-                      size="small"
-                      variant="outlined"
-                      value={zone.id}
-                      disabled
-                    />
-                  </Grid>
-                  <Grid item xs={2}>
-                    <TextField
-                      margin="dense"
-                      label="LeftE"
-                      type="number"
-                      fullWidth
-                      size="small"
-                      variant="outlined"
-                      value={zone.leftE}
-                      onChange={(e) => handleZoneChange(index, 'leftE', e.target.value)}
-                    />
-                  </Grid>
-                  <Grid item xs={2}>
-                    <TextField
-                      margin="dense"
-                      label="RightE"
-                      type="number"
-                      fullWidth
-                      size="small"
-                      variant="outlined"
-                      value={zone.rightE}
-                      onChange={(e) => handleZoneChange(index, 'rightE', e.target.value)}
-                    />
-                  </Grid>
-                  <Grid item xs={4}>
-                    <TextField
-                      margin="dense"
-                      label="Name"
-                      fullWidth
-                      size="small"
-                      variant="outlined"
-                      value={zone.Name}
-                      onChange={(e) => handleZoneChange(index, 'Name', e.target.value)}
-                    />
-                  </Grid>
-                  <Grid item xs={2}>
-                    <TextField
-                      margin="dense"
-                      label="Выход линии, %"
-                      type="number"
-                      fullWidth
-                      size="small"
-                      variant="outlined"
-                      value={zone.lineOutput} // Assuming this is the key in the data for "Выход линии"
-                      onChange={(e) => handleZoneChange(index, 'lineOutput', e.target.value)}
-                    />
-                  </Grid>
-                </Grid>
+      case 3: // Зоны интереса
+      return (
+        <>
+          {/* Выбор типа датчика */}
+          <FormControl fullWidth margin="dense" size="small" variant="outlined">
+            <InputLabel id="sensor-type-label">Тип датчика</InputLabel>
+            <Select
+              labelId="sensor-type-label"
+              id="sensorType"
+              value={currentSensorType} // Текущий выбранный тип датчика
+              onChange={handleSensorTypeChange} // Обработчик изменения типа датчика
+              label="Тип датчика"
+            >
+              {/* Проходим по всем типам сенсоров, заданным в конфигурации */}
+              {Object.keys(settings.sensorTypes).map((type) => (
+                <MenuItem key={type} value={type}>
+                  {type}
+                </MenuItem>
               ))}
-            </Box>
-          </>
-        );  
+            </Select>
+          </FormControl>
+    
+          <Box mt={2}>
+            {/* Проходим по массиву зон интереса для текущего типа датчика */}
+            {settings.sensorTypes[currentSensorType].zonesOfInterest.map((zone, index) => (
+              <Grid container spacing={2} key={zone.id}>
+                <Grid item xs={2}>
+                  {/* Поле для отображения идентификатора зоны (только для чтения) */}
+                  <TextField
+                    margin="dense"
+                    label="ID"
+                    type="number"
+                    fullWidth
+                    size="small"
+                    variant="outlined"
+                    value={zone.id}
+                    disabled
+                  />
+                </Grid>
+                <Grid item xs={2}>
+                  {/* Поле для ввода левой границы энергии (нужно вычисление значения) */}
+                  <TextField
+                    margin="dense"
+                    label="LeftE"
+                    type="number"
+                    fullWidth
+                    size="small"
+                    variant="outlined"
+                    // value={zone.leftE}  Здесь должно быть вычисление значения
+                  />
+                </Grid>
+                <Grid item xs={2}>
+                  {/* Поле для ввода правой границы энергии (нужно вычисление значения) */}
+                  <TextField
+                    margin="dense"
+                    label="RightE"
+                    type="number"
+                    fullWidth
+                    size="small"
+                    variant="outlined"
+                    // value={zone.rightE}  Здесь тоже должно быть вычисление значения
+                  />
+                </Grid>
+                <Grid item xs={4}>
+                  {/* Выпадающий список для выбора изотопа по ID */}
+                  <FormControl fullWidth margin="dense" size="small" variant="outlined">
+                    <InputLabel id={`isotope-select-label`}>Изотоп</InputLabel>
+                    <Select
+                      labelId={`isotope-select-label`}
+                      value={zone.isotope_id} // ID изотопа из зоны интереса
+                      onChange={(e) => handleZoneChange(index, 'isotope_id', e.target.value)} // Обработчик изменения поля isotope_id
+                      label="Изотоп"
+                    >
+                      {/* Проходим по массиву изотопов для заполнения выпадающего списка */}
+                      {isotopes.isotopes?.map((isotope) => (
+                        <MenuItem key={isotope.id} value={isotope.id}>
+                          {isotope.name} {/* Имя изотопа для отображения */}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={2}>
+                  {/* Поле для ввода значения "Выход линии, %" */}
+                  <TextField
+                    margin="dense"
+                    label="Выход линии, %"
+                    type="number"
+                    fullWidth
+                    size="small"
+                    variant="outlined"
+                    value={zone.lineOutput} // Значение "Выход линии" для зоны интереса
+                    onChange={(e) => handleZoneChange(index, 'lineOutput', e.target.value)} // Обработчик изменения поля lineOutput
+                  />
+                </Grid>
+              </Grid>
+            ))}
+          </Box>
+        </>
+      );
+    
       case 4: // Прочееcase 3: // Прочее
       return (
         <>
@@ -1652,16 +1634,16 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
           borderRadius: '50%',
           padding: '0px',  
         }}>
-          <IconButton color="inherit" disabled={(measurements.length === 0 || onlineFlightId !== null)} onClick={handleChartToggle} >
+          <IconButton color="inherit" disabled={(measurements.length === 0 || selectedCollection?.is_online)} onClick={handleChartToggle} >
             <Tooltip title="Показать спектр на карте">
-              <ChartIcon style={{ fill: selectedCollection?.is_online?"lightgray": (chartOpen ? theme.palette.primary.main : "white"), width: 24, height: 24 }} />
+              <ChartIcon style={{ fill: (measurements.length === 0 || selectedCollection?.is_online)?"lightgray": (chartOpen ? theme.palette.primary.main : "white"), width: 24, height: 24 }} />
             </Tooltip>
           </IconButton>
         </div>
 
-        <IconButton color="inherit" disabled={(measurements.length === 0 || onlineFlightId !== null)} onClick={handleOpenSpectrumDialog} >
+        <IconButton color="inherit" disabled={(measurements.length === 0 || selectedCollection?.is_online)} onClick={handleOpenSpectrumDialog} >
           <Tooltip title="Показать спектр в отдельном окне">
-            <SignalIcon style={{ fill: (measurements.length === 0 || onlineFlightId !== null)?"lightgray": "white", width: 24, height: 24 }} />
+            <SignalIcon style={{ fill: (measurements.length === 0 || selectedCollection?.is_online)?"lightgray": "white", width: 24, height: 24 }} />
           </Tooltip>
         </IconButton>
 
@@ -1670,9 +1652,9 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
           borderRadius: '50%',
           padding: '0px',  
         }}>
-          <IconButton color="inherit" onClick={handleThreeDToggle}>
+          <IconButton color="inherit" disabled={(measurements.length === 0)} onClick={handleThreeDToggle}>
             <Tooltip title="Трехмерная модель">
-              <CubeIcon style={{ fill: threeDActive ? theme.palette.primary.main : "white", width: 24, height: 24 }} />
+              <CubeIcon style={{ fill: (measurements.length === 0)?"lightgray": (threeDActive ? theme.palette.primary.main : "white"), width: 24, height: 24 } } />
             </Tooltip>
           </IconButton>
         </div>       
@@ -1719,9 +1701,9 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
           </Tooltip>
         </IconButton>
 
-        <IconButton color="inherit" disabled={(measurements.length === 0 || onlineFlightId !== null)} onClick={handleOpenSourceSearchDialog}>
+        <IconButton color="inherit" disabled={(measurements.length === 0 || selectedCollection?.is_online)} onClick={handleOpenSourceSearchDialog}>
           <Tooltip title="Поиск источника радиации">
-            <RadiationIcon style={{ fill: (measurements.length === 0 || onlineFlightId !== null)?"lightgray": "white", width: 24, height: 24 }} />
+            <RadiationIcon style={{ fill: (measurements.length === 0 || selectedCollection?.is_online)?"lightgray": "white", width: 24, height: 24 }} />
           </Tooltip>
         </IconButton>
 

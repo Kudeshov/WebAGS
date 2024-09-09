@@ -33,66 +33,60 @@
   "altitudeSource": "barometric",
   "sensorTypes": {
     "УДКГ-А01": {
+      "resolution": 0.072,
       "zonesOfInterest": [
         {
           "id": 1,
-          "leftE": "600",
-          "rightE": "700",
-          "Name": "Cs-137",
+          "isotope_id": "cs137",
+          "peak_id": 661,
           "lineOutput": "85"
         },
         {
           "id": 2,
-          "leftE": "1400",
-          "rightE": "1500",
-          "Name": "K-40",
+          "isotope_id": "tl208",
+          "peak_id": 1460,
           "lineOutput": "10.7"
         },
         {
           "id": 3,
-          "leftE": "1700",
-          "rightE": "1800",
-          "Name": "Bi-214",
-          "lineOutput": "15.9"
+          "isotope_id": "k40",
+          "peak_id": 1460,
+          "lineOutput": "10.7"
         },
         {
           "id": 4,
-          "leftE": "2550",
-          "rightE": "2700",
-          "Name": "Tl-208",
-          "lineOutput": "99.8"
+          "isotope_id": "am241",
+          "peak_id": 1460,
+          "lineOutput": "10.7"
         }
       ]
     },
     "УДБГ-04-06": {
+      "resolution": 0.085,
       "zonesOfInterest": [
         {
           "id": 1,
-          "leftE": 110,
-          "rightE": "211",
-          "Name": "Cs-137",
+          "isotope_id": "tl208",
+          "peak_id": 661,
           "lineOutput": "55"
         },
         {
           "id": 2,
-          "leftE": 320,
-          "rightE": 420,
-          "Name": "Калий-40",
-          "lineOutput": "66"
+          "isotope_id": "k40",
+          "peak_id": 1460,
+          "lineOutput": "68"
         },
         {
           "id": 3,
-          "leftE": 530,
-          "rightE": 630,
-          "Name": "Уран",
-          "lineOutput": "47"
+          "isotope_id": "k40",
+          "peak_id": 1460,
+          "lineOutput": "66"
         },
         {
           "id": 4,
-          "leftE": 740,
-          "rightE": 840,
-          "Name": "Торий",
-          "lineOutput": "65"
+          "isotope_id": "am241",
+          "peak_id": 1460,
+          "lineOutput": "66"
         }
       ]
     }

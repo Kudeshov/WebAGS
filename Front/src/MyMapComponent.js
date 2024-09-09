@@ -601,8 +601,27 @@ function MyMapComponent({ chartOpen, heightFilterActive }) {
   }, [averageMeasurement, averageDiapasone, selectedPoints.length, globalSettings.altitudeSource]);
 
 
-  const [previousValidMeasurements, setPreviousValidMeasurements] = useState();
-  const [previousValidMeasurementsBand, setPreviousValidMeasurementsBand] = useState();
+const [previousValidMeasurements, setPreviousValidMeasurements] = useState();
+const [previousValidMeasurementsBand, setPreviousValidMeasurementsBand] = useState();
+
+const hasSufficientBoundingBoxSize = (measurements, minWidth = 0.000073, minHeight = 0.000045) => {
+  // Получаем минимальные и максимальные значения широты и долготы
+  const latitudes = measurements.map(m => m.lat);
+  const longitudes = measurements.map(m => m.lon);
+  
+  const minLat = Math.min(...latitudes);
+  const maxLat = Math.max(...latitudes);
+  const minLon = Math.min(...longitudes);
+  const maxLon = Math.max(...longitudes);
+
+  // Вычисляем ширину и высоту прямоугольника, охватывающего все точки
+  const width = maxLon - minLon;
+  const height = maxLat - minLat;
+
+  // Проверяем, что прямоугольник имеет достаточные размеры
+  return width >= minWidth && height >= minHeight;
+};
+
 
 useEffect(() => {
   if (!isIsolineLayerActive) {
@@ -615,7 +634,7 @@ useEffect(() => {
 
   setPreviousValidMeasurements(validMeasurements);
 
-  if (!validMeasurements || validMeasurements.length < 10) {
+  if (!validMeasurements || validMeasurements.length < 10 || !hasSufficientBoundingBoxSize(validMeasurements)) {
     setCachedIsolines({
       lines: [],
       minDose: null,
@@ -851,7 +870,7 @@ useEffect(() => {
 
   setPreviousValidMeasurementsBand(validMeasurements);
 
-  if (!validMeasurements || validMeasurements.length < 10) {
+  if (!validMeasurements || validMeasurements.length < 10 || !hasSufficientBoundingBoxSize(validMeasurements)) {
     setCachedIsobands({
       bands: [],
       minDose: null,

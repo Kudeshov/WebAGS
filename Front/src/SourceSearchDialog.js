@@ -65,12 +65,12 @@ function SourceSearchDialog({ open, onClose }) {
     if (globalSettings?.sensorTypes?.[currentSensorType]?.zonesOfInterest?.length) {
       const firstZoneName = globalSettings.sensorTypes[currentSensorType].zonesOfInterest[0].Name;
       setSelectedZone(firstZoneName); // Устанавливаем первый выбор
-      handleZoneChange(firstZoneName); // Обновляем диапазон
+      //handleZoneChange(firstZoneName); // Обновляем диапазон
     }
   }, [validMeasurements, currentSensorType, selectedCollection]);
   
 
-  const handleZoneChange = (eventOrZoneName) => {
+/*   const handleZoneChange = (eventOrZoneName) => {
  
     // Проверяем, что было передано: событие или конкретное имя зоны
     const zoneName = typeof eventOrZoneName === 'string' ? eventOrZoneName : eventOrZoneName.target.value;
@@ -84,8 +84,8 @@ function SourceSearchDialog({ open, onClose }) {
       }
     }
   
-    calculateValues();
-  };
+    calculateValues(); 
+  };*/
   
   const calculateValues = () => {
     if (!isEnergyRangeValid) {
@@ -203,7 +203,7 @@ function SourceSearchDialog({ open, onClose }) {
                 size="small"
                 labelId="zone-select-label"
                 value={selectedZone}
-                onChange={handleZoneChange}
+                //onChange={handleZoneChange}
                 label="Зона интереса"
               >
                 {globalSettings?.sensorTypes?.[currentSensorType]?.zonesOfInterest?.map((zone) => (
