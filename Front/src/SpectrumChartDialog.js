@@ -24,7 +24,7 @@ ChartJS.register(CategoryScale, LinearScale, LogarithmicScale, PointElement, Lin
 
 function SpectrumChart({ data, selectedCollection, averageHeight, timeInterval, width = 330, height = 200 }) {
   // Получение глобальных настроек через контекст
-  const { globalSettings } = useContext(FlightDataContext);
+  const { isotopes, currentSensorType = "УДКГ-А01", globalSettings } = useContext(FlightDataContext);
 
   const [scale, setScale] = useState('linear');
   const [tableData, setTableData] = useState([]);
@@ -38,20 +38,65 @@ function SpectrumChart({ data, selectedCollection, averageHeight, timeInterval, 
   // Определение зон интереса на основе выбранного типа датчика
   const zonesOfInterest = globalSettings.sensorTypes[sensorType]?.zonesOfInterest || globalSettings.sensorTypes["УДКГ-А01"].zonesOfInterest;
 
+  const calculatePeakBounds = (energyPeak, resolutionPercent) => {
+    const resolution = resolutionPercent/100;
+    const energyCs137 = 661.7; // эталонная энергия для Cs-137
+    const FWHM_Cs137 = resolution * energyCs137;
+    const sigmaCs137 = FWHM_Cs137 / 2.35;
+
+    const sigmaCurrent = sigmaCs137 * Math.sqrt(energyPeak / energyCs137);
+    const leftBound = energyPeak - 3 * sigmaCurrent;
+    const rightBound = energyPeak + 3 * sigmaCurrent;
+
+    return { leftBound: leftBound.toFixed(2), rightBound: rightBound.toFixed(2) };
+  };
+
   // Эффект для инициализации таблицы данных и диапазонов энергии
   useEffect(() => {
-    if (zonesOfInterest.length > 0) {
-      const initialTableData = zonesOfInterest.map(zone => ({
+    if (zonesOfInterest.length > 0 && isotopes?.isotopes) {
+      const initialTableData = zonesOfInterest.map(zone => {
+        // Находим изотоп, связанный с текущей зоной
+        const isotope = isotopes.isotopes.find(isotope => isotope.id === zone.isotope_id);
+        
+        if (isotope) {
+          // Находим пик, связанный с текущей зоной
+          const peak = isotope.peaks.find(peak => peak.id === zone.peak_id);
+          
+          if (peak) {
+            // Рассчитываем границы пика
+            const { leftBound, rightBound } = calculatePeakBounds(
+              peak.energy_keV,
+              globalSettings.sensorTypes[currentSensorType].resolution
+            );
+  
+            return {
+              id: zone.id,
+              leftE: leftBound,
+              rightE: rightBound,
+              rate: 0, // Изначально скорость счета устанавливаем в 0
+              name: isotope.name // Имя изотопа
+            };
+          }
+        }
+        // Возвращаем значение по умолчанию, если не удалось найти изотоп или пик
+        return {
+          id: zone.id,
+          leftE: null,
+          rightE: null,
+          rate: 0,
+          name: 'Unknown'
+        };
+      });
+  
+      // Устанавливаем данные таблицы и диапазоны энергии
+      setTableData(initialTableData);
+      setEnergyRanges(initialTableData.map(zone => ({
         id: zone.id,
         leftE: zone.leftE,
-        rightE: zone.rightE,
-        rate: 0, // Изначально скорость счета устанавливаем в 0, она обновится позже
-        name: zone.Name
-      }));
-      setTableData(initialTableData);
-      setEnergyRanges(initialTableData.map(zone => ({ id: zone.id, leftE: zone.leftE, rightE: zone.rightE })));
+        rightE: zone.rightE
+      })));
     }
-  }, [zonesOfInterest]);
+  }, [zonesOfInterest, isotopes]);
 
   useEffect(() => {
     if (data && energyRanges.length > 0) {
