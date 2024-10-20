@@ -53,6 +53,7 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
 
   // Локальные состояния для выпадающего списка зон интереса
   const [doseType, setDoseType] = useState(1); // Выбранное значение по умолчанию
+  const [isotopes, setIsotopes] = useState([]); // State to hold isotope data
 
   useEffect(() => {
     const fetchSettings = () => {
@@ -529,7 +530,9 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
       mapBounds,                    // координаты выбранной на карте области
       setMapBounds,
       doseType, 
-      setDoseType
+      setDoseType,
+      isotopes,
+      setIsotopes
     }}>
       {children}
     </FlightDataContext.Provider>

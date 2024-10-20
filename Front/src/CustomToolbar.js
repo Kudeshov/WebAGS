@@ -62,6 +62,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   const [winHighValue, setWinHighValue] = useState(200);
   const [isDemoMode, setIsDemoMode] = useState(true);
   const {onlineFlightId, setOnlineFlightId} = useContext(FlightDataContext); // Состояние для хранения ID онлайн полета
+  const {isotopes, setIsotopes} = useContext(FlightDataContext); // Состояние для хранения массива нуклидов
   const [websocket, setWebsocket] = useState(null);
   const [dataToShow, setDataToShow] = useState('');
   const [isSettingsLoading, setIsSettingsLoading] = useState(false);
@@ -77,7 +78,6 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   const [confirmationOpen, setConfirmationOpen] = useState(false);
   const [messageToSend, setMessageToSend] = useState('');
 
-  const [isotopes, setIsotopes] = useState([]); // State to hold isotope data
 
   const handleOpenConfirmation = (message) => {
     setMessageToSend(message);
@@ -1030,22 +1030,95 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
     setCurrentSensorType(event.target.value); // Меняем тип сенсора
   };
 
-  const handleZoneChange = (index, field, value) => {
-    
-    const updatedZones = settings.sensorTypes[currentSensorType].zonesOfInterest.map((zone, idx) =>
-      idx === index ? { ...zone, [field]: value } : zone
-    );
-   setSettings({
+  const handleResolutionChange = (event) => {
+    const newResolution = event.target.value;
+    const updatedSettings = {
       ...settings,
       sensorTypes: {
         ...settings.sensorTypes,
         [currentSensorType]: {
           ...settings.sensorTypes[currentSensorType],
-          zonesOfInterest: updatedZones
+          resolution: newResolution, // Изменяем значение разрешения
+        },
+      },
+    };
+    setSettings(updatedSettings); // Обновляем состояние
+  };
+
+  const handleZoneChange = (index, field, value) => {
+    const updatedZones = settings.sensorTypes[currentSensorType].zonesOfInterest.map((zone, idx) => {
+      if (idx === index) {
+        const updatedZone = { ...zone, [field]: value };
+  
+        // Если поле изменяемое - это "isotope_id", и новый нуклид имеет пики, устанавливаем первую доступную энергию и yield_percent
+        if (field === 'isotope_id') {
+          const selectedIsotope = isotopes.isotopes.find(isotope => isotope.id === value);
+          if (selectedIsotope && selectedIsotope.peaks.length > 0) {
+            updatedZone.peak_id = selectedIsotope.peaks[0].id; // Устанавливаем первую доступную энергию
+            updatedZone.lineOutput = selectedIsotope.peaks[0].yield_percent; // Устанавливаем yield_percent
+          }
         }
+  
+        // Если изменен peak_id, обновляем yield_percent для нового пика
+/*         if (field === 'peak_id') {
+          const selectedIsotope = isotopes.isotopes.find(isotope => isotope.id === zone.isotope_id);
+          const selectedPeak = selectedIsotope?.peaks.find(peak => peak.id === value);
+          if (selectedPeak) {
+            updatedZone.lineOutput = selectedPeak.yield_percent; // Устанавливаем yield_percent для выбранного пика
+          }
+        } */
+  
+        return updatedZone;
       }
-    }); 
-  }; 
+      return zone;
+    });
+  
+    setSettings({
+      ...settings,
+      sensorTypes: {
+        ...settings.sensorTypes,
+        [currentSensorType]: {
+          ...settings.sensorTypes[currentSensorType],
+          zonesOfInterest: updatedZones,
+        },
+      },
+    });
+  };
+  
+  // Получение yield_percent для отображения:
+  const getYieldPercent = (isotopeId, peakId) => {
+    const isotope = isotopes.isotopes.find(i => i.id === isotopeId);
+    const peak = isotope?.peaks.find(p => p.id === peakId);
+    return peak ? peak.yield_percent : '';
+  };
+
+  const calculatePeakBounds = (energyPeak, spectrometerResolutionPercent) => {
+    const spectrometerResolution = spectrometerResolutionPercent / 100; // Преобразуем в коэффициент
+  
+    // Эталонная энергия для Cs-137
+    const energyCs137 = 661.7; // кэВ
+  
+    // Ширина пика на полувысоте для Cs-137
+    const FWHM_Cs137 = spectrometerResolution * energyCs137;
+  
+    // Стандартное отклонение для Cs-137 (sigma)
+    const sigmaCs137 = FWHM_Cs137 / 2.35;
+  
+    // Стандартное отклонение для произвольной энергии на основе зависимости 1/sqrt(E)
+    const sigmaCurrent = sigmaCs137 * Math.sqrt( energyPeak / energyCs137 );
+  
+    // Границы пика ±3sigma
+    const leftBound = energyPeak - 3 * sigmaCurrent;
+    const rightBound = energyPeak + 3 * sigmaCurrent;
+  
+    return {
+      leftBound: leftBound.toFixed(2), // округление до 2 знаков
+      rightBound: rightBound.toFixed(2)
+    };
+  };
+  
+  const [zoneBounds, setZoneBounds] = useState([]);
+
 
   const tabPanelContent = (index) => {
     switch(index) {
@@ -1202,82 +1275,130 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
               ))}
             </Select>
           </FormControl>
-    
+      
+          <Box mt={2}>
+            <TextField
+              margin="dense"
+              label="Разрешение, %"
+              fullWidth
+              size="small"
+              variant="outlined"
+              value={settings.sensorTypes[currentSensorType].resolution || ''} // Значение разрешающей способности из конфигурации
+              onChange={handleResolutionChange} // Обработчик изменения
+            />
+          </Box>
+      
           <Box mt={2}>
             {/* Проходим по массиву зон интереса для текущего типа датчика */}
-            {settings.sensorTypes[currentSensorType].zonesOfInterest.map((zone, index) => (
-              <Grid container spacing={2} key={zone.id}>
-                <Grid item xs={2}>
-                  {/* Поле для отображения идентификатора зоны (только для чтения) */}
-                  <TextField
-                    margin="dense"
-                    label="ID"
-                    type="number"
-                    fullWidth
-                    size="small"
-                    variant="outlined"
-                    value={zone.id}
-                    disabled
-                  />
+            {settings.sensorTypes[currentSensorType].zonesOfInterest.map((zone, index) => {
+              // Calculate LeftE and RightE based on the selected peak and resolution
+              const { leftBound, rightBound } = calculatePeakBounds(
+                zone.peak_id,
+                settings.sensorTypes[currentSensorType].resolution
+              );
+      
+              return (
+                <Grid container spacing={2} key={zone.id}>
+                  <Grid item xs={1}>
+                    {/* Поле для отображения идентификатора зоны (только для чтения) */}
+                    <TextField
+                      margin="dense"
+                      label="ID"
+                      type="number"
+                      fullWidth
+                      size="small"
+                      variant="outlined"
+                      value={zone.id}
+                      disabled
+                    />
+                  </Grid>
+      
+                  <Grid item xs={2}>
+                    {/* Выпадающий список для выбора изотопа по ID */}
+                    <FormControl fullWidth margin="dense" size="small" variant="outlined">
+                      <InputLabel id={`isotope-select-label`}>Нуклид</InputLabel>
+                      <Select
+                        labelId={`isotope-select-label`}
+                        value={zone.isotope_id} // ID изотопа из зоны интереса
+                        onChange={(e) => handleZoneChange(index, 'isotope_id', e.target.value)} // Обработчик изменения поля isotope_id
+                        label="Нуклид"
+                      >
+                        {/* Проходим по массиву изотопов для заполнения выпадающего списка */}
+                        {isotopes.isotopes?.map((isotope) => (
+                          <MenuItem key={isotope.id} value={isotope.id}>
+                            {isotope.name} {/* Имя изотопа для отображения */}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+      
+                  <Grid item xs={3}>
+                    {/* Выпадающий список для выбора пика */}
+                    <FormControl fullWidth margin="dense" size="small" variant="outlined">
+                      <InputLabel id={`peak-select-label-${index}`}>Энергия</InputLabel>
+                      <Select
+                        labelId={`peak-select-label-${index}`}
+                        value={zone.peak_id}
+                        onChange={(e) => handleZoneChange(index, 'peak_id', e.target.value)}
+                        label="Энергия"
+                      >
+                        {isotopes.isotopes
+                          .find((isotope) => isotope.id === zone.isotope_id)?.peaks.map((peak) => (
+                            <MenuItem key={peak.id} value={peak.id}>
+                              {peak.energy_keV} keV
+                            </MenuItem>
+                          ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+      
+                  <Grid item xs={2}>
+                    {/* Поле для ввода значения "Выход линии, %" */}
+                    <TextField
+                      margin="dense"
+                      label="Выход линии, %"
+                      type="number"
+                      fullWidth
+                      size="small"
+                      variant="outlined"
+                      value={getYieldPercent(zone.isotope_id, zone.peak_id)}
+                      //value={zone.lineOutput} // Значение "Выход линии" для зоны интереса
+                      disabled // Поле только для чтения
+                      //onChange={(e) => handleZoneChange(index, 'lineOutput', e.target.value)} // Обработчик изменения поля lineOutput
+                    />
+                  </Grid>
+      
+                  <Grid item xs={2}>
+                    {/* Поле для ввода левой границы энергии (вычисленное значение) */}
+                    <TextField
+                      margin="dense"
+                      label="LeftE"
+                      type="number"
+                      fullWidth
+                      size="small"
+                      variant="outlined"
+                      value={leftBound} // Вычисленное значение левой границы энергии
+                      disabled // Поле только для чтения
+                    />
+                  </Grid>
+      
+                  <Grid item xs={2}>
+                    {/* Поле для ввода правой границы энергии (вычисленное значение) */}
+                    <TextField
+                      margin="dense"
+                      label="RightE"
+                      type="number"
+                      fullWidth
+                      size="small"
+                      variant="outlined"
+                      value={rightBound} // Вычисленное значение правой границы энергии
+                      disabled // Поле только для чтения
+                    />
+                  </Grid>
                 </Grid>
-                <Grid item xs={2}>
-                  {/* Поле для ввода левой границы энергии (нужно вычисление значения) */}
-                  <TextField
-                    margin="dense"
-                    label="LeftE"
-                    type="number"
-                    fullWidth
-                    size="small"
-                    variant="outlined"
-                    // value={zone.leftE}  Здесь должно быть вычисление значения
-                  />
-                </Grid>
-                <Grid item xs={2}>
-                  {/* Поле для ввода правой границы энергии (нужно вычисление значения) */}
-                  <TextField
-                    margin="dense"
-                    label="RightE"
-                    type="number"
-                    fullWidth
-                    size="small"
-                    variant="outlined"
-                    // value={zone.rightE}  Здесь тоже должно быть вычисление значения
-                  />
-                </Grid>
-                <Grid item xs={4}>
-                  {/* Выпадающий список для выбора изотопа по ID */}
-                  <FormControl fullWidth margin="dense" size="small" variant="outlined">
-                    <InputLabel id={`isotope-select-label`}>Изотоп</InputLabel>
-                    <Select
-                      labelId={`isotope-select-label`}
-                      value={zone.isotope_id} // ID изотопа из зоны интереса
-                      onChange={(e) => handleZoneChange(index, 'isotope_id', e.target.value)} // Обработчик изменения поля isotope_id
-                      label="Изотоп"
-                    >
-                      {/* Проходим по массиву изотопов для заполнения выпадающего списка */}
-                      {isotopes.isotopes?.map((isotope) => (
-                        <MenuItem key={isotope.id} value={isotope.id}>
-                          {isotope.name} {/* Имя изотопа для отображения */}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-                <Grid item xs={2}>
-                  {/* Поле для ввода значения "Выход линии, %" */}
-                  <TextField
-                    margin="dense"
-                    label="Выход линии, %"
-                    type="number"
-                    fullWidth
-                    size="small"
-                    variant="outlined"
-                    value={zone.lineOutput} // Значение "Выход линии" для зоны интереса
-                    onChange={(e) => handleZoneChange(index, 'lineOutput', e.target.value)} // Обработчик изменения поля lineOutput
-                  />
-                </Grid>
-              </Grid>
-            ))}
+              );
+            })}
           </Box>
         </>
       );

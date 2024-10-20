@@ -33,60 +33,52 @@
   "altitudeSource": "barometric",
   "sensorTypes": {
     "УДКГ-А01": {
-      "resolution": 0.072,
+      "resolution": "7.2",
       "zonesOfInterest": [
         {
           "id": 1,
           "isotope_id": "cs137",
-          "peak_id": 661,
-          "lineOutput": "85"
+          "peak_id": 661
         },
         {
           "id": 2,
           "isotope_id": "tl208",
-          "peak_id": 1460,
-          "lineOutput": "10.7"
+          "peak_id": 2614
         },
         {
           "id": 3,
           "isotope_id": "k40",
-          "peak_id": 1460,
-          "lineOutput": "10.7"
+          "peak_id": 1460
         },
         {
           "id": 4,
-          "isotope_id": "am241",
-          "peak_id": 1460,
-          "lineOutput": "10.7"
+          "isotope_id": "bi214",
+          "peak_id": 1764
         }
       ]
     },
     "УДБГ-04-06": {
-      "resolution": 0.085,
+      "resolution": 8.5,
       "zonesOfInterest": [
         {
           "id": 1,
           "isotope_id": "tl208",
-          "peak_id": 661,
-          "lineOutput": "55"
+          "peak_id": 2614
         },
         {
           "id": 2,
           "isotope_id": "k40",
-          "peak_id": 1460,
-          "lineOutput": "68"
+          "peak_id": 1460
         },
         {
           "id": 3,
-          "isotope_id": "k40",
-          "peak_id": 1460,
-          "lineOutput": "66"
+          "isotope_id": "tl208",
+          "peak_id": 2614
         },
         {
           "id": 4,
           "isotope_id": "am241",
-          "peak_id": 1460,
-          "lineOutput": "66"
+          "peak_id": 59
         }
       ]
     }

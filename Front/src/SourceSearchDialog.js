@@ -11,171 +11,272 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Box
+  Box,
+  Typography
 } from '@mui/material';
-import { FlightDataContext } from './FlightDataContext'; // Импорт контекста
-import { findSourceCoordinatesInterpolate, findSourceCoordinates3D } from './SourceFinder'; // Импорт функции поиска
+import { FlightDataContext } from './FlightDataContext';
+import CalibrationDialog from './CalibrationDialog';
+import { findSourceCoordinatesInterpolate, findSourceCoordinates3D } from './SourceFinder';
+import { saveCollectionParams } from './apiAGS';
 
 function SourceSearchDialog({ open, onClose }) {
   const [energyRange, setEnergyRange] = useState({ low: 0, high: 0 });
+  const [calculatedPeakCenter, setCalculatedPeakCenter] = useState('');
+  const [idealPeakCenter, setIdealPeakCenter] = useState('');
   const [peakCenter, setPeakCenter] = useState('');
   const [averageHeight, setAverageHeight] = useState(0);
-  const [selectedZone, setSelectedZone] = useState('');  
+  const [selectedZone, setSelectedZone] = useState('');
+  const [isEnergyRangeValid, setIsEnergyRangeValid] = useState(true);
+  const [showCalibrationMessage, setShowCalibrationMessage] = useState(false);
+  // Новые состояния для averagedSpectrum и globalPeakIndex
+  const [averagedSpectrum, setAveragedSpectrum] = useState([]);
+  const [globalPeakIndex, setGlobalPeakIndex] = useState(0);
 
   const { currentSensorType = "УДКГ-А01", globalSettings,
     sourceCoordinates, setSourceCoordinates, sourceActivity, setSourceActivity, sourceDeviation, setSourceDeviation } = useContext(FlightDataContext);
-  const { validMeasurements, selectedCollection, selectedPoints, onlineFlightId } = useContext(FlightDataContext); // Доступ к данным и настройкам через контекст
-  const { mapBounds } = useContext(FlightDataContext);
-  
-  const { P0 = 70, P1 = 11 } = selectedCollection || {}; // Значения по умолчанию, если нет данных
+  const { validMeasurements, selectedCollection, setSelectedCollection, selectedPoints, isotopes, selectedDatabase } = useContext(FlightDataContext);
+  const { P0 = 70, P1 = 11, _id: collectionId } = selectedCollection || {};  
 
-  const [isEnergyRangeValid, setIsEnergyRangeValid] = useState(true); // Новый стейт для проверки корректности границ
+  // Используем коэффициенты из selectedCollection для начального состояния
+  const [calculatedCoefficients, setCalculatedCoefficients] = useState({ P0, P1 });
+  const [calibrationDialogOpen, setCalibrationDialogOpen] = useState(false);
+
+
+  const { mapBounds } = useContext(FlightDataContext);
+  const getZoneName = (zone) => {
+    const isotope = isotopes.isotopes.find(i => i.id === zone.isotope_id);
+    if (isotope) {
+      const peak = isotope.peaks.find(p => p.id === zone.peak_id);
+      if (peak) {
+        return `${isotope.name} (${peak.energy_keV} keV)`;
+      }
+    }
+    return 'Неизвестная зона';
+  };
+
+  const handleZoneChange = (event) => {
+    const zoneName = event.target.value;
+    setSelectedZone(zoneName);
+
+    const selectedZoneObject = globalSettings?.sensorTypes?.[currentSensorType]?.zonesOfInterest.find(z => getZoneName(z) === zoneName);
+    if (selectedZoneObject) {
+      const selectedIsotope = isotopes.isotopes.find(isotope => isotope.id === selectedZoneObject.isotope_id);
+      if (selectedIsotope) {
+        const selectedPeak = selectedIsotope.peaks.find(peak => peak.id === selectedZoneObject.peak_id);
+
+        if (selectedPeak) {
+          
+          const { leftBound, rightBound } = calculatePeakBounds(selectedPeak.energy_keV, globalSettings.sensorTypes[currentSensorType].resolution);
+          setEnergyRange({ low: leftBound, high: rightBound });
+          setIdealPeakCenter(selectedPeak.energy_keV.toFixed(2)); // Устанавливаем референсный пик
+          calculateValues();
+        }
+      }
+    }
+  };
+
+  const calculatePeakBounds = (energyPeak, resolutionPercent) => {
+    const resolution = resolutionPercent/100;
+    const energyCs137 = 661.7; // эталонная энергия для Cs-137
+    const FWHM_Cs137 = resolution * energyCs137;
+    const sigmaCs137 = FWHM_Cs137 / 2.35;
+
+    const sigmaCurrent = sigmaCs137 * Math.sqrt(energyPeak / energyCs137);
+    const leftBound = energyPeak - 3 * sigmaCurrent;
+    const rightBound = energyPeak + 3 * sigmaCurrent;
+
+    return { leftBound: leftBound.toFixed(2), rightBound: rightBound.toFixed(2) };
+  };
 
   const handleChange = (event) => {
     const { name, value } = event.target;
     const newEnergyRange = { ...energyRange, [name]: parseFloat(value) };
     setEnergyRange(newEnergyRange);
-  
-    // Проверяем корректность диапазона энергии
+
     if (newEnergyRange.low >= newEnergyRange.high) {
-      setIsEnergyRangeValid(false); // Некорректные значения
-      setPeakCenter('NaN'); // Обнуляем центр пика
+      setIsEnergyRangeValid(false);
+      setPeakCenter('NaN');
     } else {
-      setIsEnergyRangeValid(true); // Корректные значения
-      calculateValues(); // Пересчитываем значения, если корректные границы
+      setIsEnergyRangeValid(true);
+      calculateValues();
     }
   };
-  
+
   useEffect(() => {
     if (open) {
-      if (energyRange.low === 0 && energyRange.high === 0) {
-        // Устанавливаем начальные значения диапазона энергии
-        setEnergyRange({
-          low: P0,
-          high: P0 + P1 * (globalSettings.NSPCHANNELS - 1)
-        });
-      }
-      // Вызываем пересчет значений всегда при открытии окна
       calculateValues();
     }
   }, [open, selectedZone, energyRange, validMeasurements, P0, P1, globalSettings, currentSensorType]);
-  
-  // Сбрасываем energyRange при изменении массива данных или типа датчика
-  useEffect(() => {
-    if (globalSettings?.sensorTypes?.[currentSensorType]?.zonesOfInterest?.length) {
-      const firstZoneName = globalSettings.sensorTypes[currentSensorType].zonesOfInterest[0].Name;
-      setSelectedZone(firstZoneName); // Устанавливаем первый выбор
-      //handleZoneChange(firstZoneName); // Обновляем диапазон
-    }
-  }, [validMeasurements, currentSensorType, selectedCollection]);
-  
 
-/*   const handleZoneChange = (eventOrZoneName) => {
- 
-    // Проверяем, что было передано: событие или конкретное имя зоны
-    const zoneName = typeof eventOrZoneName === 'string' ? eventOrZoneName : eventOrZoneName.target.value;
-    
-    setSelectedZone(zoneName);
+
+  const calculateValues = () => {
+    if (!isEnergyRangeValid) {
+      setPeakCenter('NaN');
+      return;
+    }
   
-    if (globalSettings?.sensorTypes?.[currentSensorType]) {
-      const zone = globalSettings.sensorTypes[currentSensorType].zonesOfInterest.find(z => z.Name === zoneName);
-      if (zone) {
-        setEnergyRange({ low: zone.leftE, high: zone.rightE });
+    // Убедимся, что P0 и P1 — это числа, даже если они были установлены как строки
+    const P0Numeric = parseFloat(P0);
+    const P1Numeric = parseFloat(P1);
+  
+    if (isNaN(P0Numeric) || isNaN(P1Numeric)) {
+      console.error("P0 или P1 содержат неверные данные:", { P0, P1 });
+      return;
+    }
+  
+    const measurements = (selectedPoints && selectedPoints.length > 0) ? selectedPoints : validMeasurements;
+    if (!measurements || measurements.length === 0 || !globalSettings.SPECDEFTIME) {
+      console.error("Не удалось найти необходимые данные для расчета.");
+      return;
+    }
+  
+    let leftIndex = Math.ceil((energyRange.low - P0Numeric) / P1Numeric);
+    let rightIndex = Math.floor((energyRange.high - P0Numeric) / P1Numeric);
+  
+    if (leftIndex < 0) leftIndex = 0;
+    if (rightIndex >= globalSettings.NSPCHANNELS) rightIndex = globalSettings.NSPCHANNELS - 1;
+  
+    console.log(`Расчет диапазона индексов: leftIndex = ${leftIndex}, rightIndex = ${rightIndex}`);
+  
+    const lTime = globalSettings.SPECDEFTIME;
+  
+    const averagedSpectrum = new Array(globalSettings.NSPCHANNELS).fill(0);
+    let totalHeightSum = 0;
+    let count = 0;
+  
+    measurements.forEach(measure => {
+      const { channels } = measure.spectrum;
+      channels.forEach((value, index) => {
+        averagedSpectrum[index] += value / lTime;
+      });
+      totalHeightSum += measure.height;
+      count++;
+    });
+  
+    if (count === 0) {
+      console.error("Нет валидных измерений для обработки.");
+      return;
+    }
+  
+    for (let i = 0; i < averagedSpectrum.length; i++) {
+      averagedSpectrum[i] /= count;
+    }
+  
+    let globalPeakValue = -Infinity;
+    let globalPeakIndex = 0;
+  
+    for (let i = leftIndex; i <= rightIndex; i++) {
+      const v = averagedSpectrum[i];
+      if (v > globalPeakValue) {
+        globalPeakValue = v;
+        globalPeakIndex = i;
       }
     }
   
-    calculateValues(); 
-  };*/
+    const averageHeight = totalHeightSum / count;
+    const peakEnergy = P0Numeric + globalPeakIndex * P1Numeric;
   
-  const calculateValues = () => {
+    // Проверка, является ли peakEnergy числом
+    if (isNaN(peakEnergy)) {
+      console.error('Расчет peakEnergy дал неверное значение:', peakEnergy);
+      setPeakCenter('NaN');
+      return;
+    }
+  
+    setAverageHeight(averageHeight.toFixed(2));
+    setCalculatedPeakCenter(peakEnergy.toFixed(2)); // Сохраняем расчетный пик
+    setPeakCenter(peakEnergy.toFixed(2)); // Используем расчетный пик по умолчанию
+    setAveragedSpectrum(averagedSpectrum);
+    setGlobalPeakIndex(globalPeakIndex);
+  
+    if (Math.abs(peakEnergy - idealPeakCenter) > 10) {
+      setShowCalibrationMessage(true); // Показываем сообщение о калибровке
+    } else {
+      setShowCalibrationMessage(false);
+    }
+  };
+  
+
+/*   const calculateValues = () => {
     if (!isEnergyRangeValid) {
-        // Если диапазон некорректный, не производим вычисления
-        setPeakCenter('NaN');
-        return;
+      setPeakCenter('NaN');
+      return;
     }
 
     const measurements = (selectedPoints && selectedPoints.length > 0) ? selectedPoints : validMeasurements;
     if (!measurements || measurements.length === 0 || !P0 || !P1 || !globalSettings.SPECDEFTIME) {
-        return;
-    }
-
-    // Объявляем и инициализируем переменную `validMeasurements`
-    const filteredMeasurements = measurements.filter(measure => 
-        measure.spectrum && Array.isArray(measure.spectrum.channels) && measure.spectrum.channels.length > 0
-    );
-
-    if (filteredMeasurements.length === 0) {
-        return;
+      return;
     }
 
     let leftIndex = Math.ceil((energyRange.low - P0) / P1);
     let rightIndex = Math.floor((energyRange.high - P0) / P1);
 
-    // Корректировка индексов, если они выходят за допустимые границы
     if (leftIndex < 0) leftIndex = 0;
     if (rightIndex >= globalSettings.NSPCHANNELS) rightIndex = globalSettings.NSPCHANNELS - 1;
 
-    const lTime = globalSettings.SPECDEFTIME;  // Используем globalSettings.SPECDEFTIME для нормализации
+    const lTime = globalSettings.SPECDEFTIME;
 
-    const channelCount = globalSettings.NSPCHANNELS;  // Количество каналов спектра
-    const averagedSpectrum = new Array(channelCount).fill(0);  // Массив для усредненного спектра
+    const averagedSpectrum = new Array(globalSettings.NSPCHANNELS).fill(0);
     let totalHeightSum = 0;
     let count = 0;
 
-    // Сначала вычисляем средний спектр
-    filteredMeasurements.forEach(measure => {
-        const { channels } = measure.spectrum;
-
-        // Нормализуем каналы по времени и добавляем к усредненному спектру
-        channels.forEach((value, index) => {
-            averagedSpectrum[index] += value / lTime;
-        });
-
-        totalHeightSum += measure.height;
-        count++;
+    measurements.forEach(measure => {
+      const { channels } = measure.spectrum;
+      channels.forEach((value, index) => {
+        averagedSpectrum[index] += value / lTime;
+      });
+      totalHeightSum += measure.height;
+      count++;
     });
 
-    // Завершаем вычисление усредненного спектра, деля на количество измерений
     for (let i = 0; i < averagedSpectrum.length; i++) {
-        averagedSpectrum[i] /= count;
+      averagedSpectrum[i] /= count;
     }
 
-    // Теперь находим пик в усредненном спектре в пределах [leftIndex, rightIndex]
     let globalPeakValue = -Infinity;
     let globalPeakIndex = 0;
 
     for (let i = leftIndex; i <= rightIndex; i++) {
-        const v = averagedSpectrum[i];
-        if (v > globalPeakValue) {
-            globalPeakValue = v;
-            globalPeakIndex = i;
-        }
+      const v = averagedSpectrum[i];
+      if (v > globalPeakValue) {
+        globalPeakValue = v;
+        globalPeakIndex = i;
+      }
     }
 
     const averageHeight = totalHeightSum / count;
-    const peakEnergy = (P0 + globalPeakIndex * P1);  // Энергия пика в килоэлектронвольтах
+    const peakEnergy = (P0 + globalPeakIndex * P1);
 
     setAverageHeight(averageHeight.toFixed(2));
-    setPeakCenter(peakEnergy.toFixed(2));
-  };
+    setCalculatedPeakCenter(peakEnergy.toFixed(2)); // Сохраняем расчетный пик
+    setPeakCenter(peakEnergy.toFixed(2)); // Используем расчетный пик по умолчанию
+    // Сохраняем усредненный спектр и индекс пика
+    setAveragedSpectrum(averagedSpectrum);
+    setGlobalPeakIndex(globalPeakIndex);
+
+    // Если расчетный пик сильно отличается от референсного пика
+    if (Math.abs(peakEnergy - idealPeakCenter) > 10) {
+      setShowCalibrationMessage(true); // Показываем сообщение о калибровке
+    } else {
+      setShowCalibrationMessage(false);
+    }
+  }; */
 
   const handleCalculateSource = () => {
     if (!isEnergyRangeValid) {
       alert("Неправильные границы энергии. Пожалуйста, исправьте значения.");
       return;
     }
-  
-    //  const measurements = [...validMeasurements];  
+
     const measurements = JSON.parse(JSON.stringify(validMeasurements));
-  
     let result;
-  
+
     if (!globalSettings.selectedAlgorithm || globalSettings.selectedAlgorithm === 'algorithm1') {
       result = findSourceCoordinatesInterpolate(measurements, energyRange, peakCenter, P0, P1, mapBounds);
     } else {
       result = findSourceCoordinates3D(measurements, energyRange, peakCenter, P0, P1, mapBounds);
     }
-  
+
     if (result && result.coordinates) {
       setSourceCoordinates(result.coordinates);
       setSourceActivity(result.activity?.toExponential(5) + ' γ/с');
@@ -185,38 +286,198 @@ function SourceSearchDialog({ open, onClose }) {
       alert("Не удалось определить координаты источника.");
     }
   };
+
+  const calculateCoefficients = () => {
+    // Данные из состояния
+    const idealCenter = parseFloat(idealPeakCenter); // Референсный пик (в кэВ)
+    const calculatedCenter = parseFloat(calculatedPeakCenter); // Расчетный центр пика (в кэВ)
   
+    // Исходные значения для A и B (P1 и P0)
+    let A_old = P1; // A соответствует P1
+    let B_old = P0; // B соответствует P0
+  
+    // Сдвиг на разницу между расчетным и референсным пиком, умноженный на 0.5
+    const delta = (calculatedCenter - idealCenter) * 0.5; // модуль смещения
+    const B_new = (B_old - delta).toFixed(2); // применяем смещение и округляем до сотых
+  
+    // Пересчитываем новое значение A
+    const A_new = ((idealPeakCenter - B_new) / globalPeakIndex).toFixed(2); // пересчет A и округление до сотых
+  
+    console.log('вызываем setCalculatedCoefficients с параметрами ', { P0: B_new, P1: A_new, _id: collectionId });
+  
+    // Устанавливаем новые коэффициенты
+    setCalculatedCoefficients({ P0: B_new, P1: A_new, _id: collectionId });
+    setCalibrationDialogOpen(true);
+  };
+  
+
+
+/* 
+
+  const calculateCoefficients = () => {
+    // Данные из состояния
+    const idealCenter = parseFloat(idealPeakCenter); // Референсный пик (в кэВ)
+    const calculatedCenter = parseFloat(calculatedPeakCenter); // Расчетный центр пика (в кэВ)
+  
+    // Смещение P0 – разница между расчетным пиком и референсным, но применяем только долю изменения
+    const deltaP0 = (calculatedCenter - idealCenter) * 0.5; // Изменение делим на 2, чтобы оно не было слишком агрессивным
+    const newP0 = (P0 - deltaP0).toFixed(2); // Инвертируем изменение, чтобы смещать пик к референсному и округляем до сотых
+  
+    // Рассчитаем P1 только если разница ширин значительная
+    const idealFWHM = 7.42; // Эталонная ширина пика для Cs-137 (пример)
+    const calculatedFWHM = calculateFWHM(averagedSpectrum, globalPeakIndex);
+  
+    let newP1 = P1;
+    if (Math.abs(calculatedFWHM - idealFWHM) > 0.5) { // Изменяем P1 только при значительном расхождении
+      newP1 = (P1 * (idealFWHM / calculatedFWHM) * 0.5).toFixed(2); // Изменяем шаг более плавно и округляем до сотых
+    }
+  
+    console.log('вызываем setCalculatedCoefficients с параметрами ', { P0: newP0, P1: newP1, _id: collectionId });
+  
+    setCalculatedCoefficients({ P0: newP0, P1: newP1, _id: collectionId });
+    setCalibrationDialogOpen(true);
+  };
+   */
+  // Функция для расчета ширины пика (FWHM)
+  const calculateFWHM = (spectrum, peakIndex) => {
+    let peakValue = spectrum[peakIndex];
+    let halfMax = peakValue / 2;
+  
+    let leftIndex = peakIndex;
+    let rightIndex = peakIndex;
+  
+    // Поиск левого индекса, где значение падает ниже половины максимума
+    while (leftIndex > 0 && spectrum[leftIndex] > halfMax) {
+      leftIndex--;
+    }
+  
+    // Поиск правого индекса, где значение падает ниже половины максимума
+    while (rightIndex < spectrum.length && spectrum[rightIndex] > halfMax) {
+      rightIndex++;
+    }
+  
+    // Ширина пика – это разница индексов
+    return rightIndex - leftIndex;
+  };
+  
+
+  /* 
+  const calculateCoefficients = () => {
+    // Данные из состояния
+    const idealCenter = parseFloat(idealPeakCenter); // Референсный пик (в кэВ)
+    const calculatedCenter = parseFloat(calculatedPeakCenter); // Расчетный центр пика (в кэВ)
+  
+    // Смещение P0 – разница между расчетным пиком и референсным
+    const newP0 = P0 + (calculatedCenter - idealCenter);
+  
+    // Рассчитаем P1 – шаг по энергии на канал
+    const idealFWHM = 7.42; // Эталонная ширина пика для Cs-137 (пример)
+    const calculatedFWHM = calculateFWHM(averagedSpectrum, globalPeakIndex);
+  
+    // Пропорция ширин пиков для расчета P1
+    const newP1 = P1 * (calculatedFWHM / idealFWHM);
+  
+    console.log('вызываем setCalculatedCoefficients с параметрами ', { P0: newP0, P1: newP1, _id: collectionId });
+  
+    setCalculatedCoefficients({ P0: newP0, P1: newP1, _id: collectionId });
+    setCalibrationDialogOpen(true);
+  };
+  
+  
+  // Функция для расчета ширины пика (FWHM)
+  const calculateFWHM = (spectrum, peakIndex) => {
+    let peakValue = spectrum[peakIndex];
+    let halfMax = peakValue / 2;
+  
+    let leftIndex = peakIndex;
+    let rightIndex = peakIndex;
+  
+    // Поиск левого индекса, где значение падает ниже половины максимума
+    while (leftIndex > 0 && spectrum[leftIndex] > halfMax) {
+      leftIndex--;
+    }
+  
+    // Поиск правого индекса, где значение падает ниже половины максимума
+    while (rightIndex < spectrum.length && spectrum[rightIndex] > halfMax) {
+      rightIndex++;
+    }
+  
+    // Ширина пика – это разница индексов
+    return rightIndex - leftIndex;
+  }; */
+  
+  const handleCalibrationDialogClose = (save, newCoefficients) => {
+    if (save && newCoefficients) {
+      // Обновляем коллекцию, только если пользователь подтвердил изменения
+      setSelectedCollection(prev => ({
+        ...prev,
+        P0: newCoefficients.P0,
+        P1: newCoefficients.P1,
+      }));      
+      // Обновляем коэффициенты, если пользователь их сохранил
+      setCalculatedCoefficients(newCoefficients);
+    }
+    setCalibrationDialogOpen(false);
+  };    
+
   return (
     <Dialog open={open} onClose={onClose}>
       <DialogTitle>Поиск источника</DialogTitle>
       <DialogContent>
-        {/* Отображение текущего типа датчика */}
+        {showCalibrationMessage && (
+          <Typography color="error" variant="body2">
+            Пик не совпадает с ожидаемым значением. Проведите калибровку.
+          </Typography>
+        )}
         <Box mb={2}>
           <p>Датчик: {currentSensorType}</p>
         </Box>
         <Grid container spacing={2}>
-          <Grid item xs={12} sm={12}>
-            {/* Выпадающий список для выбора зоны интереса */}
+          <Grid item xs={12}>
             <FormControl fullWidth margin="dense" variant="outlined" size="small">
               <InputLabel id="zone-select-label">Зона интереса</InputLabel>
               <Select
                 size="small"
                 labelId="zone-select-label"
                 value={selectedZone}
-                //onChange={handleZoneChange}
+                onChange={handleZoneChange}
                 label="Зона интереса"
               >
                 {globalSettings?.sensorTypes?.[currentSensorType]?.zonesOfInterest?.map((zone) => (
-                  <MenuItem key={zone.Name} value={zone.Name} size="small">
-                    {zone.Name}
+                  <MenuItem key={zone.id} value={getZoneName(zone)} size="small">
+                    {getZoneName(zone)}
                   </MenuItem>
                 )) || <MenuItem disabled>Нет доступных зон</MenuItem>}
               </Select>
             </FormControl>
           </Grid>
-          <Grid item xs={12} sm={6}>
+
+          <Grid item xs={12}>
+            <Typography variant="body2" gutterBottom>
+              Референсный пик: {idealPeakCenter} keV
+            </Typography>
+            <Typography variant="body2" gutterBottom>
+              Расчетный пик: {calculatedPeakCenter} keV
+            </Typography>
+            <Typography variant="body2" gutterBottom>
+              Коэффициенты калибровки: {P0} {P1}
+            </Typography>
+            <Button
+              variant="outlined"
+              onClick={() => setPeakCenter(calculatedPeakCenter)}
+            >
+              Назначить расчетный пик для поиска
+            </Button>
+            <Button
+              variant="outlined"
+              onClick={() => setPeakCenter(idealPeakCenter)}
+            >
+              Назначить референсный пик для поиска
+            </Button>
+          </Grid>
+
+          <Grid item xs={6}>
             <TextField
-              autoFocus
               margin="dense"
               id="energy-low"
               name="low"
@@ -229,7 +490,7 @@ function SourceSearchDialog({ open, onClose }) {
               size="small"
             />
           </Grid>
-          <Grid item xs={12} sm={6}>
+          <Grid item xs={6}>
             <TextField
               margin="dense"
               id="energy-high"
@@ -252,7 +513,6 @@ function SourceSearchDialog({ open, onClose }) {
               fullWidth
               variant="outlined"
               value={peakCenter}
-              onChange={(e) => setPeakCenter(e.target.value)}  // Добавляем обработчик для ввода значения
               size="small"
             />
           </Grid>
@@ -312,10 +572,27 @@ function SourceSearchDialog({ open, onClose }) {
             </>
           )}
         </Grid>
+
+        {/* Диалог калибровки */}
+        <CalibrationDialog
+          open={calibrationDialogOpen}
+          onClose={handleCalibrationDialogClose}
+          initialCoefficients={calculatedCoefficients}
+          selectedDatabase={selectedDatabase}
+          saveCollectionParams={saveCollectionParams} // Передаем функцию сохранения
+        />
+
       </DialogContent>
       <DialogActions>
-        <Button onClick={handleCalculateSource} variant="contained" disabled={!isEnergyRangeValid}>Найти</Button>
-        <Button onClick={onClose} variant="outlined">Закрыть</Button>
+        <Button onClick={calculateCoefficients} variant="contained" color="primary">
+          Докалибровка
+        </Button>
+        <Button onClick={handleCalculateSource} variant="contained" disabled={!isEnergyRangeValid}>
+          Найти
+        </Button>
+        <Button onClick={onClose} variant="outlined">
+          Закрыть
+        </Button>
       </DialogActions>
     </Dialog>
   );
