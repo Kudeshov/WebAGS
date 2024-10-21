@@ -424,16 +424,28 @@ function SourceSearchDialog({ open, onClose }) {
     <Dialog open={open} onClose={onClose}>
       <DialogTitle>Поиск источника</DialogTitle>
       <DialogContent>
-        {showCalibrationMessage && (
+        {/* Если зона не выбрана, показываем это сообщение */}
+        {!selectedZone && (
           <Typography color="error" variant="body2">
-            Пик не совпадает с ожидаемым значением. Проведите калибровку.
+            Зона интереса не выбрана. Пожалуйста, выберите зону интереса.
           </Typography>
         )}
-        <Box mb={2}>
+        {/* Если зона выбрана, но пик не совпадает */}
+        {selectedZone && showCalibrationMessage && (
+          <Typography color="error" variant="body2">
+            Пик не совпадает с ожидаемым значением. Проведите докалибровку.
+          </Typography>
+        )}
+{/*         <Box mb={2}>
           <p>Датчик: {currentSensorType}</p>
-        </Box>
+        </Box> */}
         <Grid container spacing={2}>
-          <Grid item xs={12}>
+          <Grid item xs={4}>
+            <Box mb={2}>
+              <p>Датчик: {currentSensorType}</p>
+            </Box>
+          </Grid>
+          <Grid item xs={8}>
             <FormControl fullWidth margin="dense" variant="outlined" size="small">
               <InputLabel id="zone-select-label">Зона интереса</InputLabel>
               <Select
@@ -452,16 +464,14 @@ function SourceSearchDialog({ open, onClose }) {
             </FormControl>
           </Grid>
 
-          <Grid item xs={12}>
+{/*           <Grid item xs={12}>
             <Typography variant="body2" gutterBottom>
               Референсный пик: {idealPeakCenter} keV
             </Typography>
             <Typography variant="body2" gutterBottom>
               Расчетный пик: {calculatedPeakCenter} keV
             </Typography>
-            <Typography variant="body2" gutterBottom>
-              Коэффициенты калибровки: {P0} {P1}
-            </Typography>
+
             <Button
               variant="outlined"
               onClick={() => setPeakCenter(calculatedPeakCenter)}
@@ -474,14 +484,53 @@ function SourceSearchDialog({ open, onClose }) {
             >
               Назначить референсный пик для поиска
             </Button>
+          </Grid> */}
+
+          <Grid item xs={12}>
+            <Grid container alignItems="center" spacing={1}>
+              {/* Референсный пик */}
+              <Grid item xs={8}>
+                <Typography variant="body2" gutterBottom>
+                  Референсный пик: {idealPeakCenter} keV
+                </Typography>
+              </Grid>
+              <Grid item xs={4}>
+                <Button
+                  variant="outlined"
+                  onClick={() => setPeakCenter(idealPeakCenter)}
+                  size="small"
+                  fullWidth
+                >
+                  Назначить
+                </Button>
+              </Grid>
+
+              {/* Расчетный пик */}
+              <Grid item xs={8}>
+                <Typography variant="body2" gutterBottom>
+                  Расчетный пик: {calculatedPeakCenter} keV
+                </Typography>
+              </Grid>
+              <Grid item xs={4}>
+                <Button
+                  variant="outlined"
+                  onClick={() => setPeakCenter(calculatedPeakCenter)}
+                  size="small"
+                  fullWidth
+                >
+                  Назначить
+                </Button>
+              </Grid>
+            </Grid>
           </Grid>
 
-          <Grid item xs={6}>
+
+          <Grid item xs={4}>
             <TextField
               margin="dense"
               id="energy-low"
               name="low"
-              label="Нижняя граница энергии (keV)"
+              label="Нижняя граница (keV)"
               type="number"
               fullWidth
               variant="outlined"
@@ -490,12 +539,12 @@ function SourceSearchDialog({ open, onClose }) {
               size="small"
             />
           </Grid>
-          <Grid item xs={6}>
+          <Grid item xs={4}>
             <TextField
               margin="dense"
               id="energy-high"
               name="high"
-              label="Верхняя граница энергии (keV)"
+              label="Верхняя граница (keV)"
               type="number"
               fullWidth
               variant="outlined"
@@ -504,7 +553,7 @@ function SourceSearchDialog({ open, onClose }) {
               size="small"
             />
           </Grid>
-          <Grid item xs={12}>
+          <Grid item xs={4}>
             <TextField
               margin="dense"
               id="peak-center"
@@ -569,8 +618,14 @@ function SourceSearchDialog({ open, onClose }) {
                   size="small"
                 />
               </Grid>
+
             </>
           )}
+          <Grid item xs={12}>
+            <Typography variant="body2" gutterBottom>
+              Коэффициенты калибровки: {P0} {P1}
+            </Typography>
+          </Grid>
         </Grid>
 
         {/* Диалог калибровки */}
