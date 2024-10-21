@@ -109,7 +109,107 @@ function SourceSearchDialog({ open, onClose }) {
   }, [open, selectedZone, energyRange, validMeasurements, P0, P1, globalSettings, currentSensorType]);
 
 
+  // Функция проверки выпуклости пика
+  const isConvexPeak = (spectrum, peakIndex) => {
+    // Проверяем, что значения слева и справа от пика уменьшаются
+    if (peakIndex <= 0 || peakIndex >= spectrum.length - 1) {
+      return false; // Невозможно проверить выпуклость на границах
+    }
+
+    const leftNeighbor = spectrum[peakIndex - 1];
+    const rightNeighbor = spectrum[peakIndex + 1];
+    const peakValue = spectrum[peakIndex];
+
+    console.log('leftNeighbor, rightNeighbor, peakValue', leftNeighbor, rightNeighbor, peakValue); 
+
+    // Пик считается выпуклым, если значения слева и справа меньше, чем значение пика
+    return leftNeighbor < peakValue && rightNeighbor < peakValue;
+  };
+
   const calculateValues = () => {
+    if (!isEnergyRangeValid) {
+      setPeakCenter('NaN');
+      return;
+    }
+  
+    const P0Numeric = parseFloat(P0);
+    const P1Numeric = parseFloat(P1);
+  
+    if (isNaN(P0Numeric) || isNaN(P1Numeric)) {
+      console.error("P0 или P1 содержат неверные данные:", { P0, P1 });
+      return;
+    }
+  
+    const measurements = (selectedPoints && selectedPoints.length > 0) ? selectedPoints : validMeasurements;
+    if (!measurements || measurements.length === 0 || !globalSettings.SPECDEFTIME) {
+      console.error("Не удалось найти необходимые данные для расчета.");
+      return;
+    }
+  
+    let leftIndex = Math.ceil((energyRange.low - P0Numeric) / P1Numeric);
+    let rightIndex = Math.floor((energyRange.high - P0Numeric) / P1Numeric);
+  
+    if (leftIndex < 0) leftIndex = 0;
+    if (rightIndex >= globalSettings.NSPCHANNELS) rightIndex = globalSettings.NSPCHANNELS - 1;
+  
+    const lTime = globalSettings.SPECDEFTIME;
+  
+    const averagedSpectrum = new Array(globalSettings.NSPCHANNELS).fill(0);
+    let totalHeightSum = 0;
+    let count = 0;
+  
+    measurements.forEach(measure => {
+      const { channels } = measure.spectrum;
+      channels.forEach((value, index) => {
+        averagedSpectrum[index] += value / lTime;
+      });
+      totalHeightSum += measure.height;
+      count++;
+    });
+  
+    if (count === 0) {
+      console.error("Нет валидных измерений для обработки.");
+      return;
+    }
+  
+    for (let i = 0; i < averagedSpectrum.length; i++) {
+      averagedSpectrum[i] /= count;
+    }
+  
+    let globalPeakValue = -Infinity;
+    let globalPeakIndex = 0;
+  
+    for (let i = leftIndex; i <= rightIndex; i++) {
+      const v = averagedSpectrum[i];
+      if (v > globalPeakValue && isConvexPeak(averagedSpectrum, i)) { // Проверяем выпуклость
+        globalPeakValue = v;
+        globalPeakIndex = i;
+      }
+    }
+  
+    const averageHeight = totalHeightSum / count;
+    const peakEnergy = P0Numeric + globalPeakIndex * P1Numeric;
+  
+    if (isNaN(peakEnergy)) {
+      console.error('Расчет peakEnergy дал неверное значение:', peakEnergy);
+      setPeakCenter('NaN');
+      return;
+    }
+  
+    setAverageHeight(averageHeight.toFixed(2));
+    setCalculatedPeakCenter(peakEnergy.toFixed(2)); // Сохраняем расчетный пик
+    setPeakCenter(peakEnergy.toFixed(2)); // Используем расчетный пик по умолчанию
+    setAveragedSpectrum(averagedSpectrum);
+    setGlobalPeakIndex(globalPeakIndex);
+  
+    if (Math.abs(peakEnergy - idealPeakCenter) > 10) {
+      setShowCalibrationMessage(true); // Показываем сообщение о калибровке
+    } else {
+      setShowCalibrationMessage(false);
+    }
+  };
+
+/*   const calculateValues = () => {
     if (!isEnergyRangeValid) {
       setPeakCenter('NaN');
       return;
@@ -195,7 +295,7 @@ function SourceSearchDialog({ open, onClose }) {
       setShowCalibrationMessage(false);
     }
   };
-  
+   */
 
 /*   const calculateValues = () => {
     if (!isEnergyRangeValid) {
@@ -639,13 +739,15 @@ function SourceSearchDialog({ open, onClose }) {
 
       </DialogContent>
       <DialogActions>
-        <Button onClick={calculateCoefficients} variant="contained" color="primary">
-          Докалибровка
-        </Button>
+        <Box mr="auto"> {/* Это переместит кнопку "Докалибровка" влево */}
+          <Button onClick={calculateCoefficients} variant="contained" color="primary">
+            Докалибровка
+          </Button>
+        </Box>
         <Button onClick={handleCalculateSource} variant="contained" disabled={!isEnergyRangeValid}>
           Найти
         </Button>
-        <Button onClick={onClose} variant="outlined">
+        <Button onClick={onClose} variant="contained">
           Закрыть
         </Button>
       </DialogActions>

@@ -97,7 +97,7 @@ function SpectrumChart({ data, selectedCollection, averageHeight, timeInterval, 
       })));
     }
   }, [zonesOfInterest, isotopes]);
-
+/* 
   useEffect(() => {
     if (data && energyRanges.length > 0) {
       // Обновление таблицы
@@ -153,6 +153,76 @@ function SpectrumChart({ data, selectedCollection, averageHeight, timeInterval, 
       };
   
       setChartData(updatedPreprocessData);
+    }
+  }, [data, energyRanges, P0, P1, globalSettings.SPECDEFTIME]);
+   */
+
+  useEffect(() => {
+    if (data && energyRanges.length > 0) {
+      // Обновление таблицы
+      const updatedTableData = energyRanges.map((range) => {
+        const leftIndex = Math.max(Math.ceil((range.leftE - P0) / P1), 0);
+        const rightIndex = Math.min(Math.floor((range.rightE - P0) / P1), data.length - 1);
+        const rateSum = data.slice(leftIndex, rightIndex + 1).reduce((sum, point) => sum + point.value, 0);
+        const numberOfPoints = rightIndex - leftIndex + 1;
+        const rate = rateSum / (numberOfPoints * globalSettings.SPECDEFTIME || globalSettings.SPECDEFTIME);
+  
+        const correspondingRow = tableData.find(row => row.id === range.id);
+  
+        return {
+          ...correspondingRow,
+          leftE: range.leftE,
+          rightE: range.rightE,
+          rate: rate.toFixed(2)
+        };
+      });
+  
+      setTableData(updatedTableData);
+  
+      // Обновление данных для графика
+      const updatedPreprocessData = {
+        // Здесь создаем метки для энергии на нижней оси
+        labels: data.map((_, index) => calculateEnergy(index, P0, P1)),
+        datasets: [
+          {
+            label: 'Спектр',
+            data: data.map(point => point.value),
+            iChannel: data.map(point => point.id),
+            fill: false,
+            borderColor: 'rgba(0, 0, 255, 1)',
+            backgroundColor: 'rgba(0, 0, 255, 0.1)',
+            pointRadius: 0,
+            tension: 0.1
+          },
+          ...energyRanges.map((range) => {
+            const leftIndex = Math.max(Math.ceil((range.leftE - P0) / P1), 0);
+            const rightIndex = Math.min(Math.floor((range.rightE - P0) / P1), data.length - 1);
+  
+            const highlightData = data.map((point, index) => (index >= leftIndex && index <= rightIndex ? point.value : null));
+  
+            return {
+              label: `Зона: ${range.name}`,
+              data: highlightData,
+              fill: 'origin',
+              iChannel: 0,
+              backgroundColor: highlightColor,
+              pointRadius: 0,
+              borderWidth: 0,
+              tension: 0.1,
+            };
+          }),
+        ]
+      };
+  
+      // Важное добавление: создаем метки для оси каналов (индексы данных)
+      const channelLabels = data.map((_, index) => index); // Индексы каналов
+  
+      // Обновляем данные для обеих осей
+      setChartData({
+        ...updatedPreprocessData,
+        labels: updatedPreprocessData.labels, // Метки энергии остаются на нижней оси
+        channelLabels: channelLabels  // Метки каналов для верхней оси
+      });
     }
   }, [data, energyRanges, P0, P1, globalSettings.SPECDEFTIME]);
   
@@ -237,6 +307,33 @@ function SpectrumChart({ data, selectedCollection, averageHeight, timeInterval, 
     document.body.removeChild(link);
   }
 
+  // Функция для загрузки TXT
+  function downloadTxt(content, fileName) {
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", fileName);
+    document.body.appendChild(link);
+    
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  // Экспорт данных в TXT
+  function exportToTxt(data) {
+    let txtContent = "";
+    data.forEach((item, index) => {
+      // Формат строки: (канал)(пробел)(счет)
+      txtContent += `${index + 1} ${item.value}\n`;  // Канал начинается с 1
+    });
+
+    // Сохраняем данные как "spectrum.txt"
+    downloadTxt(txtContent, "spectrum.txt");
+  }
+
+
   // Функция для вычисления энергии
   function calculateEnergy(index, P0, P1) {
     return P0 + P1 * index;
@@ -250,6 +347,108 @@ function SpectrumChart({ data, selectedCollection, averageHeight, timeInterval, 
     datasets: []
   }); // Инициализируем chartData с валидной структурой
 
+  const options = {
+    responsive: true,
+    plugins: {
+      legend: {
+        display: false
+      },
+      tooltip: {
+        enabled: true,
+        mode: 'index',
+        intersect: false,
+        callbacks: {
+          title: (tooltipItems) => {
+            // Заголовок тултипа — это энергия
+            const energy = tooltipItems[0].label;
+            return `Энергия: ${energy} keV`;
+          },
+          label: (tooltipItem) => {
+            // Проверяем, что это основной график (datasetIndex === 0)
+            if (tooltipItem.datasetIndex === 0) {
+              const channel = tooltipItem.dataIndex;  // Индекс данных как номер канала
+              const countRate = tooltipItem.raw.toFixed(2);  // Округляем до 2 знаков
+              return `Канал: ${channel+1}, Скорость счета: ${countRate} 1/с`;
+            }
+            // Возвращаем null для других наборов данных, чтобы они не отображались в тултипе
+            return null;
+          }
+        }
+      },
+      zoom: {
+        pan: {
+          enabled: true,
+          mode: 'xy',
+        },
+        zoom: {
+          wheel: {
+            enabled: true,
+          },
+          pinch: {
+            enabled: true
+          },
+          mode: 'xy',
+        }
+      }
+    },
+    scales: {
+      x: {
+        type: 'linear',
+        position: 'bottom',
+        title: {
+          display: true,
+          text: 'Энергия (keV)'
+        },
+        ticks: {
+          callback: function(value) {
+            return value.toFixed(2);
+          }
+        }
+      },
+/*       x2: {
+        type: 'linear',  // Ось каналов остается линейной
+        position: 'top',
+        title: {
+          display: true,
+          text: 'Канал'
+        },
+        grid: {
+          drawOnChartArea: false
+        },
+        ticks: {
+          callback: function(value) {
+            const channel = Math.floor((value - P0) / P1);  // Рассчитываем номер канала
+            // Отображаем только номера, которые кратны 50
+            return (channel >= 0 && channel <= data.length - 1) ? channel : '';
+          },
+          autoSkip: true,
+          maxTicksLimit: 10,
+        },
+        min: 0,  // Начало графика энергии (0 keV)
+        max: 3000,  // Временно ставим максимальное значение, но обновим его динамически
+      }, */
+      y: {
+        type: scale === 'log' ? 'logarithmic' : 'linear',
+        position: 'left',
+        title: {
+          display: true,
+          text: 'Скорость счета 1/с'
+        },
+        min: 0
+      }
+    },
+    onHover: (event, chartElement) => {
+      const chart = chartRef.current;
+      if (chart) {
+        chart.canvas.style.cursor = chartElement.length ? 'pointer' : 'default';
+      }
+    },
+  };
+  
+  
+  
+  
+/* 
   const options = {
     responsive: true,
     plugins: {
@@ -319,7 +518,7 @@ function SpectrumChart({ data, selectedCollection, averageHeight, timeInterval, 
       }
     },
   };
-  
+   */
   
 
   // Обработка обновления строки
@@ -406,6 +605,13 @@ function SpectrumChart({ data, selectedCollection, averageHeight, timeInterval, 
               color="primary"
             >
               .N42
+            </Button>
+            <Button
+              onClick={() => exportToTxt(data)}  // Добавляем кнопку для экспорта в TXT
+              variant="contained"
+              color="primary"
+            >
+              .TXT
             </Button>
             </Box>
           </Box>
