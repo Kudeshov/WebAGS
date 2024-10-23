@@ -13,14 +13,15 @@ const VerticalSlidersPanel = () => {
   const { heightFrom, heightTo, heightFilterFrom, heightFilterTo, setHeightFilterFrom, 
           setHeightFilterTo, colorThresholds, setColorThresholds, minDoseValue, maxDoseValue,
           minDoseValueR, maxDoseValueR, selectedCollection, globalSettings, currentSensorType,
-          doseType, setDoseType } = useContext(FlightDataContext);
+          doseType, setDoseType, isotopes, setIsotopes } = useContext(FlightDataContext);
 
   // Локальные состояния для управления ползунками
   const [localHeightFrom, setLocalHeightFrom] = useState(heightFilterFrom);
   const [localHeightTo, setLocalHeightTo] = useState(heightFilterTo);
-
   const [zonesOfInterest, setZonesOfInterest] = useState([]); // Список зон интереса для сенсора
-
+  const [tableData, setTableData] = useState([]);
+  const [energyRanges, setEnergyRanges] = useState([]);
+  
   const handleDoseTypeChange = (event) => {
     setDoseType(event.target.value);
   };
@@ -91,6 +92,91 @@ const VerticalSlidersPanel = () => {
       red ${calculatePercentage(colorThresholds.v3, minDoseValueR, maxDoseValueR)}%)`
   };  
 
+  const calculatePeakBounds = (energyPeak, spectrometerResolutionPercent) => {
+    const spectrometerResolution = spectrometerResolutionPercent / 100; // Преобразуем в коэффициент
+  
+    // Эталонная энергия для Cs-137
+    const energyCs137 = 661.7; // кэВ
+  
+    // Ширина пика на полувысоте для Cs-137
+    const FWHM_Cs137 = spectrometerResolution * energyCs137;
+  
+    // Стандартное отклонение для Cs-137 (sigma)
+    const sigmaCs137 = FWHM_Cs137 / 2.35;
+  
+    // Стандартное отклонение для произвольной энергии на основе зависимости 1/sqrt(E)
+    const sigmaCurrent = sigmaCs137 * Math.sqrt( energyPeak / energyCs137 );
+  
+    // Границы пика ±3sigma
+    const leftBound = energyPeak - 3 * sigmaCurrent;
+    const rightBound = energyPeak + 3 * sigmaCurrent;
+  
+    return {
+      leftBound: leftBound.toFixed(2), // округление до 2 знаков
+      rightBound: rightBound.toFixed(2)
+    };
+  };
+  
+  const [zoneBounds, setZoneBounds] = useState([]);
+
+
+useEffect(() => {
+    if (zonesOfInterest.length > 0 && isotopes?.isotopes) {
+      const initialTableData = zonesOfInterest.map(zone => {
+        // Находим изотоп, связанный с текущей зоной
+        const isotope = isotopes.isotopes.find(isotope => isotope.id === zone.isotope_id);
+        
+        if (isotope) {
+          // Находим пик, связанный с текущей зоной
+          const peak = isotope.peaks.find(peak => peak.id === zone.peak_id);
+          
+          if (peak) {
+            // Рассчитываем границы пика
+            const { leftBound, rightBound } = calculatePeakBounds(
+              peak.energy_keV,
+              globalSettings.sensorTypes[currentSensorType].resolution
+            );
+  
+            return {
+              id: zone.id,
+              leftE: leftBound,
+              rightE: rightBound,
+              rate: 0, // Изначально скорость счета устанавливаем в 0
+              name: isotope.name // Имя изотопа
+            };
+          }
+        }
+        // Возвращаем значение по умолчанию, если не удалось найти изотоп или пик
+        return {
+          id: zone.id,
+          leftE: null,
+          rightE: null,
+          rate: 0,
+          name: 'Unknown'
+        };
+      });
+  
+      // Устанавливаем данные таблицы и диапазоны энергии
+      setTableData(initialTableData);
+      setEnergyRanges(initialTableData.map(zone => ({
+        id: zone.id,
+        leftE: zone.leftE,
+        rightE: zone.rightE
+      })));
+    }
+  }, [zonesOfInterest, isotopes]);
+
+  const getZoneName = (zone) => {
+    const isotope = isotopes.isotopes.find(i => i.id === zone.isotope_id);
+    if (isotope) {
+      const peak = isotope.peaks.find(p => p.id === zone.peak_id);
+      if (peak) {
+        return `${isotope.name} (${peak.energy_keV} keV)`;
+      }
+    }
+    return 'Неизвестная зона';
+  };
+  
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px' }}>
       
@@ -149,7 +235,7 @@ const VerticalSlidersPanel = () => {
               {/* Динамическое добавление зон интереса */}
               {zonesOfInterest.map((zone, index) => (
                 <MenuItem key={index} value={3 + index} sx={{ fontSize: '12px' }}>
-                  {zone.Name}
+                  {getZoneName(zone)}
                 </MenuItem>
               ))}
             </Select>

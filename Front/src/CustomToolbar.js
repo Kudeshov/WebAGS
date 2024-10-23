@@ -1557,6 +1557,18 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
               <MenuItem value="algorithm1">Алгоритм интерполяции</MenuItem>
               <MenuItem value="algorithm2">Алгоритм сеточного поиска</MenuItem>
             </Select>
+            
+           <TextField
+              margin="dense"
+              id="calibrationCoeff"
+              name="calibrationCoeff"
+              label="Коэффициент докалибровки"
+              fullWidth
+              size="small"
+              variant="outlined"
+              value={settings.calibrationCoeff}
+              onChange={(e) => setSettings({ ...settings, calibrationCoeff: e.target.value })}
+          />
           </FormControl>
         </>
       );
