@@ -24,7 +24,7 @@ import Backdrop from '@mui/material/Backdrop';
 import { convertDateTimeWithoutSeconds, convertDateTime, convertToTime } from './dateUtils';
 import SpectrumChartDialog from './SpectrumChartDialog';
 import SourceSearchDialog from './SourceSearchDialog'; 
-
+import { calculatePeakBounds } from './utilsAGS'; 
 
 const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, onHeightFilterActive, heightFilterActive,
     handleThreeDToggle, threeDActive, settingsOpen,}) => {
@@ -961,7 +961,6 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
       return;
     }
 
-   
     const updatedSettings = {
       ...updatedSettingsParam,
       NSPCHANNELS: parseInt(updatedSettingsParam.NSPCHANNELS, 10),
@@ -979,6 +978,10 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
       gm2Coeff: parseFloat(updatedSettingsParam.gm2Coeff),
       winCoeff: parseFloat(updatedSettingsParam.winCoeff),
       selectedAlgorithm: updatedSettingsParam.selectedAlgorithm,
+      chartWindow: parseFloat(updatedSettingsParam.chartWindow), 
+      calibrationCoeff: parseFloat(updatedSettingsParam.calibrationCoeff),  
+      DGThresholdLow: parseFloat(updatedSettingsParam.DGThresholdLow),  
+      DGThresholdHigh: parseFloat(updatedSettingsParam.DGThresholdHigh),  
     };
 
     fetch('/api/settings', {
@@ -1091,34 +1094,6 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
     const peak = isotope?.peaks.find(p => p.id === peakId);
     return peak ? peak.yield_percent : '';
   };
-
-  const calculatePeakBounds = (energyPeak, spectrometerResolutionPercent) => {
-    const spectrometerResolution = spectrometerResolutionPercent / 100; // Преобразуем в коэффициент
-  
-    // Эталонная энергия для Cs-137
-    const energyCs137 = 661.7; // кэВ
-  
-    // Ширина пика на полувысоте для Cs-137
-    const FWHM_Cs137 = spectrometerResolution * energyCs137;
-  
-    // Стандартное отклонение для Cs-137 (sigma)
-    const sigmaCs137 = FWHM_Cs137 / 2.35;
-  
-    // Стандартное отклонение для произвольной энергии на основе зависимости 1/sqrt(E)
-    const sigmaCurrent = sigmaCs137 * Math.sqrt( energyPeak / energyCs137 );
-  
-    // Границы пика ±3sigma
-    const leftBound = energyPeak - 3 * sigmaCurrent;
-    const rightBound = energyPeak + 3 * sigmaCurrent;
-  
-    return {
-      leftBound: leftBound.toFixed(2), // округление до 2 знаков
-      rightBound: rightBound.toFixed(2)
-    };
-  };
-  
-  const [zoneBounds, setZoneBounds] = useState([]);
-
 
   const tabPanelContent = (index) => {
     switch(index) {
@@ -1557,19 +1532,21 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
               <MenuItem value="algorithm1">Алгоритм интерполяции</MenuItem>
               <MenuItem value="algorithm2">Алгоритм сеточного поиска</MenuItem>
             </Select>
-            
-           <TextField
-              margin="dense"
-              id="calibrationCoeff"
-              name="calibrationCoeff"
-              label="Коэффициент докалибровки"
-              fullWidth
-              size="small"
-              variant="outlined"
-              value={settings.calibrationCoeff}
-              onChange={(e) => setSettings({ ...settings, calibrationCoeff: e.target.value })}
-          />
           </FormControl>
+          <FormControl fullWidth margin="dense" size="small" variant="outlined">
+            <TextField
+
+                id="calibrationCoeff"
+                name="calibrationCoeff"
+                label="Коэффициент докалибровки"
+                fullWidth
+                size="small"
+                variant="outlined"
+                value={settings.calibrationCoeff}
+                onChange={(e) => setSettings({ ...settings, calibrationCoeff: e.target.value })}
+            />
+          </FormControl>
+
         </>
       );
       default:

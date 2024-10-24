@@ -97,65 +97,6 @@ function SpectrumChart({ data, selectedCollection, averageHeight, timeInterval, 
       })));
     }
   }, [zonesOfInterest, isotopes]);
-/* 
-  useEffect(() => {
-    if (data && energyRanges.length > 0) {
-      // Обновление таблицы
-      const updatedTableData = energyRanges.map((range) => {
-        const leftIndex = Math.max(Math.ceil((range.leftE - P0) / P1), 0);
-        const rightIndex = Math.min(Math.floor((range.rightE - P0) / P1), data.length - 1);
-        const rateSum = data.slice(leftIndex, rightIndex + 1).reduce((sum, point) => sum + point.value, 0);
-        const numberOfPoints = rightIndex - leftIndex + 1;
-        const rate = rateSum / (numberOfPoints * globalSettings.SPECDEFTIME || globalSettings.SPECDEFTIME);
-  
-        const correspondingRow = tableData.find(row => row.id === range.id);
-  
-        return {
-          ...correspondingRow,
-          leftE: range.leftE,
-          rightE: range.rightE,
-          rate: rate.toFixed(2)
-        };
-      });
-  
-      setTableData(updatedTableData);
-  
-      // Обновление данных для графика
-      const updatedPreprocessData = {
-        labels: data.map((_, index) => calculateEnergy(index, P0, P1)),
-        datasets: [
-          {
-            label: 'Спектр',
-            data: data.map(point => point.value),
-            fill: false,
-            borderColor: 'rgba(0, 0, 255, 1)',
-            backgroundColor: 'rgba(0, 0, 255, 0.1)',
-            pointRadius: 0,
-            tension: 0.1
-          },
-          ...energyRanges.map((range) => {
-            const leftIndex = Math.max(Math.ceil((range.leftE - P0) / P1), 0);
-            const rightIndex = Math.min(Math.floor((range.rightE - P0) / P1), data.length - 1);
-  
-            const highlightData = data.map((point, index) => (index >= leftIndex && index <= rightIndex ? point.value : null));
-  
-            return {
-              label: `Зона: ${range.name}`,
-              data: highlightData,
-              fill: 'origin',
-              backgroundColor: highlightColor,
-              pointRadius: 0,
-              borderWidth: 0,
-              tension: 0.1,
-            };
-          }),
-        ]
-      };
-  
-      setChartData(updatedPreprocessData);
-    }
-  }, [data, energyRanges, P0, P1, globalSettings.SPECDEFTIME]);
-   */
 
   useEffect(() => {
     if (data && energyRanges.length > 0) {
@@ -444,82 +385,7 @@ function SpectrumChart({ data, selectedCollection, averageHeight, timeInterval, 
       }
     },
   };
-  
-  
-  
-  
-/* 
-  const options = {
-    responsive: true,
-    plugins: {
-      legend: {
-        display: false
-      },
-      tooltip: {
-        enabled: true,
-        mode: 'index',
-        intersect: false,
-        callbacks: {
-          title: (tooltipItems) => {
-            // Заголовок тултипа — это энергия
-            const energy = tooltipItems[0].label;
-            return `Энергия: ${energy} keV`;
-          },
-          label: (tooltipItem) => {
-            // Проверим, что это основной график (не зоны интереса)
-            if (tooltipItem.datasetIndex === 0) {
-              const countRate = tooltipItem.raw.toFixed(2); // Округляем до 2 знаков
-              return `Скорость счета: ${countRate} 1/с`;
-            }
-            // Если это залитая зона, не выводим повторяющуюся информацию
-            return null;
-          }
-        }
-      },
-      zoom: {
-        pan: {
-          enabled: true,
-          mode: 'xy',
-        },
-        zoom: {
-          wheel: {
-            enabled: true,
-          },
-          pinch: {
-            enabled: true
-          },
-          mode: 'xy',
-        }
-      }
-    },
-    scales: {
-      x: {
-        type: 'linear',
-        position: 'bottom',
-        title: {
-          display: true,
-          text: 'Энергия (keV)'
-        }
-      },
-      y: {
-        type: scale === 'log' ? 'logarithmic' : 'linear',
-        position: 'left',
-        title: {
-          display: true,
-          text: 'Скорость счета 1/с'
-        },
-        min: 0
-      }
-    },
-    onHover: (event, chartElement) => {
-      const chart = chartRef.current;
-      if (chart) {
-        chart.canvas.style.cursor = chartElement.length ? 'pointer' : 'default';
-      }
-    },
-  };
-   */
-  
+ 
 
   // Обработка обновления строки
   const processRowUpdate = (updatedRow, originalRow) => {

@@ -2,6 +2,7 @@ import React, { createContext, useState, useEffect, useCallback } from 'react';
 import { calculateColorThresholds } from './colorUtils';
 import { ExportToCsv } from 'export-to-csv-fix-source-map';
 import { convertDateTime } from './dateUtils';
+import { calculatePeakBounds } from './utilsAGS'; 
 
 export const FlightDataContext = createContext();
 
@@ -296,7 +297,7 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
       // Находим зону интересов по текущему doseType
       const zoneOfInterest = globalSettings.sensorTypes[currentSensorType].zonesOfInterest.find(zone => zone.id === doseType - 2);
   
-    //  console.log('doseType, Зона интересов', doseType, zoneOfInterest);
+      console.log('doseType, Зона интересов', doseType, zoneOfInterest);
   
       // Извлекаем значения P0 и P1, если они есть в selectedCollection, иначе используем значения по умолчанию
       const { P0 = 70, P1 = 11 } = selectedCollection || {};
@@ -319,10 +320,14 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
   
         // Если doseType больше 3, то применяем расчет на основе спектра
         if (zoneOfInterest) {
-          const leftE = parseInt(zoneOfInterest.leftE, 10);
-          const rightE = parseInt(zoneOfInterest.rightE, 10);
+
+          const { leftBound, rightBound } = calculatePeakBounds(
+            zoneOfInterest.peak_id,
+            globalSettings.sensorTypes[currentSensorType].resolution
+          );
   
-        //  console.log('leftE rightE', leftE, rightE);
+          const leftE = parseFloat(leftBound);
+          const rightE = parseFloat(rightBound);
   
           const { spectrum } = measurement;
   
@@ -341,6 +346,7 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
             const signalCountInWindow = spectrumInRange.reduce((acc, count) => acc + count, 0);
   
             // Возвращаем обновленное измерение с измененным полем dose
+            //console.log('Изменяем поле dose на вычисленное значение', signalCountInWindow);
             return {
               ...measurement,
               dose: signalCountInWindow // Изменяем поле dose на вычисленное значение
@@ -354,12 +360,15 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
   
       // Обновляем состояние validMeasurements с новыми значениями
       setValidMeasurements(updatedMeasurements);
+
+      console.log('updatedMeasurements', updatedMeasurements);
   
       if (updatedMeasurements.length > 0 && needRecalcDoses) {
         const doses = updatedMeasurements.map(m => m.dose);
+        console.log('doses', doses);
         const newMinDoseValue = Math.min(...doses);
         const newMaxDoseValue = Math.max(...doses);
-        //console.log('newMinDoseValue, newMaxDoseValue', newMinDoseValue, newMaxDoseValue);
+        console.log('newMinDoseValue, newMaxDoseValue', newMinDoseValue, newMaxDoseValue);
         setMinDoseValue(newMinDoseValue);
         setMaxDoseValue(newMaxDoseValue);
   
@@ -397,82 +406,72 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
       //console.log(updatedMeasurements);
     }
   };
-  
-  const updateMeasurements = (measurements) => {
 
+  const updateMeasurements = (measurements) => {
     console.log('measurements.length ', measurements.length);
-    // Проверяем, определен ли массив measurements и не пустой ли он
     if (!measurements || measurements.length === 0) {
       setMeasurements([]);
-      return; // Завершаем функцию
+      return;
     }
   
-
     if (globalSettings && globalSettings.sensorTypes && currentSensorType && globalSettings.sensorTypes[currentSensorType]) {
-      
-      // Находим зону интересов по текущему doseType
+  
       const zoneOfInterest = globalSettings.sensorTypes[currentSensorType].zonesOfInterest.find(zone => zone.id === doseType - 2);
   
-      // Извлекаем значения P0 и P1, если они есть в selectedCollection, иначе используем значения по умолчанию
       const { P0 = 70, P1 = 11 } = selectedCollection || {};
   
       const updatedMeasurements = measurements.map(measurement => {
-        // Логика изменения поля dose в зависимости от значения doseType
         if (doseType === 1) {
           return {
             ...measurement,
-            dose: measurement.dose1 // Присваиваем dose значение dosew
+            dose: measurement.dose1
           };
         }
   
         if (doseType === 2) {
           return {
             ...measurement,
-            dose: measurement.dosep // Присваиваем dose значение dose1
+            dose: measurement.dosep
           };
         }
   
-        // Если doseType больше 3, то применяем расчет на основе спектра
         if (zoneOfInterest) {
-          const leftE = parseInt(zoneOfInterest.leftE, 10);
-          const rightE = parseInt(zoneOfInterest.rightE, 10);
+
+          console.log('zoneOfInterest.peak_id', zoneOfInterest.peak_id);
+          const { leftBound, rightBound } = calculatePeakBounds(
+            zoneOfInterest.peak_id,
+            globalSettings.sensorTypes[currentSensorType].resolution
+          );
   
-        //  console.log('leftE rightE', leftE, rightE);
+          const leftE = parseFloat(leftBound);
+          const rightE = parseFloat(rightBound);
+
+          console.log('leftBound rightBound', leftBound, rightBound);
   
           const { spectrum } = measurement;
   
-          // Проверяем, есть ли данные о спектре
           if (spectrum && spectrum.channels) {
-       //     console.log('spectrum.channels', spectrum.channels);
-  
-            // Пересчитываем диапазон энергий в индексы каналов
             const leftIndex = Math.ceil((leftE - P0) / P1);
             const rightIndex = Math.floor((rightE - P0) / P1);
   
-      //      console.log('leftIndex rightIndex', leftIndex, rightIndex);
-  
-            // Считаем количество сигналов в диапазоне индексов
             const spectrumInRange = spectrum.channels.slice(leftIndex, rightIndex + 1);
             const signalCountInWindow = spectrumInRange.reduce((acc, count) => acc + count, 0);
   
-            // Возвращаем обновленное измерение с измененным полем dose
             return {
               ...measurement,
-              dose: signalCountInWindow // Изменяем поле dose на вычисленное значение
+              dose: signalCountInWindow
             };
           }
         }
   
-        // Если нет зоны интересов или спектральных данных, возвращаем измерение без изменений
         return { ...measurement };
       });
   
       console.log('updatedMeasurements', updatedMeasurements);
-      // Обновляем состояние validMeasurements с новыми значениями
       setMeasurements(updatedMeasurements);
     }
-  };  
-
+  };
+  
   return (
     <FlightDataContext.Provider value={{
       selectedDatabase,

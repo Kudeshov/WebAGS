@@ -7,8 +7,8 @@
   "latInit": 55.704034038232834,
   "lonInit": 37.62119540524117,
   "altInit": 23,
-  "chartWindow": "20",
-  "calibrationCoeff": "20",
+  "chartWindow": 20,
+  "calibrationCoeff": 0.5,
   "coeffs_below_550": [
     3.88e-23,
     -6.7e-20,
@@ -25,8 +25,8 @@
   ],
   "gm1Coeff": 0.5,
   "gm2Coeff": 5,
-  "DGThresholdLow": "500",
-  "DGThresholdHigh": "10",
+  "DGThresholdLow": 500,
+  "DGThresholdHigh": 10,
   "serialPort": {
     "path": "COM3",
     "baudRate": 57600
