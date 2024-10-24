@@ -41,7 +41,11 @@ function SourceSearchDialog({ open, onClose }) {
   const [calculatedCoefficients, setCalculatedCoefficients] = useState({ P0, P1 });
   const [calibrationDialogOpen, setCalibrationDialogOpen] = useState(false);
 
-
+  const handlePeakCenterChange = (event) => {
+    const { value } = event.target;
+    setPeakCenter(value);  // Обновляем состояние на основе ввода пользователя
+  };
+  
   const { mapBounds } = useContext(FlightDataContext);
   const getZoneName = (zone) => {
     const isotope = isotopes.isotopes.find(i => i.id === zone.isotope_id);
@@ -432,6 +436,7 @@ function SourceSearchDialog({ open, onClose }) {
               fullWidth
               variant="outlined"
               value={peakCenter}
+              onChange={handlePeakCenterChange} // Добавьте этот обработчик
               size="small"
             />
           </Grid>
