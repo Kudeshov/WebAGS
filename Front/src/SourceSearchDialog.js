@@ -40,12 +40,13 @@ function SourceSearchDialog({ open, onClose }) {
   // Используем коэффициенты из selectedCollection для начального состояния
   const [calculatedCoefficients, setCalculatedCoefficients] = useState({ P0, P1 });
   const [calibrationDialogOpen, setCalibrationDialogOpen] = useState(false);
+  const [useRefinedPeakAreaCalculation, setUseRefinedPeakAreaCalculation] = useState(false);
 
   const handlePeakCenterChange = (event) => {
     const { value } = event.target;
     setPeakCenter(value);  // Обновляем состояние на основе ввода пользователя
   };
-  
+
   const { mapBounds } = useContext(FlightDataContext);
   const getZoneName = (zone) => {
     const isotope = isotopes.isotopes.find(i => i.id === zone.isotope_id);
@@ -157,7 +158,7 @@ function SourceSearchDialog({ open, onClose }) {
     if (leftIndex < 0) leftIndex = 0;
     if (rightIndex >= globalSettings.NSPCHANNELS) rightIndex = globalSettings.NSPCHANNELS - 1;
   
-    console.log(`Диапазон индексов: leftIndex = ${leftIndex}, rightIndex = ${rightIndex}`);
+    //console.log(`Диапазон индексов: leftIndex = ${leftIndex}, rightIndex = ${rightIndex}`);
   
     const lTime = globalSettings.SPECDEFTIME;
   
@@ -237,9 +238,9 @@ function SourceSearchDialog({ open, onClose }) {
     let result;
 
     if (!globalSettings.selectedAlgorithm || globalSettings.selectedAlgorithm === 'algorithm1') {
-      result = findSourceCoordinatesInterpolate(measurements, energyRange, peakCenter, P0, P1, mapBounds);
+      result = findSourceCoordinatesInterpolate(measurements, energyRange, peakCenter, P0, P1, mapBounds, useRefinedPeakAreaCalculation, globalSettings.sensorTypes[currentSensorType].resolution, globalPeakIndex );
     } else {
-      result = findSourceCoordinates3D(measurements, energyRange, peakCenter, P0, P1, mapBounds);
+      result = findSourceCoordinates3D(measurements, energyRange, peakCenter, P0, P1, mapBounds, useRefinedPeakAreaCalculation, globalSettings.sensorTypes[currentSensorType].resolution, globalPeakIndex );
     }
 
     if (result && result.coordinates) {
@@ -501,6 +502,18 @@ function SourceSearchDialog({ open, onClose }) {
               Коэффициенты калибровки: {P0} {P1}
             </Typography>
           </Grid>
+          <Grid item xs={12}>
+            <FormControl fullWidth margin="dense">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={useRefinedPeakAreaCalculation}
+                  onChange={(e) => setUseRefinedPeakAreaCalculation(e.target.checked)}
+                />
+                Использовать уточненный расчет площади пика
+              </label>
+            </FormControl>
+          </Grid>
         </Grid>
 
         {/* Диалог калибровки */}
@@ -511,7 +524,6 @@ function SourceSearchDialog({ open, onClose }) {
           selectedDatabase={selectedDatabase}
           saveCollectionParams={saveCollectionParams} // Передаем функцию сохранения
         />
-
       </DialogContent>
       <DialogActions>
 

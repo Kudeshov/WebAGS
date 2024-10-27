@@ -2,7 +2,7 @@ import * as turf from '@turf/turf';
 const integrate = require('integrate-adaptive-simpson');
 const R = 6371000.0; // Радиус Земли в метрах
 
-export const findSourceCoordinates3D = (measurements, energyRange, peakEnergy, P0, P1, mapBounds) => {
+export const findSourceCoordinates3D = (measurements, energyRange, peakEnergy, P0, P1, mapBounds, useRefinedPeakAreaCalculation, RCs137, peakChannel) => {
   const wL = Math.round((energyRange.low - P0) / P1);
   const wH = Math.round((energyRange.high - P0) / P1);
 
@@ -40,6 +40,16 @@ export const findSourceCoordinates3D = (measurements, energyRange, peakEnergy, P
   const NSamples = measurements.length - 2;
   console.log('NSamples ', NSamples);
 
+  //  Вычисление интенсивностей для всех измерений
+    const intensities = measurements.map((measurement) => {
+      if (useRefinedPeakAreaCalculation) {
+        return calculatePeakArea(measurement.spectrum.channels, peakChannel, RCs137, P0, P1, true);
+      } else {
+        const spectrum = measurement.spectrum.channels.slice(wL, wH + 1);
+        return spectrum.reduce((sum, value) => sum + value, 0); // Сумма интенсивностей
+      }
+    });
+
   mapBounds = defineBounds(measurements, mapBounds);
 
   console.log('mapBounds ', mapBounds);
@@ -58,7 +68,7 @@ export const findSourceCoordinates3D = (measurements, energyRange, peakEnergy, P
   let AMean = new Array(nx * ny).fill(0);
   let D = new Array(nx * ny).fill(0);
 
-  const { J0, K0 } = cellSelect(mapBounds._southWest.lat, mapBounds._southWest.lng, nx, ny, xmar, ymar, measurements, wL, wH, C, mu, A, AMean, D, NSamples);
+  const { J0, K0 } = cellSelect(mapBounds._southWest.lat, mapBounds._southWest.lng, nx, ny, xmar, ymar, measurements, intensities, C, mu, A, AMean, D, NSamples, useRefinedPeakAreaCalculation, RCs137, peakChannel, P0, P1);
 
   console.log('Грубая оценка - индексы квадрата', J0, K0);
 
@@ -68,7 +78,7 @@ export const findSourceCoordinates3D = (measurements, energyRange, peakEnergy, P
   xmar = 2 * xmar / (nx - 1);
   ymar = 2 * ymar / (ny - 1);
 
-  const refinedSelect = cellSelect(X0 - xmar, Y0 - ymar, nx, ny, xmar, ymar, measurements, wL, wH, C, mu, A, AMean, D, NSamples);
+  const refinedSelect = cellSelect(X0 - xmar, Y0 - ymar, nx, ny, xmar, ymar, measurements, intensities, C, mu, A, AMean, D, NSamples, useRefinedPeakAreaCalculation, RCs137, peakChannel, P0, P1);
  
   const X01 = refinedSelect.J0 * xmar;
   const Y01 = refinedSelect.K0 * ymar;
@@ -237,7 +247,7 @@ const calculateIntegralSimpson = (x1, y1, z1, x2, y2, z2, X, Y, Z, mu) => {
  * @param {number} NSamples - Количество сэмплов (точек измерений).
  * @returns {Object} - Объект с координатами ячейки с минимальным отклонением.
  */
-const cellSelect = (Xb, Yb, nx, ny, xmar, ymar, measurements, wL, wH, C, mu, A, AMean, D, NSamples) => {
+const cellSelect = (Xb, Yb, nx, ny, xmar, ymar, measurements, intensities, C, mu, A, AMean, D, NSamples, useRefinedPeakAreaCalculation, RCs137, peakChannel, P0, P1) => {
   cnt = 0;
   let J0 = 0, K0 = 0;  // Инициализация переменных для хранения индексов лучшей ячейки
   let Dmin = Infinity;  // Начальное значение для минимального отклонения (для поиска минимума)
@@ -255,9 +265,22 @@ const cellSelect = (Xb, Yb, nx, ny, xmar, ymar, measurements, wL, wH, C, mu, A, 
 
       // Цикл по сэмплам измерений (исключаем первый и последний сэмпл)
       for (let ns = 1; ns < measurements.length - 1; ns++) {
+
+        const intensity = intensities[ns]; // Используем предрасчитанное значение интенсивности
+
         const measurement = measurements[ns];
-        const spectrum = measurement.spectrum.channels.slice(wL, wH + 1);
-        const intensity = spectrum.reduce((sum, value) => sum + value, 0);  // Сумма интенсивностей
+
+/*         // Расчет интенсивности (стандартный или уточненный)
+       let intensity;
+        if (useRefinedPeakAreaCalculation) {
+          intensity = calculatePeakArea(measurement.spectrum.channels, peakChannel, RCs137, P0, P1, true);
+        } else {
+          const spectrum = measurement.spectrum.channels.slice(wL, wH + 1);
+          intensity = spectrum.reduce((sum, value) => sum + value, 0); // Сумма интенсивностей
+        } */ 
+
+        //const spectrum = measurement.spectrum.channels.slice(wL, wH + 1);
+        //const intensity = spectrum.reduce((sum, value) => sum + value, 0);  // Сумма интенсивностей
 
         // Вычисление интеграла для предыдущего и следующего сэмплов
         let Integral = calculateIntegralSimpson(
@@ -274,25 +297,6 @@ const cellSelect = (Xb, Yb, nx, ny, xmar, ymar, measurements, wL, wH, C, mu, A, 
 
         Integral /= 2; //NStep;  // Нормализуем интеграл по количеству шагов
 
-/*         if (first3times>0) // отладка
-          { 
- 
-            let Integral1 = calculateIntegralTr(
-              measurements[ns - 1].lat, measurements[ns - 1].lon, measurements[ns - 1].alt,
-              measurements[ns].lat, measurements[ns].lon, measurements[ns].alt,
-              X, Y, 0, mu, NN
-            );
-    
-            Integral1 += calculateIntegralTr(
-              measurements[ns].lat, measurements[ns].lon, measurements[ns].alt,
-              measurements[ns + 1].lat, measurements[ns + 1].lon, measurements[ns + 1].alt,
-              X, Y, 0, mu, NN
-            );
-    
-            Integral1 /=  NStep;  // Нормализуем интеграл по количеству шагов
-            console.log('Integral compare Trap / Simps', Integral , Integral1);
-          } */
-        
         //let A_value=0;
 
         const ind = ns * nx * ny + index;
@@ -308,32 +312,6 @@ const cellSelect = (Xb, Yb, nx, ny, xmar, ymar, measurements, wL, wH, C, mu, A, 
             ' A_value', A[ind], ' ind', ind, 'D_local', D_local);
           first33times--;
         }
-
-        /* 
-        if (Integral===0)
-        {
-          console.log('null integral');
-        }
-        else
-        {
-          // Рассчитываем значение A и среднее AMean
-          A_value = C * intensity / Integral;  // Интенсивность для текущей ячейки
- 
-          A[index] = A_value;  // Сохраняем значение A для текущей ячейки
-          AMean[index] += A_value;  // Обновляем среднее значение интенсивности
-
-          if (first3times>0) // отладка - показать первые три расчета
-          { 
-            console.log('Проход ', 4-first3times,  'A_value = C * intensity / Integral; Integral', Integral, ' C', C, ' intensity', intensity, 
-              ' A_value', A_value, ' index', index);
-            first3times--;
-          }
-        }
- 
-        // Добавляем квадрат отклонения в локальное значение D_local
-        D_local += (A_value - intensity) ** 2;*/
-
-        
       }
 
       // Усредняем значения для текущей ячейки
@@ -354,6 +332,8 @@ const cellSelect = (Xb, Yb, nx, ny, xmar, ymar, measurements, wL, wH, C, mu, A, 
   return { J0, K0 };  // Возвращаем индексы ячейки с минимальным отклонением
 };
 
+
+/* 
 const transform = (measurements, mapBounds) => {
 
 
@@ -424,7 +404,7 @@ const transform = (measurements, mapBounds) => {
   Yzone_e = (Yzone_e - minY) * (Math.PI / 180) * R * latFactor; // Преобразование долготы с учетом широты
 
   return { Xzone_b: 0, Yzone_b: 0, Xzone_e, Yzone_e, minX, minY };
-};
+}; */
 
 
 /**
@@ -479,11 +459,99 @@ function defineBounds(measurements, mapBounds) {
       _northEast: { lat: maxLat, lng: maxLon }
   };
 }
-
  
-export const findSourceCoordinatesInterpolate = (validMeasurements, energyRange, peakEnergy, P0, P1, mapBounds) => {
+/* // Функция для расчета фонового уровня с использованием трапецеидального интегрирования
+const calculateBackgroundLevel = (spectrum, Nleft, Nright) => {
+  const halfWidth = Math.floor((Nright - Nleft) / 2);
+  const backgroundLeft = spectrum.slice(Nleft - halfWidth, Nleft).reduce((sum, value) => sum + value, 0);
+  const backgroundRight = spectrum.slice(Nright, Nright + halfWidth).reduce((sum, value) => sum + value, 0);
+  return (backgroundLeft + backgroundRight);
+};
+
+// Функция для расчета площади пика с учетом фонового уровня
+const calculatePeakArea = (spectrum, Nleft, Nright, backgroundLevel) => {
+  const peakSum = spectrum.slice(Nleft, Nright + 1).reduce((sum, value) => sum + value, 0);
+  const peakArea = peakSum - backgroundLevel;
+  
+  // Если результат отрицательный, возвращаем 0
+  return peakArea > 0 ? peakArea : 0;
+};
+ */
+
+// Функция сглаживания спектра
+const smoothSpectrum = (spectrum) => {
+  const smoothed = [];
+  for (let i = 5; i < spectrum.length - 5; i++) {
+    smoothed[i] = (1 / 429) * (
+      -36 * spectrum[i - 5] + 9 * spectrum[i - 4] + 44 * spectrum[i - 3] +
+      69 * spectrum[i - 2] + 84 * spectrum[i - 1] + 89 * spectrum[i] +
+      84 * spectrum[i + 1] + 69 * spectrum[i + 2] + 44 * spectrum[i + 3] +
+      9 * spectrum[i + 4] - 36 * spectrum[i + 5]
+    );
+  }
+  return smoothed;
+};
+
+// Функция для уточнения канала центра пика
+const refinePeakCenter = (spectrum, originalPeakChannel, usePointSourceAlgorithm) => {
+  if (usePointSourceAlgorithm) {
+    const smoothed = smoothSpectrum(spectrum);
+    const maxChannel = smoothed.indexOf(Math.max(...smoothed));
+    return maxChannel >= 0 ? maxChannel : originalPeakChannel;
+  }
+  return originalPeakChannel;
+};
+
+// Функция для определения границ пика
+const calculatePeakBounds = (N0Star, E0, RCs137, a, b) => {
+  const resolutionAtE0 = RCs137 / Math.sqrt(E0);
+  const width = Math.round((3 * (resolutionAtE0 * Math.sqrt(661.7) / Math.sqrt(E0) * N0Star) / 2.35) + 1);
+
+  let Nleft = N0Star - width;
+  let Nright = N0Star + width;
+
+  // Проверка четности разности
+  if ((Nright - Nleft) % 2 !== 0) {
+    Nleft -= 1;
+  }
+
+  return { Nleft, Nright };
+};
+
+// Функция для расчета фонового уровня
+const calculateBackgroundLevel = (spectrum, Nleft, Nright) => {
+  const halfWidth = Math.floor((Nright - Nleft) / 2);
+
+  const backgroundLeft = spectrum.slice(Nleft - halfWidth, Nleft).reduce((sum, value) => sum + value, 0);
+  const backgroundRight = spectrum.slice(Nright, Nright + halfWidth).reduce((sum, value) => sum + value, 0);
+
+  return backgroundLeft + backgroundRight;
+};
+
+// Основная функция для расчета площади пика
+const calculatePeakArea = (spectrum, peakChannel, RCs137, a, b, usePointSourceAlgorithm) => {
+  // Уточняем канал центра пика
+  const N0Star = refinePeakCenter(spectrum, peakChannel, usePointSourceAlgorithm);
+  const E0 = a * N0Star + b;
+
+  // Определяем границы пика
+  const { Nleft, Nright } = calculatePeakBounds(N0Star, E0, RCs137, a, b);
+
+  // Вычисляем фоновый уровень
+  const backgroundLevel = calculateBackgroundLevel(spectrum, Nleft, Nright);
+
+  // Рассчитываем площадь пика
+  const peakSum = spectrum.slice(Nleft, Nright + 1).reduce((sum, value) => sum + value, 0);
+  const peakArea = peakSum - backgroundLevel;
+
+  // Проверка на отрицательные значения площади
+  return peakArea > 0 ? peakArea : 0;
+};
+
+
+export const findSourceCoordinatesInterpolate = (validMeasurements, energyRange, peakEnergy, P0, P1, mapBounds, useRefinedPeakAreaCalculation, RCs137, peakChannel) => {
   if (!validMeasurements || validMeasurements.length < 10) {
-      return null; // Недостаточно данных для анализа
+    return null; // Недостаточно данных для анализа
   }
 
   // Преобразование диапазона энергий в индексы спектральных каналов
@@ -501,23 +569,23 @@ export const findSourceCoordinatesInterpolate = (validMeasurements, energyRange,
 
   // Функция установки энергии
   const setEnergy = (energy) => {
-      const w = [13.6759, 135.0362, -18.74111, 24.51013, -4.12014, -2.89794, 0.89535];
-      let Sum = 0.0;
-      const EMev = energy / 1000.0;  // Преобразование энергии в МэВ
+    const w = [13.6759, 135.0362, -18.74111, 24.51013, -4.12014, -2.89794, 0.89535];
+    let Sum = 0.0;
+    const EMev = energy / 1000.0;  // Преобразование энергии в МэВ
 
-      if (EMev >= 0.1 && EMev <= 0.2) {
-          eps = (-1.28879 * EMev + 1.0503);
-      }
-      if (EMev > 0.2) {
-          eps = 1.0 / Math.pow(-0.384 * EMev * EMev + 2.8682 * EMev + 0.579, 2.0);
-      }
+    if (EMev >= 0.1 && EMev <= 0.2) {
+      eps = (-1.28879 * EMev + 1.0503);
+    }
+    if (EMev > 0.2) {
+      eps = 1.0 / Math.pow(-0.384 * EMev * EMev + 2.8682 * EMev + 0.579, 2.0);
+    }
 
-      for (let i = 0; i < 7; i++) {
-          Sum += w[i] * Math.pow(EMev, i);
-      }
+    for (let i = 0; i < 7; i++) {
+      Sum += w[i] * Math.pow(EMev, i);
+    }
 
-      mu = 1.0 / (10.0 * Math.sqrt(Sum));
-      C = 4 * Math.PI / (YE * S * eps);  // Обновляем C с новым eps
+    mu = 1.0 / (10.0 * Math.sqrt(Sum));
+    C = 4 * Math.PI / (YE * S * eps);  // Обновляем C с новым eps
   };
 
   // Устанавливаем значения mu и eps на основе энергии пика
@@ -525,26 +593,30 @@ export const findSourceCoordinatesInterpolate = (validMeasurements, energyRange,
 
   // Определение области поиска
   if (!mapBounds || !mapBounds._southWest || !mapBounds._northEast) {
-      mapBounds = defineBounds(validMeasurements, mapBounds);
+    mapBounds = defineBounds(validMeasurements, mapBounds);
   }
 
   const cellSize = 0.003; // Размер ячейки для интерполяции
 
-  // Создаем коллекцию точек, где в качестве свойства используем сумму сигналов спектра
+  console.log('Определённый peakChannel:', peakChannel);
+
+  // Создаем коллекцию точек, где в качестве свойства используем либо сумму сигналов спектра, либо площадь пика
   const pointsCollection = turf.featureCollection(
-      validMeasurements.map(m => {
-          const spectrumInRange = m.spectrum.channels.slice(leftIndex, rightIndex + 1);
-          const intensity = spectrumInRange.reduce((sum, value) => sum + value, 0);
-          return turf.point([m.lon, m.lat], { intensity });
-      })
+    validMeasurements.map((m) => {
+      const intensity = useRefinedPeakAreaCalculation
+        ? calculatePeakArea(m.spectrum.channels, peakChannel, RCs137, P0, P1, true) // Уточнённый расчет площади пика
+        : m.spectrum.channels.slice(leftIndex, rightIndex + 1).reduce((sum, value) => sum + value, 0); // Стандартный расчет как сумма сигналов
+
+      return turf.point([m.lon, m.lat], { intensity });
+    })
   );
 
   const bounds = turf.bbox(pointsCollection);
   const expandedBounds = [
-      bounds[0] - 0.01, // Уменьшаем минимальную долготу
-      bounds[1] - 0.01, // Уменьшаем минимальную широту
-      bounds[2] + 0.01, // Увеличиваем максимальную долготу
-      bounds[3] + 0.01  // Увеличиваем максимальную широту
+    bounds[0] - 0.01, // Уменьшаем минимальную долготу
+    bounds[1] - 0.01, // Уменьшаем минимальную широту
+    bounds[2] + 0.01, // Увеличиваем максимальную долготу
+    bounds[3] + 0.01  // Увеличиваем максимальную широту
   ];
 
   // Выполнение интерполяции
@@ -554,14 +626,14 @@ export const findSourceCoordinatesInterpolate = (validMeasurements, energyRange,
   let maxInterpolatedIntensity = -Infinity;
   let maxInterpolatedPoint = null;
   for (const feature of interpolated.features) {
-      if (feature.properties.intensity > maxInterpolatedIntensity) {
-          maxInterpolatedIntensity = feature.properties.intensity;
-          maxInterpolatedPoint = feature;
-      }
+    if (feature.properties.intensity > maxInterpolatedIntensity) {
+      maxInterpolatedIntensity = feature.properties.intensity;
+      maxInterpolatedPoint = feature;
+    }
   }
 
   if (!maxInterpolatedPoint) {
-      return null; // Не удалось найти точку с максимальной интенсивностью
+    return null; // Не удалось найти точку с максимальной интенсивностью
   }
 
   const [maxLon, maxLat] = maxInterpolatedPoint.geometry.coordinates;
@@ -570,11 +642,11 @@ export const findSourceCoordinatesInterpolate = (validMeasurements, energyRange,
 
   // Считаем расстояния до всех точек и сортируем их, чтобы найти 10 ближайших
   const distances = validMeasurements.map((measurement, index) => {
-      const measurementMeters = degToMeters(measurement.lat, measurement.lon);
-      const distanceSquared = (measurementMeters.x - maxCoordsMeters.x) ** 2 + 
-                              (measurementMeters.y - maxCoordsMeters.y) ** 2 + 
-                              measurement.height ** 2;
-      return { distance: Math.sqrt(distanceSquared), index };
+    const measurementMeters = degToMeters(measurement.lat, measurement.lon);
+    const distanceSquared = (measurementMeters.x - maxCoordsMeters.x) ** 2 + 
+                            (measurementMeters.y - maxCoordsMeters.y) ** 2 + 
+                            measurement.height ** 2;
+    return { distance: Math.sqrt(distanceSquared), index };
   }).sort((a, b) => a.distance - b.distance);
 
   // Берем 10 ближайших точек
@@ -585,16 +657,23 @@ export const findSourceCoordinatesInterpolate = (validMeasurements, energyRange,
   let totalSquaredDeviation = 0;
 
   closestPoints.forEach(({ distance, index }) => {
-      const measurement = validMeasurements[index];
-      const { spectrum } = measurement;
+    const measurement = validMeasurements[index];
+    const { spectrum } = measurement;
 
-      const spectrumInRange = spectrum.channels.slice(leftIndex, rightIndex + 1);
-      const intensity = spectrumInRange.reduce((sum, value) => sum + value, 0);
-      console.log('distance, intensity', distance, intensity);
-      // Формула для расчета активности
-      const activity = intensity / (eps * S * YE * Math.exp(-mu * distance) / (4 * Math.PI * distance ** 2));
-      totalActivity += activity;
-      totalSquaredDeviation += (activity - totalActivity / closestPoints.length) ** 2;
+    let intensity;
+
+    if (useRefinedPeakAreaCalculation) {
+      intensity = calculatePeakArea(spectrum.channels, peakChannel, RCs137, P0, P1, true);
+    } else {
+      intensity = spectrum.channels.slice(leftIndex, rightIndex + 1).reduce((sum, value) => sum + value, 0);
+    }
+
+    console.log('distance, intensity', distance, intensity);
+
+    // Формула для расчета активности
+    const activity = intensity / (eps * S * YE * Math.exp(-mu * distance) / (4 * Math.PI * distance ** 2));
+    totalActivity += activity;
+    totalSquaredDeviation += (activity - totalActivity / closestPoints.length) ** 2;
   });
 
   const deviation = Math.sqrt(totalSquaredDeviation / closestPoints.length);
@@ -602,8 +681,8 @@ export const findSourceCoordinatesInterpolate = (validMeasurements, energyRange,
   console.log('Финальный результат: Activity:', totalActivity / closestPoints.length, 'Deviation:', deviation);
 
   return {
-      coordinates: { lat: maxLat, lon: maxLon },
-      activity: totalActivity / closestPoints.length,
-      deviation: deviation
+    coordinates: { lat: maxLat, lon: maxLon },
+    activity: totalActivity / closestPoints.length,
+    deviation: deviation
   };
 };
