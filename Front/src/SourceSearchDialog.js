@@ -31,6 +31,10 @@ function SourceSearchDialog({ open, onClose }) {
   const [isEnergyRangeValid, setIsEnergyRangeValid] = useState(true);
   const [showCalibrationMessage, setShowCalibrationMessage] = useState(false);
   const [tabIndex, setTabIndex] = useState(0);
+  const [alphaValue, setAlphaValue] = useState(0.001);
+  const [resultC, setResultC] = useState('');
+  const [unit, setUnit] = useState('Бк/м2');
+  const [deviationD, setDeviationD] = useState('');
   // Новые состояния для averagedSpectrum и globalPeakIndex
   const [averagedSpectrum, setAveragedSpectrum] = useState([]);
   const [globalPeakIndex, setGlobalPeakIndex] = useState(0);
@@ -286,6 +290,12 @@ function SourceSearchDialog({ open, onClose }) {
     setTabIndex(newValue);
   };
    
+  const handleCalculate = () => {
+    // Логика расчета для плотности загрязнения и отклонения
+    setResultC('Значение C'); // примерное значение для демонстрации
+    setDeviationD('Значение D'); // примерное значение для демонстрации
+  };
+
   const handleCalibrationDialogClose = (save, newCoefficients) => {
     if (save && newCoefficients) {
       // Обновляем коллекцию, только если пользователь подтвердил изменения
@@ -544,7 +554,68 @@ function SourceSearchDialog({ open, onClose }) {
         {tabIndex === 1 && (
           <Box>
             {/* Содержимое для "Плотность по дозе" */}
-            <p>Содержимое вкладки "Плотность по дозе".</p>
+            <FormControl fullWidth margin="dense">
+              <InputLabel>Предполагаемый коэффициент заглубления α</InputLabel>
+              <Select
+                value={alphaValue}
+                onChange={(e) => setAlphaValue(e.target.value)}
+              >
+                <MenuItem value={0.001}>0,001</MenuItem>
+                <MenuItem value={0.2}>0,2</MenuItem>
+                <MenuItem value={1}>1</MenuItem>
+                <MenuItem value={4}>4</MenuItem>
+                <MenuItem value={30}>30</MenuItem>
+              </Select>
+            </FormControl>
+
+           
+
+            <Box mt={2}>
+              <Typography variant="body2" gutterBottom>
+                Плотность загрязнения (в приближении Cs-137):
+              </Typography>
+              <TextField
+                value={resultC}
+                onChange={(e) => setResultC(e.target.value)}
+                fullWidth
+                variant="outlined"
+                size="small"
+                margin="dense"
+              />
+              <FormControl fullWidth margin="dense">
+                <Select
+                  value={unit}
+                  onChange={(e) => setUnit(e.target.value)}
+                >
+                  <MenuItem value="Бк/м2">Бк/м2</MenuItem>
+                  <MenuItem value="Бк/км2">Бк/км2</MenuItem>
+                  <MenuItem value="Ки/км2">Ки/км2</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
+
+            <Box mt={2}>
+              <Typography variant="body2" gutterBottom>
+                Среднеквадратичное отклонение, Бк/см2:
+              </Typography>
+              <TextField
+                value={deviationD}
+                onChange={(e) => setDeviationD(e.target.value)}
+                fullWidth
+                variant="outlined"
+                size="small"
+                margin="dense"
+              />
+            </Box>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleCalculate}
+              fullWidth
+              style={{ marginTop: '16px' }}
+            >
+              Рассчитать
+            </Button>
           </Box>
         )}
         {tabIndex === 2 && (
