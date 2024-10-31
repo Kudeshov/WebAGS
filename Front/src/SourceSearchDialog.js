@@ -5,6 +5,8 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  Tabs,
+  Tab,
   TextField,
   Grid,
   FormControl,
@@ -28,6 +30,7 @@ function SourceSearchDialog({ open, onClose }) {
   const [selectedZone, setSelectedZone] = useState('');
   const [isEnergyRangeValid, setIsEnergyRangeValid] = useState(true);
   const [showCalibrationMessage, setShowCalibrationMessage] = useState(false);
+  const [tabIndex, setTabIndex] = useState(0);
   // Новые состояния для averagedSpectrum и globalPeakIndex
   const [averagedSpectrum, setAveragedSpectrum] = useState([]);
   const [globalPeakIndex, setGlobalPeakIndex] = useState(0);
@@ -278,7 +281,10 @@ function SourceSearchDialog({ open, onClose }) {
     setCalculatedCoefficients({ P0: B_new, P1: A_new, _id: collectionId });
     setCalibrationDialogOpen(true);
   };
-  
+
+  const handleTabChange = (event, newValue) => {
+    setTabIndex(newValue);
+  };
    
   const handleCalibrationDialogClose = (save, newCoefficients) => {
     if (save && newCoefficients) {
@@ -296,9 +302,18 @@ function SourceSearchDialog({ open, onClose }) {
 
   return (
     <Dialog open={open} onClose={onClose}>
-      <DialogTitle>Поиск источника</DialogTitle>
+      
+      <Tabs value={tabIndex} onChange={handleTabChange} variant="fullWidth">
+        <Tab label="Поиск источника" />
+        <Tab label="Плотность по дозе" />
+        <Tab label="Заглубление по высоте" />
+        <Tab label="Плотность по поглощению" />
+      </Tabs>
       <DialogContent>
-        {/* Если зона не выбрана, показываем это сообщение */}
+        {tabIndex === 0 && (
+          <Box>
+            {/* Содержимое для "Поиск источника" */}
+           {/* Если зона не выбрана, показываем это сообщение */}
         {!selectedZone && (
           <Typography color="error" variant="body2">
             Зона интереса не выбрана. Пожалуйста, выберите зону интереса.
@@ -524,6 +539,29 @@ function SourceSearchDialog({ open, onClose }) {
           selectedDatabase={selectedDatabase}
           saveCollectionParams={saveCollectionParams} // Передаем функцию сохранения
         />
+          </Box>
+        )}
+        {tabIndex === 1 && (
+          <Box>
+            {/* Содержимое для "Плотность по дозе" */}
+            <p>Содержимое вкладки "Плотность по дозе".</p>
+          </Box>
+        )}
+        {tabIndex === 2 && (
+          <Box>
+            {/* Содержимое для "Заглубление по высоте" */}
+            <p>Содержимое вкладки "Заглубление по высоте".</p>
+          </Box>
+        )}
+        {tabIndex === 3 && (
+          <Box>
+            {/* Содержимое для "Плотность по поглощению" */}
+            <p>Содержимое вкладки "Плотность по поглощению".</p>
+          </Box>
+        )}
+
+
+        
       </DialogContent>
       <DialogActions>
 
