@@ -290,10 +290,42 @@ function SourceSearchDialog({ open, onClose }) {
     setTabIndex(newValue);
   };
    
+  const calculateY = (h, alpha) => {
+    switch (alpha) {
+      case 0.001:
+        return Math.pow((29.834 * Math.pow(10, -15)) * (-9.775191e-25 * Math.pow(h, 6) + 3.121542e-20 * Math.pow(h, 5) - 3.935069e-16 * Math.pow(h, 4) + 2.576472e-12 * Math.pow(h, 3) - 8.458268e-9 * Math.pow(h, 2) + 0.00007551543 * h + 0.9930782), 2);
+      case 0.2:
+        return Math.pow((2692 * Math.pow(10, -15)) * (-1.381729e-24 * Math.pow(h, 6) + 4.809152e-20 * Math.pow(h, 5) - 6.609362e-16 * Math.pow(h, 4) + 4.662866e-12 * Math.pow(h, 3) - 1.715926e-8 * Math.pow(h, 2) + 0.0001095233 * h + 0.9902729), 2);
+      case 1:
+        return Math.pow((4812 * Math.pow(10, -15)) * (-3.579299e-24 * Math.pow(h, 6) + 1.238533e-19 * Math.pow(h, 5) - 1.693261e-15 * Math.pow(h, 4) + 1.176691e-11 * Math.pow(h, 3) - 4.379517e-8 * Math.pow(h, 2) + 0.0001849012 * h + 0.9842871), 2);
+      case 4:
+        return Math.pow((6339 * Math.pow(10, -15)) * (-9.192162e-24 * Math.pow(h, 6) + 3.050737e-19 * Math.pow(h, 5) - 3.998739e-15 * Math.pow(h, 4) + 2.658244e-11 * Math.pow(h, 3) - 9.529568e-8 * Math.pow(h, 2) + 0.0002960621 * h + 0.9769177), 2);
+      case 30:
+        return Math.pow((7609 * Math.pow(10, -15)) * (-1.882731e-23 * Math.pow(h, 6) + 6.209096e-19 * Math.pow(h, 5) - 8.019973e-15 * Math.pow(h, 4) + 5.176837e-11 * Math.pow(h, 3) - 1.766714e-7 * Math.pow(h, 2) + 0.0004377511 * h + 0.9722361), 2);
+      default:
+        return 1; // Для безопасности
+    }
+  };
+
   const handleCalculate = () => {
-    // Логика расчета для плотности загрязнения и отклонения
-    setResultC('Значение C'); // примерное значение для демонстрации
-    setDeviationD('Значение D'); // примерное значение для демонстрации
+    const contaminationDensities = validMeasurements.map((measurement) => {
+      const { dose, height } = measurement;
+      const Y = calculateY(height, alphaValue);
+      return dose / Y;
+    });
+  
+    // Вычисление среднего значения
+    const meanC = contaminationDensities.reduce((acc, curr) => acc + curr, 0) / contaminationDensities.length;
+    
+    // Вычисление дисперсии
+    const variance = contaminationDensities.reduce((acc, curr) => acc + Math.pow(curr - meanC, 2), 0) / (contaminationDensities.length - 1);
+    
+    // Вычисление среднеквадратичного отклонения
+    const stdDeviation = Math.sqrt(variance);
+  
+    // Округляем только после завершения всех расчетов
+    setResultC(meanC.toFixed(2));
+    setDeviationD(stdDeviation.toFixed(2));
   };
 
   const handleCalibrationDialogClose = (save, newCoefficients) => {
@@ -554,70 +586,96 @@ function SourceSearchDialog({ open, onClose }) {
         {tabIndex === 1 && (
           <Box>
             {/* Содержимое для "Плотность по дозе" */}
-            <FormControl fullWidth margin="dense">
-              <InputLabel>Предполагаемый коэффициент заглубления α</InputLabel>
-              <Select
-                value={alphaValue}
-                onChange={(e) => setAlphaValue(e.target.value)}
-              >
-                <MenuItem value={0.001}>0,001</MenuItem>
-                <MenuItem value={0.2}>0,2</MenuItem>
-                <MenuItem value={1}>1</MenuItem>
-                <MenuItem value={4}>4</MenuItem>
-                <MenuItem value={30}>30</MenuItem>
-              </Select>
-            </FormControl>
+            <Grid container alignItems="center" spacing={1}>
+            <Grid item xs={6}>
+            <Box >
+              <p>Коэффициент заглубления α</p>
+            </Box>
+            </Grid>
+  
+              <Grid item xs={6}>
+                <FormControl fullWidth variant="outlined" size="small">
+                  <Select
+                    value={alphaValue}
+                    onChange={(e) => setAlphaValue(e.target.value)}
+                    
+                  >
+                    <MenuItem value={0.001}>0,001</MenuItem>
+                    <MenuItem value={0.2}>0,2</MenuItem>
+                    <MenuItem value={1}>1</MenuItem>
+                    <MenuItem value={4}>4</MenuItem>
+                    <MenuItem value={30}>30</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+             
+              <Grid item xs={6}>
+            <Box >
+              <p> Плотность загрязнения (Cs-137):</p>
+            </Box>
+            </Grid>
+              <Grid item xs={6}>
+                <TextField
+                  value={resultC}
+                  onChange={(e) => setResultC(e.target.value)}
+                  fullWidth
+                  variant="outlined"
+                  size="small"
+                  margin="dense"
+                />
+              </Grid>
 
-           
+              <Grid item xs={6}>
+            <Box >
+              <p> Еденица измерения</p>
+            </Box>
+            </Grid>
+              <Grid item xs={6}>
+              <Typography variant="body2"> </Typography>
+                <FormControl fullWidth margin="dense">
+                  <Select
+                    value={unit}
+                    onChange={(e) => setUnit(e.target.value)}
+                    size="small"
+                  >
+                    <MenuItem value="Бк/м2">Бк/м2</MenuItem>
+                    <MenuItem value="Бк/км2">Бк/км2</MenuItem>
+                    <MenuItem value="Ки/км2">Ки/км2</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
 
-            <Box mt={2}>
-              <Typography variant="body2" gutterBottom>
-                Плотность загрязнения (в приближении Cs-137):
-              </Typography>
-              <TextField
-                value={resultC}
-                onChange={(e) => setResultC(e.target.value)}
-                fullWidth
-                variant="outlined"
-                size="small"
-                margin="dense"
-              />
-              <FormControl fullWidth margin="dense">
-                <Select
-                  value={unit}
-                  onChange={(e) => setUnit(e.target.value)}
+              
+              <Grid item xs={6}>
+            <Box >
+              <p> Среднеквадратичное отклонение, Бк/см2</p>
+            </Box>
+            </Grid>
+
+              <Grid item xs={6}>
+                <TextField
+                  value={deviationD}
+                  onChange={(e) => setDeviationD(e.target.value)}
+                  fullWidth
+                  variant="outlined"
+                  size="small"
+                  margin="dense"
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={handleCalculate}
+                  fullWidth
                 >
-                  <MenuItem value="Бк/м2">Бк/м2</MenuItem>
-                  <MenuItem value="Бк/км2">Бк/км2</MenuItem>
-                  <MenuItem value="Ки/км2">Ки/км2</MenuItem>
-                </Select>
-              </FormControl>
-            </Box>
-
-            <Box mt={2}>
-              <Typography variant="body2" gutterBottom>
-                Среднеквадратичное отклонение, Бк/см2:
-              </Typography>
-              <TextField
-                value={deviationD}
-                onChange={(e) => setDeviationD(e.target.value)}
-                fullWidth
-                variant="outlined"
-                size="small"
-                margin="dense"
-              />
-            </Box>
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={handleCalculate}
-              fullWidth
-              style={{ marginTop: '16px' }}
-            >
-              Рассчитать
-            </Button>
+                  Рассчитать
+                </Button>
+              </Grid>       
+            </Grid>
           </Box>
         )}
+
         {tabIndex === 2 && (
           <Box>
             {/* Содержимое для "Заглубление по высоте" */}
