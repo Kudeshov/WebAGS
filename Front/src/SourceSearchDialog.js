@@ -404,6 +404,19 @@ function SourceSearchDialog({ open, onClose }) {
     setDeviationD(convertedDeviation.toExponential(2));
   };
 
+  useEffect(() => {
+    if (open) {
+      handleCalculateDensity(); // Выполняем расчет при открытии окна
+    }
+  }, [open]);
+
+
+  const handleAlphaChange = (event) => {
+    const newAlphaValue = event.target.value;
+    setAlphaValue(newAlphaValue);
+    handleCalculateDensity(); // Выполняем расчет при изменении коэффициента заглубления
+  };
+
   // Обработчик изменения единицы измерения
   const handleUnitChange = (event) => {
     const selectedUnit = event.target.value;
@@ -647,29 +660,21 @@ function SourceSearchDialog({ open, onClose }) {
             </Grid>
   
               <Grid item xs={6}>
-                <FormControl fullWidth variant="outlined" size="small">
-                  <Select
-                    value={alphaValue}
-                    onChange={(e) => setAlphaValue(e.target.value)}
-                  >
-                    <MenuItem value={0.001}>0,001</MenuItem>
-                    <MenuItem value={0.2}>0,2</MenuItem>
-                    <MenuItem value={1}>1</MenuItem>
-                    <MenuItem value={4}>4</MenuItem>
-                    <MenuItem value={30}>30</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12}>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={handleCalculateDensity}
-                  fullWidth
+              <FormControl fullWidth variant="outlined" size="small">
+                <Select
+                  value={alphaValue}
+                  onChange={handleAlphaChange} // Вызываем новый обработчик
+                  size="small"
                 >
-                  Рассчитать
-                </Button>
-              </Grid>              
+                  <MenuItem value={0.001}>0,001</MenuItem>
+                  <MenuItem value={0.2}>0,2</MenuItem>
+                  <MenuItem value={1}>1</MenuItem>
+                  <MenuItem value={4}>4</MenuItem>
+                  <MenuItem value={30}>30</MenuItem>
+                </Select>
+              </FormControl>
+              </Grid>
+              
               <Grid item xs={6}>
                 <Box >
                   <p> Плотность загрязнения (Cs-137):</p>
