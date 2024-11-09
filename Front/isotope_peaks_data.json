@@ -1,0 +1,117 @@
+{
+    "isotopes": [
+      {
+        "name": "Cs-137",
+        "id": "cs137",
+        "peaks": [
+          {
+            "id": 661,
+            "energy_keV": 661.657,
+            "yield_percent": 85.1
+          }
+        ]
+      },
+      {
+        "name": "Co-60",
+        "id": "co60",
+        "peaks": [
+          {
+            "id": 1173,
+            "energy_keV": 1173.2,
+            "yield_percent": 99.85
+          },
+          {
+            "id": 1332,
+            "energy_keV": 1332.5,
+            "yield_percent": 99.98
+          }
+        ]
+      },
+      {
+        "name": "Tl-208",
+        "id": "tl208",
+        "peaks": [
+          {
+            "id": 2614,
+            "energy_keV": 2614.5,
+            "yield_percent": 99.75
+          },
+          {
+            "id": 583,
+            "energy_keV": 583.2,
+            "yield_percent": 84.5
+          },
+          {
+            "id": 860,
+            "energy_keV": 860.6,
+            "yield_percent": 12.5
+          }
+        ]
+      },
+      {
+        "name": "Bi-214",
+        "id": "bi214",
+        "peaks": [
+          {
+            "id": 1764,
+            "energy_keV": 1764.5,
+            "yield_percent": 15.9
+          },
+          {
+            "id": 609,
+            "energy_keV": 609.3,
+            "yield_percent": 46.1
+          },
+          {
+            "id": 1120,
+            "energy_keV": 1120.3,
+            "yield_percent": 15
+          },
+          {
+            "id": 1238,
+            "energy_keV": 1238.1,
+            "yield_percent": 5.9
+          },
+          {
+            "id": 1377,
+            "energy_keV": 1377.7,
+            "yield_percent": 4
+          }
+        ]
+      },
+      {
+        "name": "K-40",
+        "id": "k40",
+        "peaks": [
+          {
+            "id": 1460,
+            "energy_keV": 1460.8,
+            "yield_percent": 10.67
+          }
+        ]
+      },
+      {
+        "name": "Am-241",
+        "id": "am241",
+        "peaks": [
+          {
+            "id": 59,
+            "energy_keV": 59.5,
+            "yield_percent": 35.9
+          }
+        ]
+      },
+      {
+        "name": "U-235",
+        "id": "u235",
+        "peaks": [
+          {
+            "id": 185,
+            "energy_keV": 185.7,
+            "yield_percent": 57.2
+          }
+        ]
+      }
+    ]
+  }
+  

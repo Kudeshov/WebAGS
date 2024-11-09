@@ -1,0 +1,91 @@
+{
+  "port": 3009,
+  "NSPCHANNELS": 238,
+  "SPECDEFTIME": 1,
+  "MAX_ALLOWED_HEIGHT": 5000,
+  "flightsDirectory": "./flights",
+  "latInit": 55.704034038232834,
+  "lonInit": 37.62119540524117,
+  "altInit": 23,
+  "chartWindow": 20,
+  "calibrationCoeff": 0.5,
+  "coeffs_below_550": [
+    3.88e-23,
+    -6.7e-20,
+    4.28e-17,
+    -8.48e-15,
+    5.97e-13
+  ],
+  "coeffs_above_550": [
+    -2.08e-27,
+    8.32e-23,
+    -1.03e-18,
+    4.67e-15,
+    -9.95e-13
+  ],
+  "gm1Coeff": 0.5,
+  "gm2Coeff": 5,
+  "DGThresholdLow": 500,
+  "DGThresholdHigh": 10,
+  "serialPort": {
+    "path": "COM3",
+    "baudRate": 57600
+  },
+  "altitudeSource": "barometric",
+  "sensorTypes": {
+    "УДКГ-А01": {
+      "resolution": "7.2",
+      "zonesOfInterest": [
+        {
+          "id": 1,
+          "isotope_id": "cs137",
+          "peak_id": 661
+        },
+        {
+          "id": 2,
+          "isotope_id": "tl208",
+          "peak_id": 2614
+        },
+        {
+          "id": 3,
+          "isotope_id": "k40",
+          "peak_id": 1460
+        },
+        {
+          "id": 4,
+          "isotope_id": "bi214",
+          "peak_id": 1764
+        }
+      ]
+    },
+    "УДБГ-04-06": {
+      "resolution": 8.5,
+      "zonesOfInterest": [
+        {
+          "id": 1,
+          "isotope_id": "tl208",
+          "peak_id": 2614
+        },
+        {
+          "id": 2,
+          "isotope_id": "k40",
+          "peak_id": 1460
+        },
+        {
+          "id": 3,
+          "isotope_id": "tl208",
+          "peak_id": 2614
+        },
+        {
+          "id": 4,
+          "isotope_id": "am241",
+          "peak_id": 59
+        }
+      ]
+    }
+  },
+  "selectedAlgorithm": "algorithm1",
+  "winLow": 20,
+  "winHigh": 200,
+  "winCoeff": 0.0073
+}

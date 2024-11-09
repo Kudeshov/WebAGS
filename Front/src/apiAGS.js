@@ -9,7 +9,7 @@ export async function saveCollectionParams(dbName, opt) {
         P1: opt.P1,
       };
   
-      const response = await fetch('/save_collection_params', {
+      const response = await fetch('/api/save_collection_params', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

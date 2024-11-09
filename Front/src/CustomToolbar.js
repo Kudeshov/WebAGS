@@ -364,7 +364,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
 
   const handleStartFlight = () => {
     setOnlineMeasurements([]); // Очищаем предыдущие измерения
-    const url = isDemoMode ? '/start-flight-simulation' : '/start-flight';
+    const url = isDemoMode ? '/api/start-flight-simulation' : '/api/start-flight';
 
     fetch(url, {
       method: 'POST',
@@ -449,7 +449,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
       return;
     }
   
-    fetch('/stop-flight', {
+    fetch('/api/stop-flight', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -782,7 +782,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
         handleCollectionMenuClose();
         // Предполагая, что flightToDelete содержит поле id с идентификатором полета
         const _id = flightToDelete;
-        const response = await fetch(`/delete-flight/${selectedDatabase}/${_id}`, {
+        const response = await fetch(`/api/delete-flight/${selectedDatabase}/${_id}`, {
           
           method: 'DELETE',
         });
@@ -848,7 +848,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
           P1: opt.P1,
         };
     
-        const response = await fetch('/save_collection_params', {
+        const response = await fetch('/api/save_collection_params', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
