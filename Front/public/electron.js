@@ -1,10 +1,51 @@
-const { app, BrowserWindow, session } = require('electron');
+const { app, BrowserWindow, session, Menu } = require('electron');
 const path = require('path');
 const express = require('express');
 const fs = require('fs');
 
 let mainWindow;
 let clientServer;
+
+
+function createAppMenu() {
+  const menuTemplate = [
+    {
+      label: 'Файл',
+      submenu: [
+        { label: 'Выход', role: 'quit' }
+      ]
+    },
+    {
+      label: 'Вид',
+      submenu: [
+        { label: 'Перезагрузить', role: 'reload' },
+        { label: 'Принудительная перезагрузка', role: 'forceReload' },
+        { label: 'Инструменты разработчика', role: 'toggleDevTools' },
+        { type: 'separator' },
+        { label: 'Масштаб по умолчанию', role: 'resetZoom' },
+        { label: 'Увеличить масштаб', role: 'zoomIn' },
+        { label: 'Уменьшить масштаб', role: 'zoomOut' },
+        { type: 'separator' },
+        { label: 'Полноэкранный режим', role: 'togglefullscreen' }
+      ]
+    },
+    {
+      label: 'Окно',
+      submenu: [
+        { label: 'Свернуть', role: 'minimize' },
+/*         { label: 'Масштаб', role: 'zoom' },
+        { label: 'Закрыть', role: 'close' } */
+      ]
+    },
+    {
+      label: 'Справка',
+      role: 'help'
+    }
+  ];
+
+  const menu = Menu.buildFromTemplate(menuTemplate);
+  Menu.setApplicationMenu(menu); // Устанавливаем меню как системное
+}
 
 // Импортируем серверную функцию
 const startServer = require('../server'); // путь к server.js от public
@@ -51,7 +92,6 @@ function createWindow() {
     },
   });
 
-  //console.log('dirname: ',__dirname);
   mainWindow.loadFile(path.join(__dirname, 'loading.html'));
 
   setTimeout(() => {
@@ -73,7 +113,6 @@ function createWindow() {
   session.defaultSession.webRequest.onBeforeRequest((details, callback) => {
     if (details.url.startsWith('http://localhost:3010/api')) {
       const newUrl = details.url.replace('http://localhost:3010/api', 'http://localhost:3009/api');
-      //console.log(`Redirecting request from ${details.url} to ${newUrl}`);
       callback({ redirectURL: newUrl });
     } else {
       callback({});
@@ -88,6 +127,7 @@ function createWindow() {
 
 let apiServer;
 app.whenReady().then(() => {
+  createAppMenu(); // Создаем русскоязычное меню при запуске приложения
   clientServer = createExpressServer(); // Запуск клиентского сервера на 3010
   apiServer = startServer(); // Запуск серверного API на 3009
   createWindow(); // Создание окна Electron
