@@ -1,10 +1,11 @@
+/* eslint-disable react-hooks/exhaustive-deps */
+
 import React, { useState, useContext, useEffect } from 'react';
 import {
   Button,
   Dialog,
   DialogActions,
   DialogContent,
-  DialogTitle,
   Tabs,
   Tab,
   TextField,
@@ -39,7 +40,7 @@ function SourceSearchDialog({ open, onClose }) {
   const [depthResult, setDepthResult] = useState(null);
 
   // Новые состояния для averagedSpectrum и globalPeakIndex
-  const [averagedSpectrum, setAveragedSpectrum] = useState([]);
+//  const [averagedSpectrum, setAveragedSpectrum] = useState([]);
   const [globalPeakIndex, setGlobalPeakIndex] = useState(0);
 
   const { currentSensorType = "УДКГ-А01", globalSettings,
@@ -125,7 +126,7 @@ function SourceSearchDialog({ open, onClose }) {
 
 
   // Функция проверки выпуклости пика
-  const isConvexPeak = (spectrum, peakIndex) => {
+/*   const isConvexPeak = (spectrum, peakIndex) => {
     // Проверяем, что значения слева и справа от пика уменьшаются
     if (peakIndex <= 0 || peakIndex >= spectrum.length - 1) {
       return false; // Невозможно проверить выпуклость на границах
@@ -140,7 +141,7 @@ function SourceSearchDialog({ open, onClose }) {
     // Пик считается выпуклым, если значения слева и справа меньше, чем значение пика
     return leftNeighbor < peakValue && rightNeighbor < peakValue;
   };
-
+ */
   const calculateValues = () => {
     if (!isEnergyRangeValid) {
       setPeakCenter('NaN');
@@ -228,7 +229,7 @@ function SourceSearchDialog({ open, onClose }) {
     setAverageHeight(averageHeight.toFixed(2));
     setCalculatedPeakCenter(peakEnergy.toFixed(2)); // Сохраняем расчетный пик
     setPeakCenter(idealPeakCenter); // Используем паспортный пик по умолчанию
-    setAveragedSpectrum(averagedSpectrum);
+    //setAveragedSpectrum(averagedSpectrum);
     setGlobalPeakIndex(globalPeakIndex);
   
     if (Math.abs(peakEnergy - idealPeakCenter) > 10) {
@@ -272,7 +273,7 @@ function SourceSearchDialog({ open, onClose }) {
     const calibrationCoeff = globalSettings.calibrationCoeff || 0.5;
   
     // Исходные значения для A и B (P1 и P0)
-    let A_old = P1; // A соответствует P1
+    //let A_old = P1; // A соответствует P1
     let B_old = P0; // B соответствует P0
     
     // Сдвиг на разницу между расчетным и референсным пиком, умноженный на calibrationCoeff

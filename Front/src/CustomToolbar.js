@@ -1,3 +1,5 @@
+/* eslint-disable react-hooks/exhaustive-deps */
+
 import React, { useState, useEffect, useContext, useCallback} from 'react';
 import { ReactComponent as PlaneIcon } from './icons/plane.svg';
 import { ReactComponent as AnalyticsIcon } from './icons/table.svg';
