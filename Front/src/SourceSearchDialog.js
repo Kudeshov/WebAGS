@@ -1,11 +1,10 @@
-/* eslint-disable react-hooks/exhaustive-deps */
-
 import React, { useState, useContext, useEffect } from 'react';
 import {
   Button,
   Dialog,
   DialogActions,
   DialogContent,
+  DialogTitle,
   Tabs,
   Tab,
   TextField,
@@ -36,8 +35,11 @@ function SourceSearchDialog({ open, onClose }) {
   const [resultC, setResultC] = useState('');
   const [unit, setUnit] = useState('Бк/м2');
   const [deviationD, setDeviationD] = useState('');
+  const [isEligible, setIsEligible] = useState(false);
+  const [depthResult, setDepthResult] = useState(null);
+
   // Новые состояния для averagedSpectrum и globalPeakIndex
-  //const [averagedSpectrum, setAveragedSpectrum] = useState([]);
+  const [averagedSpectrum, setAveragedSpectrum] = useState([]);
   const [globalPeakIndex, setGlobalPeakIndex] = useState(0);
 
   const { currentSensorType = "УДКГ-А01", globalSettings,
@@ -120,6 +122,24 @@ function SourceSearchDialog({ open, onClose }) {
       calculateValues();
     }
   }, [open, selectedZone, energyRange, validMeasurements, P0, P1, globalSettings, currentSensorType]);
+
+
+  // Функция проверки выпуклости пика
+  const isConvexPeak = (spectrum, peakIndex) => {
+    // Проверяем, что значения слева и справа от пика уменьшаются
+    if (peakIndex <= 0 || peakIndex >= spectrum.length - 1) {
+      return false; // Невозможно проверить выпуклость на границах
+    }
+
+    const leftNeighbor = spectrum[peakIndex - 1];
+    const rightNeighbor = spectrum[peakIndex + 1];
+    const peakValue = spectrum[peakIndex];
+
+    console.log('leftNeighbor, rightNeighbor, peakValue', leftNeighbor, rightNeighbor, peakValue); 
+
+    // Пик считается выпуклым, если значения слева и справа меньше, чем значение пика
+    return leftNeighbor < peakValue && rightNeighbor < peakValue;
+  };
 
   const calculateValues = () => {
     if (!isEnergyRangeValid) {
@@ -208,7 +228,7 @@ function SourceSearchDialog({ open, onClose }) {
     setAverageHeight(averageHeight.toFixed(2));
     setCalculatedPeakCenter(peakEnergy.toFixed(2)); // Сохраняем расчетный пик
     setPeakCenter(idealPeakCenter); // Используем паспортный пик по умолчанию
-    //setAveragedSpectrum(averagedSpectrum);
+    setAveragedSpectrum(averagedSpectrum);
     setGlobalPeakIndex(globalPeakIndex);
   
     if (Math.abs(peakEnergy - idealPeakCenter) > 10) {
@@ -252,7 +272,7 @@ function SourceSearchDialog({ open, onClose }) {
     const calibrationCoeff = globalSettings.calibrationCoeff || 0.5;
   
     // Исходные значения для A и B (P1 и P0)
-    //let A_old = P1; // A соответствует P1
+    let A_old = P1; // A соответствует P1
     let B_old = P0; // B соответствует P0
     
     // Сдвиг на разницу между расчетным и референсным пиком, умноженный на calibrationCoeff
@@ -335,7 +355,80 @@ function SourceSearchDialog({ open, onClose }) {
         return 1; // значение по умолчанию для безопасности
     }
   };
+  const checkHeightMeasurements = (measurements, interval = 5) => {
+    let nonEmptyIntervals = 0;
+    const heightIntervals = measurements.reduce((acc, measure) => {
+      const intervalIndex = Math.floor((measure.height - 5) / interval);
+      acc[intervalIndex] = (acc[intervalIndex] || 0) + 1;
+      return acc;
+    }, {});
+
+    Object.values(heightIntervals).forEach(count => {
+      if (count >= 5) nonEmptyIntervals++;
+    });
+
+    const eligible = nonEmptyIntervals >= 3;
+    setIsEligible(eligible);
+  };
   
+  const handleDepthAndEligibilityCheck = () => {
+    checkHeightMeasurements(validMeasurements); // Check height measurements
+  
+    if (!isEligible) {
+      alert("Для работы алгоритма требуются измерения на различных высотах");
+      return;
+    }
+  
+    // Proceed with depth calculation if eligible
+    const measurements = validMeasurements;
+    const alphaOptions = [0.001, 0.2, 1, 4, 30];
+    let bestAlpha = null;
+    let minDa = Infinity;
+  
+    alphaOptions.forEach(alpha => {
+      const KaNumerator = measurements.reduce((sum, measurement) => {
+        const H_i = measurement.dose;
+        const H_star = calculateY(measurement.height, alpha);
+        return sum + H_star * H_i;
+      }, 0);
+  
+      const KaDenominator = measurements.reduce((sum, measurement) => {
+        const H_star = calculateY(measurement.height, alpha);
+        return sum + H_star * H_star;
+      }, 0);
+  
+      const Ka = KaNumerator / KaDenominator;
+  
+      const Da = measurements.reduce((sum, measurement) => {
+        const H_i = measurement.dose;
+        const H_star = calculateY(measurement.height, alpha);
+        return sum + Math.pow(Ka * H_star - H_i, 2);
+      }, 0) / (measurements.length - 1);
+  
+      if (Da < minDa) {
+        minDa = Da;
+        bestAlpha = alpha;
+      }
+    });
+  
+    const densityCoefficient = getDensityCoefficient(bestAlpha);
+    const Ca = densityCoefficient / measurements[0].dose;
+    setDepthResult({ alpha: bestAlpha, Ca: Ca.toFixed(2) });
+  };
+
+
+  const getDensityCoefficient = (alpha) => {
+    switch (alpha) {
+      case 0.001: return 29.834e-7;
+      case 0.2: return 2692e-7;
+      case 1: return 4812e-7;
+      case 4: return 6339e-7;
+      case 30: return 7609e-7;
+      default: return 1;
+    }
+  };
+
+
   const [rawResultC, setRawResultC] = useState(0);
   const [rawDeviationD, setRawDeviationD] = useState(0);
 
@@ -430,10 +523,10 @@ function SourceSearchDialog({ open, onClose }) {
     }}>
       
       <Tabs value={tabIndex} onChange={handleTabChange} variant="fullWidth">
-        <Tab label="Поиск источника" />
-        <Tab label="Плотность по дозе" />
-        <Tab label="Заглубление по высоте" />
-        <Tab label="Плотность по поглощению" />
+        <Tab label="Поиск точечного источника" />
+        <Tab label="Плотность загрязнения Cs-137 (по МЭД)" />
+        <Tab label="Заглубление Cs-137 в почве" />
+        <Tab label="Плотность загрязнения Cs-137 (по спектру)" />
       </Tabs>
       <DialogContent>
         {tabIndex === 0 && (
@@ -654,7 +747,7 @@ function SourceSearchDialog({ open, onClose }) {
                   <MenuItem value={1}>1</MenuItem>
                   <MenuItem value={4}>4</MenuItem>
                   <MenuItem value={30}>30</MenuItem>
-                </Select>
+                </Select>   
               </FormControl>
               </Grid>
               
@@ -717,8 +810,16 @@ function SourceSearchDialog({ open, onClose }) {
 
         {tabIndex === 2 && (
           <Box>
-            {/* Содержимое для "Заглубление по высоте" */}
-            <p>Содержимое вкладки "Заглубление по высоте".</p>
+
+          <Button onClick={handleDepthAndEligibilityCheck}>
+                Check and Calculate Depth
+          </Button>
+          {depthResult && (
+        <Typography>
+                Предполагаемый коэффициент заглубления α: {depthResult.alpha}<br />
+                Плотность загрязнения (Бк/см²): {depthResult.Ca}
+        </Typography>
+        )}  
           </Box>
         )}
         {tabIndex === 3 && (
