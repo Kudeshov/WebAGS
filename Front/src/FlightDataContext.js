@@ -1,3 +1,5 @@
+/* eslint-disable react-hooks/exhaustive-deps */
+
 import React, { createContext, useState, useEffect, useCallback } from 'react';
 import { calculateColorThresholds } from './colorUtils';
 import { ExportToCsv } from 'export-to-csv-fix-source-map';

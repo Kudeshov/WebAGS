@@ -1,3 +1,5 @@
+/* eslint-disable react-hooks/exhaustive-deps */
+
 import React, { useRef, useState, useContext, useEffect } from 'react';
 import { Line } from 'react-chartjs-2';
 import {
@@ -96,7 +98,9 @@ function SpectrumChart({ data, selectedCollection, averageHeight, timeInterval, 
         rightE: zone.rightE
       })));
     }
-  }, [zonesOfInterest, isotopes]);
+  }, [zonesOfInterest, isotopes, currentSensorType, globalSettings.sensorTypes]);
+
+  //const tableDataRef = useRef(tableData);
 
   useEffect(() => {
     if (data && energyRanges.length > 0) {
@@ -119,7 +123,6 @@ function SpectrumChart({ data, selectedCollection, averageHeight, timeInterval, 
       });
   
       setTableData(updatedTableData);
-  
       // Обновление данных для графика
       const updatedPreprocessData = {
         // Здесь создаем метки для энергии на нижней оси
@@ -165,7 +168,7 @@ function SpectrumChart({ data, selectedCollection, averageHeight, timeInterval, 
         channelLabels: channelLabels  // Метки каналов для верхней оси
       });
     }
-  }, [data, energyRanges, P0, P1, globalSettings.SPECDEFTIME]);
+  }, [data, energyRanges, P0, P1, globalSettings.SPECDEFTIME/* , tableData */]);
   
 
   // Функция для загрузки CSV

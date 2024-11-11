@@ -31,9 +31,9 @@ const DroneFlight3D = ({ heightFilterActive, heightFrom, heightTo }) => {
   const { colorThresholds } = useContext(FlightDataContext);
   const { selectedPoints } = useContext(FlightDataContext);
   const { globalSettings } = useContext(FlightDataContext);
-  const isSelected = (measurement) => {
+/*   const isSelected = (measurement) => {
     return selectedPoints.some(point => point.id === measurement.id);
-  };  
+  };   */
 
   return (
     <Canvas camera={{ position: [-150, 100, -100], fov: 45 }}> 

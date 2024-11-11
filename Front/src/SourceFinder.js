@@ -80,8 +80,8 @@ export const findSourceCoordinates3D = (measurements, energyRange, peakEnergy, P
 
   const refinedSelect = cellSelect(X0 - xmar, Y0 - ymar, nx, ny, xmar, ymar, measurements, intensities, C, mu, A, AMean, D, NSamples, useRefinedPeakAreaCalculation, RCs137, peakChannel, P0, P1);
  
-  const X01 = refinedSelect.J0 * xmar;
-  const Y01 = refinedSelect.K0 * ymar;
+//  const X01 = refinedSelect.J0 * xmar;
+//  const Y01 = refinedSelect.K0 * ymar;
 
 // const refinedSelect = { J0, K0 };
   
@@ -146,7 +146,7 @@ export const findSourceCoordinates3D = (measurements, energyRange, peakEnergy, P
  * @param {number} NN - Количество промежуточных шагов для интегрирования.
  * @returns {number} - Значение интеграла затухания между двумя сэмплами.
  */
-const calculateIntegralTr = (x1, y1, z1, x2, y2, z2, X, Y, Z, mu, NN) => {
+/* const calculateIntegralTr = (x1, y1, z1, x2, y2, z2, X, Y, Z, mu, NN) => {
   let Integral = 0;  // Инициализируем интеграл
  
   // Вычисляем половину расстояния между двумя точками
@@ -187,7 +187,7 @@ const calculateIntegralTr = (x1, y1, z1, x2, y2, z2, X, Y, Z, mu, NN) => {
 
   return Integral;  // Возвращаем результат интегрирования
 };
-
+ */
 
 let cnt = 0; 
 
@@ -565,7 +565,7 @@ export const findSourceCoordinatesInterpolate = (validMeasurements, energyRange,
   let eps = 0.26; 
   const S = (1.51 * 1.51 * Math.PI) * 1.0e-4; 
   const YE = 0.85; 
-  let C = 4 * Math.PI / (YE * S * eps);
+  //let C = 4 * Math.PI / (YE * S * eps);
 
   // Функция установки энергии
   const setEnergy = (energy) => {
@@ -585,7 +585,7 @@ export const findSourceCoordinatesInterpolate = (validMeasurements, energyRange,
     }
 
     mu = 1.0 / (10.0 * Math.sqrt(Sum));
-    C = 4 * Math.PI / (YE * S * eps);  // Обновляем C с новым eps
+    //C = 4 * Math.PI / (YE * S * eps);  // Обновляем C с новым eps
   };
 
   // Устанавливаем значения mu и eps на основе энергии пика

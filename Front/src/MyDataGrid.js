@@ -1,3 +1,5 @@
+/* eslint-disable react-hooks/exhaustive-deps */
+
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import { DataGrid } from '@mui/x-data-grid';
 import { FlightDataContext } from './FlightDataContext';
@@ -44,9 +46,9 @@ const MyDataGrid = ({ heightFilterActive }) => {
     : measurements;
     
   const {
-    paginationModel,
+/*     paginationModel,
     setPaginationModel,
-    handleScrollToRow,
+    handleScrollToRow, */
     scrollToIndexRef
   } = useGridScrollPagination(apiRef, measurements, setRowSelectionModel);
 

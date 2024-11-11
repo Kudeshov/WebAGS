@@ -1,3 +1,5 @@
+/* eslint-disable react-hooks/exhaustive-deps */
+
 import React, { useEffect, useState, useRef, useContext, useCallback  } from 'react';
 import { MapContainer, TileLayer, CircleMarker, LayersControl, useMap } from 'react-leaflet';
 import * as turf from '@turf/turf';  
