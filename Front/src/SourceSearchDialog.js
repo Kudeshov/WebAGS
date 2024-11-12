@@ -36,9 +36,10 @@ function SourceSearchDialog({ open, onClose }) {
   const [resultC, setResultC] = useState('');
   const [unit, setUnit] = useState('Бк/м2');
   const [deviationD, setDeviationD] = useState('');
-  const [isEligible, setIsEligible] = useState(false);
   const [depthResult, setDepthResult] = useState(null);
-
+  const [unitDepth, setUnitDepth] = useState("Бк/см²");
+  const [eligible, setEligible] = useState(true);
+  
   // Новые состояния для averagedSpectrum и globalPeakIndex
 //  const [averagedSpectrum, setAveragedSpectrum] = useState([]);
   const [globalPeakIndex, setGlobalPeakIndex] = useState(0);
@@ -52,6 +53,29 @@ function SourceSearchDialog({ open, onClose }) {
   const [calculatedCoefficients, setCalculatedCoefficients] = useState({ P0, P1 });
   const [calibrationDialogOpen, setCalibrationDialogOpen] = useState(false);
   const [useRefinedPeakAreaCalculation, setUseRefinedPeakAreaCalculation] = useState(false);
+
+
+
+  // функция для обновления значения Ca в зависимости от единицы измерения
+  const updateDisplayedCa = (rawCa, unit) => {
+    let convertedCa = Number(rawCa); // Приведение к числу
+    
+    if (isNaN(convertedCa)) {
+      return "—"; // Возвращаем прочерк, если значение некорректно
+    }
+  
+    if (unit === "Ки/м²") {
+      convertedCa = convertedCa * 1e4 / 3.7e10; // перевод из Бк/см² в Ки/м²
+    }
+  
+    return convertedCa.toExponential(2); // округляем до нужного формата
+  };
+
+  // обработчик для изменения единицы измерения
+  const handleUnitDepthChange = (event) => {
+    setUnitDepth(event.target.value);
+  };
+    
 
   const handlePeakCenterChange = (event) => {
     const { value } = event.target;
@@ -121,6 +145,7 @@ function SourceSearchDialog({ open, onClose }) {
   useEffect(() => {
     if (open) {
       calculateValues();
+      handleDepthAndEligibilityCheck();
     }
   }, [open, selectedZone, energyRange, validMeasurements, P0, P1, globalSettings, currentSensorType]);
 
@@ -294,72 +319,11 @@ function SourceSearchDialog({ open, onClose }) {
     setTabIndex(newValue);
   };
    
-  const calculateY = (h, alpha) => {
-    let baseValue, polynomial;
-    switch (alpha) {
-      case 0.001:
-        baseValue = 29.834 * Math.pow(10, -15);
-        polynomial = (-9.775191 * Math.pow(10, -25) * Math.pow(h, 6) +
-                      3.121542 * Math.pow(10, -20) * Math.pow(h, 5) -
-                      3.935069 * Math.pow(10, -16) * Math.pow(h, 4) +
-                      2.576472 * Math.pow(10, -12) * Math.pow(h, 3) -
-                      8.458268 * Math.pow(10, -9) * Math.pow(h, 2) +
-                      7.551543 * Math.pow(10, -5) * h +
-                      0.9930782);
-        return baseValue * Math.pow(polynomial, 2);
-  
-      case 0.2:
-        baseValue = 2692 * Math.pow(10, -15);
-        polynomial = (-1.381729 * Math.pow(10, -24) * Math.pow(h, 6) +
-                      4.809152 * Math.pow(10, -20) * Math.pow(h, 5) -
-                      6.609362 * Math.pow(10, -16) * Math.pow(h, 4) +
-                      4.662866 * Math.pow(10, -12) * Math.pow(h, 3) -
-                      1.715926 * Math.pow(10, -8) * Math.pow(h, 2) +
-                      1.095233 * Math.pow(10, -4) * h +
-                      0.9902729);
-        return baseValue * Math.pow(polynomial, 2);
-  
-      case 1:
-        baseValue = 4812 * Math.pow(10, -15);
-        polynomial = (-3.579299 * Math.pow(10, -24) * Math.pow(h, 6) +
-                      1.238533 * Math.pow(10, -19) * Math.pow(h, 5) -
-                      1.693261 * Math.pow(10, -15) * Math.pow(h, 4) +
-                      1.176691 * Math.pow(10, -11) * Math.pow(h, 3) -
-                      4.379517 * Math.pow(10, -8) * Math.pow(h, 2) +
-                      1.849012 * Math.pow(10, -4) * h +
-                      0.9842871);
-        return baseValue * Math.pow(polynomial, 2);
-  
-      case 4:
-        baseValue = 6339 * Math.pow(10, -15);
-        polynomial = (-9.192162 * Math.pow(10, -24) * Math.pow(h, 6) +
-                      3.050737 * Math.pow(10, -19) * Math.pow(h, 5) -
-                      3.998739 * Math.pow(10, -15) * Math.pow(h, 4) +
-                      2.658244 * Math.pow(10, -11) * Math.pow(h, 3) -
-                      9.529568 * Math.pow(10, -8) * Math.pow(h, 2) +
-                      2.960621 * Math.pow(10, -4) * h +
-                      0.9769177);
-        return baseValue * Math.pow(polynomial, 2);
-  
-      case 30:
-        baseValue = 7609 * Math.pow(10, -15);
-        polynomial = (-1.882731 * Math.pow(10, -23) * Math.pow(h, 6) +
-                      6.209096 * Math.pow(10, -19) * Math.pow(h, 5) -
-                      8.019973 * Math.pow(10, -15) * Math.pow(h, 4) +
-                      5.176837 * Math.pow(10, -11) * Math.pow(h, 3) -
-                      1.766714 * Math.pow(10, -7) * Math.pow(h, 2) +
-                      4.377511 * Math.pow(10, -4) * h +
-                      0.9722361);
-        return baseValue * Math.pow(polynomial, 2);
-  
-      default:
-        return 1; // значение по умолчанию для безопасности
-    }
-  };
+
   const checkHeightMeasurements = (measurements, interval = 5) => {
     let nonEmptyIntervals = 0;
     const heightIntervals = measurements.reduce((acc, measure) => {
-      const intervalIndex = Math.floor((measure.height - 5) / interval);
+      const intervalIndex = Math.floor(measure.height / interval);
       acc[intervalIndex] = (acc[intervalIndex] || 0) + 1;
       return acc;
     }, {});
@@ -367,57 +331,116 @@ function SourceSearchDialog({ open, onClose }) {
     Object.values(heightIntervals).forEach(count => {
       if (count >= 5) nonEmptyIntervals++;
     });
-
-    const eligible = nonEmptyIntervals >= 3;
-    setIsEligible(eligible);
+    
+    return nonEmptyIntervals >= 3;
   };
-  
+
   const handleDepthAndEligibilityCheck = () => {
-    checkHeightMeasurements(validMeasurements); // Check height measurements
-  
+    const isEligible = checkHeightMeasurements(validMeasurements);
+    setEligible(isEligible);
+    
     if (!isEligible) {
-      alert("Для работы алгоритма требуются измерения на различных высотах");
+      setDepthResult(null);
       return;
     }
-  
-    // Proceed with depth calculation if eligible
+
     const measurements = validMeasurements;
     const alphaOptions = [0.001, 0.2, 1, 4, 30];
     let bestAlpha = null;
     let minDa = Infinity;
-  
+    let bestKa = null;
+
     alphaOptions.forEach(alpha => {
       const KaNumerator = measurements.reduce((sum, measurement) => {
         const H_i = measurement.dose;
         const H_star = calculateY(measurement.height, alpha);
         return sum + H_star * H_i;
       }, 0);
-  
+
       const KaDenominator = measurements.reduce((sum, measurement) => {
         const H_star = calculateY(measurement.height, alpha);
         return sum + H_star * H_star;
       }, 0);
-  
+
       const Ka = KaNumerator / KaDenominator;
-  
+
       const Da = measurements.reduce((sum, measurement) => {
         const H_i = measurement.dose;
         const H_star = calculateY(measurement.height, alpha);
         return sum + Math.pow(Ka * H_star - H_i, 2);
       }, 0) / (measurements.length - 1);
-  
+
       if (Da < minDa) {
         minDa = Da;
         bestAlpha = alpha;
+        bestKa = Ka;
       }
     });
-  
+
     const densityCoefficient = getDensityCoefficient(bestAlpha);
-    const Ca = densityCoefficient / measurements[0].dose;
-    setDepthResult({ alpha: bestAlpha, Ca: Ca.toFixed(2) });
+    const Ca = bestKa / densityCoefficient;
+    setDepthResult({ alpha: bestAlpha, Ca: Ca.toFixed(8) });
   };
 
-
+  
+  const calculateY = (h, alpha) => {
+    let polynomial;
+  
+    switch (alpha) {
+      case 0.001:
+        polynomial = -9.775191e-25 * Math.pow(h, 6) +
+                     3.121542e-20 * Math.pow(h, 5) -
+                     3.935069e-16 * Math.pow(h, 4) +
+                     2.576472e-12 * Math.pow(h, 3) -
+                     8.458268e-9 * Math.pow(h, 2) +
+                     7.551543e-5 * h +
+                     0.9930782;
+        break;
+      case 0.2:
+        polynomial = -1.381729e-24 * Math.pow(h, 6) +
+                     4.809152e-20 * Math.pow(h, 5) -
+                     6.609362e-16 * Math.pow(h, 4) +
+                     4.662866e-12 * Math.pow(h, 3) -
+                     1.715926e-8 * Math.pow(h, 2) +
+                     1.095233e-4 * h +
+                     0.9902729;
+        break;
+      case 1:
+        polynomial = -3.579299e-24 * Math.pow(h, 6) +
+                     1.238533e-19 * Math.pow(h, 5) -
+                     1.693261e-15 * Math.pow(h, 4) +
+                     1.176691e-11 * Math.pow(h, 3) -
+                     4.379517e-8 * Math.pow(h, 2) +
+                     1.849012e-4 * h +
+                     0.9842871;
+        break;
+      case 4:
+        polynomial = -9.192162e-24 * Math.pow(h, 6) +
+                     3.050737e-19 * Math.pow(h, 5) -
+                     3.998739e-15 * Math.pow(h, 4) +
+                     2.658244e-11 * Math.pow(h, 3) -
+                     9.529568e-8 * Math.pow(h, 2) +
+                     2.960621e-4 * h +
+                     0.9769177;
+        break;
+      case 30:
+        polynomial = -1.882731e-23 * Math.pow(h, 6) +
+                     6.209096e-19 * Math.pow(h, 5) -
+                     8.019973e-15 * Math.pow(h, 4) +
+                     5.176837e-11 * Math.pow(h, 3) -
+                     1.766714e-7 * Math.pow(h, 2) +
+                     4.377511e-4 * h +
+                     0.9722361;
+        break;
+      default:
+        polynomial = 1; // На случай ошибки
+    }
+  
+    const H_star = 1 / Math.pow(polynomial, 2);
+    //console.log(`calculateY (h=${h}, alpha=${alpha}):`, H_star); // Отладка calculateY
+    return H_star;
+  };
+  
   const getDensityCoefficient = (alpha) => {
     switch (alpha) {
       case 0.001: return 29.834e-7;
@@ -428,6 +451,7 @@ function SourceSearchDialog({ open, onClose }) {
       default: return 1;
     }
   };
+  
 
 
   const [rawResultC, setRawResultC] = useState(0);
@@ -437,7 +461,7 @@ function SourceSearchDialog({ open, onClose }) {
     const contaminationDensities = validMeasurements.map((measurement) => {
       const { dose, height } = measurement;
       const Y = calculateY(height, alphaValue);
-      console.log('Y, height', Y, height);
+      //console.log('Y, height', Y, height);
       return dose / Y;
     });
 
@@ -809,20 +833,50 @@ function SourceSearchDialog({ open, onClose }) {
           </Box>
         )}
 
-        {tabIndex === 2 && (
+{tabIndex === 2 && (
           <Box>
-
-          <Button onClick={handleDepthAndEligibilityCheck}>
-                Check and Calculate Depth
-          </Button>
-          {depthResult && (
-        <Typography>
-                Предполагаемый коэффициент заглубления α: {depthResult.alpha}<br />
-                Плотность загрязнения (Бк/см²): {depthResult.Ca}
-        </Typography>
-        )}  
+            {!eligible ? (
+              <Typography color="error">
+                Для работы алгоритма требуются измерения на различных высотах.
+              </Typography>
+            ) : (
+              depthResult && (
+                <>
+                  <Typography><br />
+                    Предполагаемый коэффициент заглубления α (1/см): {depthResult.alpha}<br />
+                    α = 0,001 1/см: объемное загрязнение<br />
+                    α = 30 1/см: поверхностное загрязнение
+                  </Typography>
+                  <Grid container alignItems="center" spacing={1}>
+                    <Grid item>
+                      <Typography>
+                        Плотность загрязнения (в приближении):
+                      </Typography>
+                    </Grid>
+                    <Grid item>
+                      <Typography>
+                        {updateDisplayedCa(depthResult.Ca, unitDepth)}
+                      </Typography>
+                    </Grid>
+                    <Grid item>
+                      <FormControl margin="dense" size="small">
+                        <Select
+                          value={unitDepth}
+                          onChange={handleUnitDepthChange}
+                          size="small"
+                        >
+                          <MenuItem value="Бк/см²">Бк/см²</MenuItem>
+                          <MenuItem value="Ки/м²">Ки/м²</MenuItem>
+                        </Select>
+                      </FormControl>
+                    </Grid>
+                  </Grid>
+                </>
+              )
+            )}
           </Box>
         )}
+
         {tabIndex === 3 && (
           <Box>
             {/* Содержимое для "Плотность по поглощению" */}

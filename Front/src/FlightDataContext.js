@@ -222,7 +222,7 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
     validData = validData.filter(m => 
       (m.height >= heightFilterFrom && m.height <= heightFilterTo)) 
     }
-    console.log('filter by height', validData.length);
+    //console.log('filter by height', validData.length);
     // setValidMeasurements(validData);
     updateValidMeasurements(validData, false, false, false);
   }, [measurements, heightFilterFrom, heightFilterTo, heightFilterActive, doseType]);
@@ -293,13 +293,13 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
       setValidMeasurements([]);
       return; // Завершаем функцию
     }
-    console.log('updateValidMeasurements', doseType, onlineFlightId);
+    //console.log('updateValidMeasurements', doseType, onlineFlightId);
     if (globalSettings && globalSettings.sensorTypes && currentSensorType && globalSettings.sensorTypes[currentSensorType]) {
       
       // Находим зону интересов по текущему doseType
       const zoneOfInterest = globalSettings.sensorTypes[currentSensorType].zonesOfInterest.find(zone => zone.id === doseType - 2);
   
-      console.log('doseType, Зона интересов', doseType, zoneOfInterest);
+      //console.log('doseType, Зона интересов', doseType, zoneOfInterest);
   
       // Извлекаем значения P0 и P1, если они есть в selectedCollection, иначе используем значения по умолчанию
       const { P0 = 70, P1 = 11 } = selectedCollection || {};
@@ -363,14 +363,14 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
       // Обновляем состояние validMeasurements с новыми значениями
       setValidMeasurements(updatedMeasurements);
 
-      console.log('updatedMeasurements', updatedMeasurements);
+      //console.log('updatedMeasurements', updatedMeasurements);
   
       if (updatedMeasurements.length > 0 && needRecalcDoses) {
         const doses = updatedMeasurements.map(m => m.dose);
-        console.log('doses', doses);
+        //console.log('doses', doses);
         const newMinDoseValue = Math.min(...doses);
         const newMaxDoseValue = Math.max(...doses);
-        console.log('newMinDoseValue, newMaxDoseValue', newMinDoseValue, newMaxDoseValue);
+        //console.log('newMinDoseValue, newMaxDoseValue', newMinDoseValue, newMaxDoseValue);
         setMinDoseValue(newMinDoseValue);
         setMaxDoseValue(newMaxDoseValue);
   
@@ -379,7 +379,7 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
       }
 
       if (updatedMeasurements.length > 0 && needRecalcCenter) {
-        console.log('needRecalcCenter', onlineFlightId, updatedMeasurements.length);
+        //console.log('needRecalcCenter', onlineFlightId, updatedMeasurements.length);
         if (!onlineFlightId) {
 
           const nonZeroCoordinates = updatedMeasurements.filter(m => m.lat > 0 && m.lon > 0);
@@ -387,7 +387,7 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
           const longitudes = nonZeroCoordinates.map(m => m.lon);
           const centerLat = (Math.min(...latitudes) + Math.max(...latitudes)) / 2;
           const centerLng = (Math.min(...longitudes) + Math.max(...longitudes)) / 2;
-          console.log('GeoCenter', centerLat, centerLng, 'nonZeroCoordinates',nonZeroCoordinates);
+          //console.log('GeoCenter', centerLat, centerLng, 'nonZeroCoordinates',nonZeroCoordinates);
           setGeoCenter({ lat: centerLat, lng: centerLng });
         }
       }
@@ -410,7 +410,7 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
   };
 
   const updateMeasurements = (measurements) => {
-    console.log('measurements.length ', measurements.length);
+    //console.log('measurements.length ', measurements.length);
     if (!measurements || measurements.length === 0) {
       setMeasurements([]);
       return;
@@ -439,7 +439,7 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
   
         if (zoneOfInterest) {
 
-          console.log('zoneOfInterest.peak_id', zoneOfInterest.peak_id);
+          //console.log('zoneOfInterest.peak_id', zoneOfInterest.peak_id);
           const { leftBound, rightBound } = calculatePeakBounds(
             zoneOfInterest.peak_id,
             globalSettings.sensorTypes[currentSensorType].resolution
@@ -448,7 +448,7 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
           const leftE = parseFloat(leftBound);
           const rightE = parseFloat(rightBound);
 
-          console.log('leftBound rightBound', leftBound, rightBound);
+          //console.log('leftBound rightBound', leftBound, rightBound);
   
           const { spectrum } = measurement;
   
@@ -469,7 +469,7 @@ export const FlightDataProvider = ({ children, heightFilterActive, onHeightFilte
         return { ...measurement };
       });
   
-      console.log('updatedMeasurements', updatedMeasurements);
+      //console.log('updatedMeasurements', updatedMeasurements);
       setMeasurements(updatedMeasurements);
     }
   };

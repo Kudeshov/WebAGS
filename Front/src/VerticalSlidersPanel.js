@@ -38,7 +38,7 @@ const VerticalSlidersPanel = () => {
 
   // Загрузка списка зон интереса при изменении типа сенсора
   useEffect(() => {
-    console.log(globalSettings);
+    //console.log(globalSettings);
     if (globalSettings?.sensorTypes?.[currentSensorType]) {
       const sensorTypeData = globalSettings.sensorTypes[currentSensorType];
       const zones = sensorTypeData.zonesOfInterest || []; // Ищем зоны интереса для сенсора

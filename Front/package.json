@@ -48,7 +48,7 @@
     "ws": "^8.18.0"
   },
   "scripts": {
-    "start": "react-scripts start",
+    "start": "react-scripts start --source-map=false",
     "build": "react-scripts build",
     "electron:start": ".\\node_modules\\.bin\\electron public/electron.js",
     "electron:build": "electron-builder",

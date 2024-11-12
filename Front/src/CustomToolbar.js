@@ -252,23 +252,23 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   const setupWebSocket = (onlineFlightId, globalSettings) => {
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsHost = process.env.REACT_APP_WEBSOCKET_HOST || window.location.host;
-    console.log(wsProtocol, wsHost);
+    //console.log(wsProtocol, wsHost);
   
     let ws = new WebSocket(`${wsProtocol}//${wsHost}`);
   
     const connectWebSocket = () => {
       // Установка обработчиков событий WebSocket
       ws.onopen = () => {
-        console.log('WebSocket соединение установлено');
+        //console.log('WebSocket соединение установлено');
         setLastDataTimestamp(Date.now());
         setWebsocketConnected(true);
       };
   
-      console.log('Установка обработчика ws.onmessage');
+      //console.log('Установка обработчика ws.onmessage');
       ws.onmessage = (event) => {
-        console.log(event.data);
+        //console.log(event.data);
         const dataCheck = JSON.parse(event.data);
-        console.log('dataCheck', dataCheck.type, dataCheck);
+        //console.log('dataCheck', dataCheck.type, dataCheck);
   
         // Обработка посылок второго типа
         if (dataCheck.type === 2) {
@@ -289,7 +289,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
         
         // Проверка на сообщение о завершении полета
         if (data.type && data.type === 'flightEnded') {
-          console.log('Полет завершен:', data.flightId);
+          //console.log('Полет завершен:', data.flightId);
           setSnackbarMessage('Полет завершен в штатном режиме');
           setSnackbarOpen(true); // Открываем Snackbar с сообщением
           setOnlineFlightId(null); // Сброс ID симуляции
@@ -329,17 +329,17 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   
       ws.onerror = (error) => {
         console.error('Ошибка WebSocket:', error);
-        console.log(error.message);
+        //console.log(error.message);
       };
   
       ws.onclose = () => {
         setWebsocketConnected(false);
-        console.log('WebSocket соединение закрыто');
+        //console.log('WebSocket соединение закрыто');
         setTimeout(() => {
-          console.log('Попытка переподключения...');
+          //console.log('Попытка переподключения...');
           const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
           const wsHost = process.env.REACT_APP_WEBSOCKET_HOST || window.location.host;
-          console.log(wsProtocol, wsHost);
+          //console.log(wsProtocol, wsHost);
           ws = new WebSocket(`${wsProtocol}//${wsHost}`);
           connectWebSocket(); // Попытка переподключения
         }, 1000); // Переподключение через 1 секунду
@@ -394,13 +394,13 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
         throw Error(body.message || "Произошла ошибка на сервере");
       }
       // Обрабатываем успешный ответ
-      console.log('Полет запущен:', selectedOnlineDB);
+      //console.log('Полет запущен:', selectedOnlineDB);
       setMeasurements([]);
       setOnlineFlightId(body._id); // Сохраняем ID запущенного полета
       setSelectedDatabase(selectedOnlineDB);
       setSelectedCollection(body.onlineFlightStatus); 
 
-      console.log("setupWebSocket из HandleStartFlight");
+      //console.log("setupWebSocket из HandleStartFlight");
       setupWebSocket(body.onlineFlightStatus._id, globalSettings); // Установка WebSocket соединения
 
       setSnackbarOpen(true);
@@ -426,7 +426,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
   
         // Исправление условия на проверку ключа "active"
         if (statusData && statusData.active) {
-          console.log('Онлайн-полет активен:', statusData);
+          //console.log('Онлайн-полет активен:', statusData);
           setOnlineFlightId(statusData._id); // Сохраняем ID активного полета
           setSelectedDatabase(statusData.dbName); // Устанавливаем выбранную базу данных
           // Установка WebSocket соединения
@@ -584,7 +584,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
     // Извлекаем имя файла без расширения
     const fileNameWithoutExtension = file.name.replace(/\.[^/.]+$/, "");
   
-    console.log('Выбран файл:', file.name); // Выводим имя файла в лог
+    //console.log('Выбран файл:', file.name); // Выводим имя файла в лог
   
     // Отправляем файл на сервер через API
     try {
@@ -601,7 +601,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
       if (response.ok) {
         handleSnackbarOpen(`Файл базы данных ${file.name} загружен`);
         // Вызываем setSelectedDatabase с именем файла без расширения
-        console.log('3',fileNameWithoutExtension);
+        //console.log('3',fileNameWithoutExtension);
         setSelectedDatabase(fileNameWithoutExtension);
       } else {
         // Отображение сообщения об ошибке от сервера
@@ -748,13 +748,13 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
       setIsLoading(false);
   
       handleSnackbarOpen('База данных успешно скачана:', databaseName);
-      console.log('База данных успешно скачана:', databaseName);
+      //console.log('База данных успешно скачана:', databaseName);
     } catch (error) {
       // При ошибке также установите isLoading в false
       setIsLoading(false);
   
       handleSnackbarOpen('Ошибка при скачивании базы данных:', databaseName, error);
-      console.error('Ошибка при скачивании базы данных:', databaseName, error);
+      //console.error('Ошибка при скачивании базы данных:', databaseName, error);
       // Обработка ошибки (например, отображение уведомления пользователю)
     }
   };
@@ -793,8 +793,8 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
           throw new Error('Проблема с удалением полета. Статус: ' + response.status);
         }
     
-        const result = await response.json();
-        console.log(result.message); // Показываем сообщение об успешном удалении
+        /* const result =  */await response.json();
+        //console.log(result.message); // Показываем сообщение об успешном удалении
         
         // После успешного удаления закрываем диалог и, возможно, обновляем список полетов в UI
         setDeleteFlightDialogOpen(false);
@@ -863,7 +863,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
         }
     
         const responseBody = await response.text();
-        console.log(responseBody);
+        //console.log(responseBody);
         return { success: true, message: responseBody };
       } catch (error) {
         console.error('Error saving collection params:', error);
@@ -945,7 +945,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
       .then(response => response.json())
       .then(data => {
         setSettings(data);
-        console.log('Настройки загружены:', data);
+        //console.log('Настройки загружены:', data);
         // Инициализация состояний формы значениями из настроек
         setWinLowValue(data.winLow);
         setWinHighValue(data.winHigh);
@@ -993,7 +993,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
     })
     .then(response => response.text())
     .then(result => {
-      console.log('Настройки обновлены:', result);
+      //console.log('Настройки обновлены:', result);
       // Предполагается, что setGlobalSettings обновляет настройки в глобальном состоянии приложения
       setGlobalSettings(updatedSettings); // Обновляем глобальные настройки
     })
@@ -1005,7 +1005,7 @@ const CustomToolbar = ({ onToggleDrawer, drawerOpen, onToggleChart, chartOpen, o
     fetch('/api/isotope_peaks_data')
       .then(response => response.json()) // Преобразуем ответ в JSON
       .then(data => {
-        console.log('Fetched Isotopes:', data); // Выводим полученные данные в консоль для отладки
+        //console.log('Fetched Isotopes:', data); // Выводим полученные данные в консоль для отладки
         setIsotopes(data); // Обновляем состояние с данными изотопов
       })
       .catch(error => console.error('Error fetching isotopes:', error)); // Обрабатываем ошибку, если запрос не удался

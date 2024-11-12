@@ -488,7 +488,7 @@ function MyMapComponent({ chartOpen, heightFilterActive }) {
       const minTime = Math.min(...times);
       const maxTime = Math.max(...times);
       const timeInterval = (maxTime - minTime) / 1000; // Разница в секундах
-      console.log(selectedPoints, timeInterval)
+      //console.log(selectedPoints, timeInterval)
 
       spectrumPanelRef.current._root = root; // Сохраняем корень в свойстве для последующего доступа
       root.render(<SpectrumChart  timeInterval={timeInterval}  averageHeight={averageHeight} selectedCollection={selectedCollection} data={spectrumData}/*  isLoading={isLoading} */ />);
