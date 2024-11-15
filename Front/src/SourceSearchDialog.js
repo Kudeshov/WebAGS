@@ -149,24 +149,27 @@ function SourceSearchDialog({ open, onClose }) {
     }
   }, [open, selectedZone, energyRange, validMeasurements, P0, P1, globalSettings, currentSensorType]);
 
-
-  // Функция проверки выпуклости пика
-/*   const isConvexPeak = (spectrum, peakIndex) => {
-    // Проверяем, что значения слева и справа от пика уменьшаются
-    if (peakIndex <= 0 || peakIndex >= spectrum.length - 1) {
-      return false; // Невозможно проверить выпуклость на границах
+  const smoothSpectrum = (spectrum) => {
+    const smoothed = new Array(spectrum.length).fill(0);
+    for (let i = 5; i < spectrum.length - 5; i++) {
+      smoothed[i] =
+        (1 / 429) *
+        (-36 * spectrum[i - 5] +
+          9 * spectrum[i - 4] +
+          44 * spectrum[i - 3] +
+          69 * spectrum[i - 2] +
+          84 * spectrum[i - 1] +
+          89 * spectrum[i] +
+          84 * spectrum[i + 1] +
+          69 * spectrum[i + 2] +
+          44 * spectrum[i + 3] +
+          9 * spectrum[i + 4] -
+          36 * spectrum[i + 5]);
     }
-
-    const leftNeighbor = spectrum[peakIndex - 1];
-    const rightNeighbor = spectrum[peakIndex + 1];
-    const peakValue = spectrum[peakIndex];
-
-    console.log('leftNeighbor, rightNeighbor, peakValue', leftNeighbor, rightNeighbor, peakValue); 
-
-    // Пик считается выпуклым, если значения слева и справа меньше, чем значение пика
-    return leftNeighbor < peakValue && rightNeighbor < peakValue;
+    return smoothed;
   };
- */
+  
+
   const calculateValues = () => {
     if (!isEnergyRangeValid) {
       setPeakCenter('NaN');
@@ -220,18 +223,28 @@ function SourceSearchDialog({ open, onClose }) {
     for (let i = 0; i < averagedSpectrum.length; i++) {
       averagedSpectrum[i] /= count;
     }
+
+    const smoothedSpectrum = smoothSpectrum(averagedSpectrum);
   
     let globalPeakValue = -Infinity;
     let globalPeakIndex = -1; // Индикатор отсутствия пика
+
+    for (let i = leftIndex; i <= rightIndex; i++) {
+      const v = smoothedSpectrum[i];
+      if (v > globalPeakValue) {
+        globalPeakValue = v;
+        globalPeakIndex = i;
+      }
+    }
   
-    // Поиск максимального значения пика без проверки на выпуклость
+/*     // Поиск максимального значения пика без проверки на выпуклость
     for (let i = leftIndex; i <= rightIndex; i++) {
       const v = averagedSpectrum[i];
       if (v > globalPeakValue) { // Убираем проверку isConvexPeak
         globalPeakValue = v;
         globalPeakIndex = i;
       }
-    }
+    } */
   
     // Если пик не найден в границах
     if (globalPeakIndex === -1) {
@@ -746,7 +759,12 @@ function SourceSearchDialog({ open, onClose }) {
               onClose={handleCalibrationDialogClose}
               initialCoefficients={calculatedCoefficients}
               selectedDatabase={selectedDatabase}
-              saveCollectionParams={saveCollectionParams} // Передаем функцию сохранения
+              selectedPoints={(selectedPoints && selectedPoints.length > 0) ? selectedPoints : validMeasurements}
+              saveCollectionParams={saveCollectionParams}
+              leftBound={energyRange.low}  // Передаем нижнюю границу
+              rightBound={energyRange.high}  // Передаем верхнюю границу
+              oldPeakEnergy={parseFloat(idealPeakCenter)}  // Передаем паспортный пик как oldPeakEnergy
+              newPeakEnergy={parseFloat(calculatedPeakCenter)}  // Передаем расчетный пик как newPeakEnergy
             />
           </Box>
         )}
