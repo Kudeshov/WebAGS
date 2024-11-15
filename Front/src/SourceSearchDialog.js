@@ -237,8 +237,8 @@ function SourceSearchDialog({ open, onClose }) {
       }
     }
   
-/*     // Поиск максимального значения пика без проверки на выпуклость
-    for (let i = leftIndex; i <= rightIndex; i++) {
+    // Поиск максимального значения пика без проверки на выпуклость
+/*     for (let i = leftIndex; i <= rightIndex; i++) {
       const v = averagedSpectrum[i];
       if (v > globalPeakValue) { // Убираем проверку isConvexPeak
         globalPeakValue = v;

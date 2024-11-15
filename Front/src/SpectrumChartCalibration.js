@@ -52,22 +52,24 @@ function SpectrumChartCalibration({ data, P0, P1, leftBound, rightBound, oldPeak
           fill: true,
           borderWidth: 0
         },
-/*         {
+        {
           label: 'Старый пик',
           data: [{ x: oldPeak, y: getPeakValue(data, oldPeak, P0, P1) }],
-          borderColor: 'rgba(255, 0, 0, 1)', // Красная точка для старого пика
+          borderColor: 'rgba(0, 200, 0, 1)', // Зеленая точка для старого пика
           borderWidth: 2,
           pointRadius: 5,
+          tooltip: { enabled: false },
           showLine: false, // Показываем только точку, а не линию
-        }, */
-        {
+        },
+/*         {
           label: 'Новый пик',
           data: [{ x: newPeak, y: getPeakValue(data, newPeak, P0, P1) }],
-          borderColor: 'rgba(0, 200, 0, 1)', // Зеленая точка для нового пика
+          borderColor: 'rgba(255, 0, 0, 1)', // красная точка для нового пика
           borderWidth: 2,
           pointRadius: 5,
+          tooltip: { enabled: false },
           showLine: false, // Показываем только точку, а не линию
-        }
+        } */
       ]
     };
     
@@ -91,23 +93,10 @@ function SpectrumChartCalibration({ data, P0, P1, leftBound, rightBound, oldPeak
     responsive: true,
     plugins: {
       legend: {
-        display: false
+        display: false,
       },
       tooltip: {
-        enabled: true,
-        mode: 'index',
-        intersect: false,
-        callbacks: {
-          title: (tooltipItems) => `Энергия: ${tooltipItems[0].label} keV`,
-          label: (tooltipItem) => {
-            if (tooltipItem.datasetIndex === 0) {
-              const channel = tooltipItem.dataIndex;
-              const countRate = tooltipItem.raw.toFixed(2);
-              return `Канал: ${channel + 1}, Скорость счета: ${countRate} 1/с`;
-            }
-            return null;
-          }
-        }
+        enabled: false, // Отключаем тултип
       },
       zoom: {
         pan: {
@@ -119,18 +108,18 @@ function SpectrumChartCalibration({ data, P0, P1, leftBound, rightBound, oldPeak
             enabled: true,
           },
           pinch: {
-            enabled: true
+            enabled: true,
           },
           mode: 'xy',
-        }
-      }
+        },
+      },
     },
     scales: {
       x: {
         type: 'linear',
         title: {
           display: true,
-          text: 'Энергия (keV)'
+          text: 'Энергия (keV)',
         },
         min: leftBound,
         max: rightBound,
@@ -138,12 +127,13 @@ function SpectrumChartCalibration({ data, P0, P1, leftBound, rightBound, oldPeak
       y: {
         title: {
           display: true,
-          text: 'Скорость счета 1/с'
-        }
-      }
-    }
+          text: 'Скорость счета 1/с',
+        },
+      },
+    },
   };
-
+  
+  
   return <Line data={chartData} options={options} />;
 }
 
