@@ -41,7 +41,6 @@ function SourceSearchDialog({ open, onClose }) {
   const [eligible, setEligible] = useState(true);
   
   // Новые состояния для averagedSpectrum и globalPeakIndex
-//  const [averagedSpectrum, setAveragedSpectrum] = useState([]);
   const [globalPeakIndex, setGlobalPeakIndex] = useState(0);
 
   const { currentSensorType = "УДКГ-А01", globalSettings,
@@ -53,8 +52,6 @@ function SourceSearchDialog({ open, onClose }) {
   const [calculatedCoefficients, setCalculatedCoefficients] = useState({ P0, P1 });
   const [calibrationDialogOpen, setCalibrationDialogOpen] = useState(false);
   const [useRefinedPeakAreaCalculation, setUseRefinedPeakAreaCalculation] = useState(false);
-
-
 
   // функция для обновления значения Ca в зависимости от единицы измерения
   const updateDisplayedCa = (rawCa, unit) => {
@@ -225,6 +222,39 @@ function SourceSearchDialog({ open, onClose }) {
     }
 
     const smoothedSpectrum = smoothSpectrum(averagedSpectrum);
+
+    // Определяем значения на границах
+    const backgroundLeft = smoothedSpectrum[leftIndex];
+    const backgroundRight = smoothedSpectrum[rightIndex];
+
+    // Вычисляем площадь пика
+    let peakArea = 0;
+    for (let i = leftIndex; i < rightIndex; i++) {
+        const energyStep = P1Numeric; // Шаг по энергии между соседними каналами
+        const trapezoidHeight = (smoothedSpectrum[i] + smoothedSpectrum[i + 1]) / 2;
+        peakArea += trapezoidHeight * energyStep;
+    }
+
+    console.log('peakArea', peakArea);
+
+    // Вычисляем площадь трапеции фона
+    const trapezoidArea =
+        ((backgroundLeft + backgroundRight) / 2) * (energyRange.high - energyRange.low);
+    console.log('trapezoidArea', trapezoidArea);
+
+    // Рассчитываем скорректированную площадь
+    const correctedPeakArea = peakArea - trapezoidArea;
+    console.log('correctedPeakArea', correctedPeakArea);    
+  
+    // Проверка на соответствие критерию
+    const threshold = Math.sqrt(peakArea);
+    if (correctedPeakArea <= threshold) {
+        // Пик не найден или не соответствует критерию
+        console.log('Пик не найден или не соответствует критерию.');
+        setCalculatedPeakCenter('');
+       // setShowCalibrationMessage(false); // скрываем кнопку "Докалибровка"
+        return;
+    }
   
     let globalPeakValue = -Infinity;
     let globalPeakIndex = -1; // Индикатор отсутствия пика
@@ -237,14 +267,7 @@ function SourceSearchDialog({ open, onClose }) {
       }
     }
   
-    // Поиск максимального значения пика без проверки на выпуклость
-/*     for (let i = leftIndex; i <= rightIndex; i++) {
-      const v = averagedSpectrum[i];
-      if (v > globalPeakValue) { // Убираем проверку isConvexPeak
-        globalPeakValue = v;
-        globalPeakIndex = i;
-      }
-    } */
+
   
     // Если пик не найден в границах
     if (globalPeakIndex === -1) {
@@ -259,7 +282,7 @@ function SourceSearchDialog({ open, onClose }) {
     const peakEnergy = P0Numeric + globalPeakIndex * P1Numeric;
   
     if (isNaN(peakEnergy)) {
-      console.error('Расчет peakEnergy дал неверное значение:', peakEnergy);
+      console.log('Расчет peakEnergy дал неверное значение:', peakEnergy);
       //setPeakCenter('');
       return;
     }
@@ -275,8 +298,8 @@ function SourceSearchDialog({ open, onClose }) {
     } else {
       setShowCalibrationMessage(false);
     }
-  };
-  
+  }; 
+
   const handleCalculateSource = () => {
     if (!isEnergyRangeValid) {
       alert("Неправильные границы энергии. Пожалуйста, исправьте значения.");
@@ -303,6 +326,15 @@ function SourceSearchDialog({ open, onClose }) {
   };
 
   const calculateCoefficients = () => {
+
+    // Проверяем, найден ли расчетный пик
+    if (calculatedPeakCenter === "" || calculatedPeakCenter === "Не найден") {
+      console.log('Пик не найден. Используются текущие коэффициенты P0 и P1.');
+      setCalculatedCoefficients({ P0, P1, _id: collectionId });
+      setCalibrationDialogOpen(true);
+      return;
+    }
+    
     // Данные из состояния
     const idealCenter = parseFloat(idealPeakCenter); // Референсный пик (в кэВ)
     const calculatedCenter = parseFloat(calculatedPeakCenter); // Расчетный центр пика (в кэВ)
@@ -621,7 +653,12 @@ function SourceSearchDialog({ open, onClose }) {
                   {/* Расчетный пик */}
                   <Grid item xs={8}>
                     <Typography variant="body2" gutterBottom>
-                      Расчетный пик: {calculatedPeakCenter} keV
+                      Расчетный пик:{" "}
+                      {calculatedPeakCenter === "" || calculatedPeakCenter === "Не найден" ? (
+                        <span style={{ color: "red" }}>Не найден</span>
+                      ) : (
+                        `${calculatedPeakCenter} keV`
+                      )}
                     </Typography>
                   </Grid>
                   <Grid item xs={4}>
@@ -851,7 +888,7 @@ function SourceSearchDialog({ open, onClose }) {
           </Box>
         )}
 
-{tabIndex === 2 && (
+        {tabIndex === 2 && (
           <Box>
             {!eligible ? (
               <Typography color="error">

@@ -5,7 +5,9 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  TextField
+  TextField,
+  Typography,
+  Box
 } from '@mui/material';
 import SpectrumChartCalibration from './SpectrumChartCalibration';
 
@@ -98,6 +100,15 @@ function CalibrationDialog({
     <Dialog open={open} onClose={handleCancel}>
       <DialogTitle>Энергетическая калибровка</DialogTitle>
       <DialogContent>
+        {isNaN(newPeakEnergy) || newPeakEnergy === "" || newPeakEnergy === "Не найден" ? (
+          <Box mb={2}>
+            <Typography variant="body2" color="error">
+              Расчетный пик не найден.
+              Калибровочные коэффициенты не изменены.
+            </Typography>
+          </Box>
+        ) : null}
+
         <TextField
           margin="dense"
           id="P0"
