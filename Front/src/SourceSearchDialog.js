@@ -39,7 +39,9 @@ function SourceSearchDialog({ open, onClose }) {
   const [depthResult, setDepthResult] = useState(null);
   const [unitDepth, setUnitDepth] = useState("Бк/см²");
   const [eligible, setEligible] = useState(true);
-  
+  const [heightInterval, setHeightInterval] = useState(5); // Интервал высот, по умолчанию 5 м
+  const [contaminationDensity, setContaminationDensity] = useState(null); // Результаты расчета
+  const [heightIntervalsData, setHeightIntervalsData] = useState([]); // Данные для интервалов высот
   // Новые состояния для averagedSpectrum и globalPeakIndex
   const [globalPeakIndex, setGlobalPeakIndex] = useState(0);
 
@@ -497,7 +499,86 @@ function SourceSearchDialog({ open, onClose }) {
     }
   };
   
+  const calculatePeakArea = (spectrum) => {
+    let peakArea = 0;
+    const leftIndex = Math.ceil((energyRange.low - P0) / P1);
+    const rightIndex = Math.floor((energyRange.high - P0) / P1);
+  
+    // Убедимся, что индексы находятся в допустимых пределах
+    const validLeftIndex = Math.max(leftIndex, 0);
+    const validRightIndex = Math.min(rightIndex, spectrum.length - 1);
+  
+    for (let i = validLeftIndex; i < validRightIndex; i++) {
+      const energyStep = P1; // Шаг по энергии
+      const trapezoidHeight = (spectrum[i] + spectrum[i + 1]) / 2;
+      peakArea += trapezoidHeight * energyStep;
+    }
+  
+    return peakArea;
+  };
+  const calculateHeightIntervals = () => {
+    const intervals = {};
+    
+    validMeasurements.forEach(measurement => {
+      if (measurement.height > 5) {
+        const intervalIndex = Math.floor(measurement.height / heightInterval);
+        if (!intervals[intervalIndex]) {
+          intervals[intervalIndex] = { sumSpectrum: [], count: 0, heightSum: 0 };
+        }
+  
+        const { channels } = measurement.spectrum;
+        channels.forEach((value, index) => {
+          if (!intervals[intervalIndex].sumSpectrum[index]) {
+            intervals[intervalIndex].sumSpectrum[index] = 0;
+          }
+          intervals[intervalIndex].sumSpectrum[index] += value;
+        });
+        intervals[intervalIndex].heightSum += measurement.height;
+        intervals[intervalIndex].count++;
+      }
+    });
+  
+    const intervalResults = Object.entries(intervals).map(([index, data]) => {
+      const averageSpectrum = data.sumSpectrum.map(value => value / data.count);
+      const averageHeight = data.heightSum / data.count;
+      return { intervalIndex: index, averageSpectrum, averageHeight };
+    });
+  
+    setHeightIntervalsData(intervalResults);
+  };
 
+  const calculateContaminationDensity = () => {
+    if (heightIntervalsData.length === 0) {
+      alert('Для работы алгоритма требуются измерения на различных высотах.');
+      return;
+    }
+  
+    const densities = heightIntervalsData.map(({ averageSpectrum, averageHeight }) => {
+      const Sk = calculatePeakArea(averageSpectrum); // Используем ранее описанную функцию расчета площади пика
+      const Kha = calculateY(averageHeight, alphaValue); // Расчет K(h, α)
+      const Ck = Sk / Kha;
+      return { intervalHeight: averageHeight, density: Ck };
+    });
+  
+    const meanDensity = densities.reduce((sum, item) => sum + item.density, 0) / densities.length;
+    const variance = densities.reduce((sum, item) => sum + Math.pow(item.density - meanDensity, 2), 0) / (densities.length - 1);
+    const stdDeviation = Math.sqrt(variance);
+  
+    setContaminationDensity({
+      densities,
+      meanDensity: meanDensity.toFixed(8),
+      stdDeviation: stdDeviation.toFixed(8),
+    });
+  };
+
+  const handleHeightIntervalChange = (event) => {
+    setHeightInterval(parseInt(event.target.value, 10));
+  };
+  
+  const handleRecalculate = () => {
+    calculateHeightIntervals();
+    calculateContaminationDensity();
+  };
 
   const [rawResultC, setRawResultC] = useState(0);
   const [rawDeviationD, setRawDeviationD] = useState(0);
@@ -934,8 +1015,36 @@ function SourceSearchDialog({ open, onClose }) {
 
         {tabIndex === 3 && (
           <Box>
-            {/* Содержимое для "Плотность по поглощению" */}
-            <p>Содержимое вкладки "Плотность по поглощению".</p>
+             <Typography>Результаты расчета плотности загрязнения:</Typography>
+                {contaminationDensity && (
+                  <Box>
+                    <Typography>Средняя плотность загрязнения: {contaminationDensity.meanDensity} Бк/см²</Typography>
+                    <Typography>Среднеквадратичное отклонение: {contaminationDensity.stdDeviation} Бк/см²</Typography>
+                    <ul>
+                      {contaminationDensity.densities.map(({ intervalHeight, density }, index) => (
+                        <li key={index}>
+                          Высота: {intervalHeight.toFixed(2)} м, Плотность: {density.toFixed(8)} Бк/см²
+                        </li>
+                      ))}
+                    </ul>
+                    
+                  </Box>
+                )}
+                <Grid container spacing={2}>
+                  <Grid item xs={6}>
+                    <TextField
+                      label="Интервал высот (м)"
+                      type="number"
+                      value={heightInterval}
+                      onChange={handleHeightIntervalChange}
+                    />
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Button variant="contained" onClick={handleRecalculate}>
+                      Пересчитать
+                    </Button>
+                  </Grid>
+                </Grid>
           </Box>
         )}
       </DialogContent>
