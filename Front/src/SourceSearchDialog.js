@@ -41,7 +41,7 @@ function SourceSearchDialog({ open, onClose }) {
   const [eligible, setEligible] = useState(true);
   const [heightInterval, setHeightInterval] = useState(5); // Интервал высот, по умолчанию 5 м
   const [contaminationDensity, setContaminationDensity] = useState(null); // Результаты расчета
-  const [heightIntervalsData, setHeightIntervalsData] = useState([]); // Данные для интервалов высот
+  //const [heightIntervalsData, setHeightIntervalsData] = useState([]); // Данные для интервалов высот
   // Новые состояния для averagedSpectrum и globalPeakIndex
   const [globalPeakIndex, setGlobalPeakIndex] = useState(0);
 
@@ -516,9 +516,10 @@ function SourceSearchDialog({ open, onClose }) {
   
     return peakArea;
   };
+
   const calculateHeightIntervals = () => {
     const intervals = {};
-    
+  
     validMeasurements.forEach(measurement => {
       if (measurement.height > 5) {
         const intervalIndex = Math.floor(measurement.height / heightInterval);
@@ -544,10 +545,10 @@ function SourceSearchDialog({ open, onClose }) {
       return { intervalIndex: index, averageSpectrum, averageHeight };
     });
   
-    setHeightIntervalsData(intervalResults);
+    return intervalResults;
   };
-
-  const calculateContaminationDensity = () => {
+  
+  const calculateContaminationDensity = (heightIntervalsData) => {
     if (heightIntervalsData.length === 0) {
       alert('Для работы алгоритма требуются измерения на различных высотах.');
       return;
@@ -570,14 +571,14 @@ function SourceSearchDialog({ open, onClose }) {
       stdDeviation: stdDeviation.toFixed(8),
     });
   };
-
+  
   const handleHeightIntervalChange = (event) => {
     setHeightInterval(parseInt(event.target.value, 10));
   };
   
   const handleRecalculate = () => {
-    calculateHeightIntervals();
-    calculateContaminationDensity();
+    const heightIntervalsData = calculateHeightIntervals();
+    calculateContaminationDensity(heightIntervalsData);
   };
 
   const [rawResultC, setRawResultC] = useState(0);
