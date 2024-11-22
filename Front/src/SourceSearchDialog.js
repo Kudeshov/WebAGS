@@ -549,10 +549,7 @@ function SourceSearchDialog({ open, onClose }) {
   };
   
   const calculateContaminationDensity = (heightIntervalsData) => {
-    if (heightIntervalsData.length === 0) {
-      alert('Для работы алгоритма требуются измерения на различных высотах.');
-      return;
-    }
+  
   
     const densities = heightIntervalsData.map(({ averageSpectrum, averageHeight }) => {
       const Sk = calculatePeakArea(averageSpectrum); // Используем ранее описанную функцию расчета площади пика
@@ -1021,47 +1018,49 @@ function SourceSearchDialog({ open, onClose }) {
         )}
 
         {tabIndex === 3 && (
-          <Box>
-             
-                {contaminationDensity && (
-                  
-                  <Box>
-                    <Grid container alignItems="center" spacing={1}>
-            <Grid item xs={6}>
-            <Box >
-              <p>Коэффициент заглубления α</p>
-            </Box>
-            </Grid>
-  
-              <Grid item xs={6}>
-              <FormControl fullWidth variant="outlined" size="small">
-                <Select
-                  value={alphaValue}
-                  onChange={handleAlphaChange} // Вызываем новый обработчик
-                  size="small"
-                >
-                  <MenuItem value={0.001}>0,001</MenuItem>
-                  <MenuItem value={0.2}>0,2</MenuItem>
-                  <MenuItem value={1}>1</MenuItem>
-                  <MenuItem value={4}>4</MenuItem>
-                  <MenuItem value={30}>30</MenuItem>
-                </Select>   
-              </FormControl>
-              </Grid>
-              </Grid>
-              <Typography>Результаты расчета плотности загрязнения:</Typography>
-                    <Typography>Плотность загрязнения (в приближении Cs-137): {contaminationDensity.meanDensity} Бк/см²</Typography>
-                    <Typography>Среднеквадратичное отклонение: {contaminationDensity.stdDeviation} Бк/см²</Typography>
-                    <ul>
-                      {contaminationDensity.densities.map(({ intervalHeight, density }, index) => (
-                        <li key={index}>
-                          Высота: {intervalHeight.toFixed(2)} м, Плотность: {density.toFixed(8)} Бк/см²
-                        </li>
-                      ))}
-                    </ul>
-                    
-                  </Box>
-                )}
+          <Box>   
+            {!eligible ? (
+              <Typography color="error">
+                Для работы алгоритма требуются измерения на различных высотах.
+              </Typography>
+            ) : (
+              contaminationDensity && (
+                <Box>
+                  <Grid container alignItems="center" spacing={1}>
+                    <Grid item xs={6}>
+                      <Box>
+                        <p>Коэффициент заглубления α</p>
+                      </Box>
+                    </Grid>
+                    <Grid item xs={6}>
+                      <FormControl fullWidth variant="outlined" size="small">
+                        <Select
+                          value={alphaValue}
+                          onChange={handleAlphaChange}
+                          size="small"
+                        >
+                          <MenuItem value={0.001}>0,001</MenuItem>
+                          <MenuItem value={0.2}>0,2</MenuItem>
+                          <MenuItem value={1}>1</MenuItem>
+                          <MenuItem value={4}>4</MenuItem>
+                          <MenuItem value={30}>30</MenuItem>
+                        </Select>
+                      </FormControl>
+                    </Grid>
+                  </Grid>
+                  <Typography>Результаты расчета плотности загрязнения:</Typography>
+                  <Typography>Плотность загрязнения (в приближении Cs-137): {contaminationDensity.meanDensity} Бк/см²</Typography>
+                  <Typography>Среднеквадратичное отклонение: {contaminationDensity.stdDeviation} Бк/см²</Typography>
+                  <ul>
+                    {contaminationDensity.densities.map(({ intervalHeight, density }, index) => (
+                      <li key={index}>
+                        Высота: {intervalHeight.toFixed(2)} м, Плотность: {density.toFixed(8)} Бк/см²
+                      </li>
+                    ))}
+                  </ul>
+                </Box>
+              )
+            )}
                 <Grid container spacing={2}>
                   <Grid item xs={6}>
                     <TextField
@@ -1074,6 +1073,7 @@ function SourceSearchDialog({ open, onClose }) {
                
                 </Grid>
           </Box>
+              
         )}
       </DialogContent>
       <DialogActions>
