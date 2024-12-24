@@ -237,22 +237,22 @@ function SourceSearchDialog({ open, onClose }) {
         peakArea += trapezoidHeight * energyStep;
     }
 
-    console.log('peakArea', peakArea);
+    //console.log('peakArea', peakArea);
 
     // Вычисляем площадь трапеции фона
     const trapezoidArea =
         ((backgroundLeft + backgroundRight) / 2) * (energyRange.high - energyRange.low);
-    console.log('trapezoidArea', trapezoidArea);
+    //console.log('trapezoidArea', trapezoidArea);
 
     // Рассчитываем скорректированную площадь
     const correctedPeakArea = peakArea - trapezoidArea;
-    console.log('correctedPeakArea', correctedPeakArea);    
+    //console.log('correctedPeakArea', correctedPeakArea);    
   
     // Проверка на соответствие критерию
     const threshold = Math.sqrt(peakArea);
     if (correctedPeakArea <= threshold) {
         // Пик не найден или не соответствует критерию
-        console.log('Пик не найден или не соответствует критерию.');
+        //console.log('Пик не найден или не соответствует критерию.');
         setCalculatedPeakCenter('');
        // setShowCalibrationMessage(false); // скрываем кнопку "Докалибровка"
         return;
@@ -284,7 +284,7 @@ function SourceSearchDialog({ open, onClose }) {
     const peakEnergy = P0Numeric + globalPeakIndex * P1Numeric;
   
     if (isNaN(peakEnergy)) {
-      console.log('Расчет peakEnergy дал неверное значение:', peakEnergy);
+      //console.log('Расчет peakEnergy дал неверное значение:', peakEnergy);
       //setPeakCenter('');
       return;
     }
@@ -331,7 +331,7 @@ function SourceSearchDialog({ open, onClose }) {
 
     // Проверяем, найден ли расчетный пик
     if (calculatedPeakCenter === "" || calculatedPeakCenter === "Не найден") {
-      console.log('Пик не найден. Используются текущие коэффициенты P0 и P1.');
+      //console.log('Пик не найден. Используются текущие коэффициенты P0 и P1.');
       setCalculatedCoefficients({ P0, P1, _id: collectionId });
       setCalibrationDialogOpen(true);
       return;
@@ -355,7 +355,7 @@ function SourceSearchDialog({ open, onClose }) {
     // Пересчитываем новое значение A
     const A_new = ((idealPeakCenter - B_new) / globalPeakIndex).toFixed(2); // пересчет A и округление до сотых
   
-    console.log('вызываем setCalculatedCoefficients с параметрами ', { P0: B_new, P1: A_new, _id: collectionId });
+    //console.log('вызываем setCalculatedCoefficients с параметрами ', { P0: B_new, P1: A_new, _id: collectionId });
   
     // Устанавливаем новые коэффициенты
     setCalculatedCoefficients({ P0: B_new, P1: A_new, _id: collectionId });
@@ -385,6 +385,7 @@ function SourceSearchDialog({ open, onClose }) {
   const handleDepthAndEligibilityCheck = () => {
     const isEligible = checkHeightMeasurements(validMeasurements);
     setEligible(isEligible);
+    console.log('IsEligible', isEligible);
     
     if (!isEligible) {
       setDepthResult(null);
@@ -518,57 +519,78 @@ function SourceSearchDialog({ open, onClose }) {
   };
 
   const calculateHeightIntervals = () => {
+
+    if (!open || selectedCollection?.is_online) {
+      console.log("Пропуск загрузки данных для онлайн-полетов.");
+      return;
+    }
+
+    if (!validMeasurements || validMeasurements.length === 0) {
+        console.error("Массив validMeasurements пуст или отсутствует.");
+        return [];
+    }
+
+    // Проверка первого элемента на наличие spectrum и channels
+    const firstMeasurement = validMeasurements[0];
+    if (!firstMeasurement.spectrum || !Array.isArray(firstMeasurement.spectrum.channels)) {
+        console.error("Спектры отсутствуют для данного полета.");
+        return [];
+    }
+
     const intervals = {};
-  
+
     validMeasurements.forEach(measurement => {
-      if (measurement.height > 5) {
-        const intervalIndex = Math.floor(measurement.height / heightInterval);
-        if (!intervals[intervalIndex]) {
-          intervals[intervalIndex] = { sumSpectrum: [], count: 0, heightSum: 0 };
+        if (measurement.height > 5) {
+            const intervalIndex = Math.floor(measurement.height / heightInterval);
+            if (!intervals[intervalIndex]) {
+                intervals[intervalIndex] = { sumSpectrum: [], count: 0, heightSum: 0 };
+            }
+
+            measurement.spectrum.channels.forEach((value, index) => {
+                if (!intervals[intervalIndex].sumSpectrum[index]) {
+                    intervals[intervalIndex].sumSpectrum[index] = 0;
+                }
+                intervals[intervalIndex].sumSpectrum[index] += value;
+            });
+
+            intervals[intervalIndex].heightSum += measurement.height;
+            intervals[intervalIndex].count++;
         }
-  
-        const { channels } = measurement.spectrum;
-        channels.forEach((value, index) => {
-          if (!intervals[intervalIndex].sumSpectrum[index]) {
-            intervals[intervalIndex].sumSpectrum[index] = 0;
-          }
-          intervals[intervalIndex].sumSpectrum[index] += value;
-        });
-        intervals[intervalIndex].heightSum += measurement.height;
-        intervals[intervalIndex].count++;
-      }
     });
-  
+
     const intervalResults = Object.entries(intervals).map(([index, data]) => {
-      const averageSpectrum = data.sumSpectrum.map(value => value / data.count);
-      const averageHeight = data.heightSum / data.count;
-      return { intervalIndex: index, averageSpectrum, averageHeight };
+        const averageSpectrum = data.sumSpectrum.map(value => value / data.count);
+        const averageHeight = data.heightSum / data.count;
+        return { intervalIndex: index, averageSpectrum, averageHeight };
     });
-  
+
     return intervalResults;
   };
-  
+
   const calculateContaminationDensity = (heightIntervalsData) => {
-  
-  
+    if (!heightIntervalsData || heightIntervalsData.length === 0) {
+        //console.error("Данные для интервалов высот отсутствуют или пусты.");
+        return;
+    }
+
     const densities = heightIntervalsData.map(({ averageSpectrum, averageHeight }) => {
-      const Sk = calculatePeakArea(averageSpectrum); // Используем ранее описанную функцию расчета площади пика
-      const Kha = calculateY(averageHeight, alphaValue); // Расчет K(h, α)
-      const Ck = Sk / Kha;
-      return { intervalHeight: averageHeight, density: Ck };
+        const Sk = calculatePeakArea(averageSpectrum); // Используем ранее описанную функцию расчета площади пика
+        const Kha = calculateY(averageHeight, alphaValue); // Расчет K(h, α)
+        const Ck = Sk / Kha;
+        return { intervalHeight: averageHeight, density: Ck };
     });
-  
+
     const meanDensity = densities.reduce((sum, item) => sum + item.density, 0) / densities.length;
     const variance = densities.reduce((sum, item) => sum + Math.pow(item.density - meanDensity, 2), 0) / (densities.length - 1);
     const stdDeviation = Math.sqrt(variance);
-  
+
     setContaminationDensity({
-      densities,
-      meanDensity: meanDensity.toFixed(8),
-      stdDeviation: stdDeviation.toFixed(8),
+        densities,
+        meanDensity: meanDensity.toFixed(8),
+        stdDeviation: stdDeviation.toFixed(8),
     });
   };
-  
+
   const handleHeightIntervalChange = (event) => {
     setHeightInterval(parseInt(event.target.value, 10));
   };
@@ -607,6 +629,9 @@ function SourceSearchDialog({ open, onClose }) {
   };
 
   useEffect(() => {
+    if ((selectedCollection?.is_online) || (!selectedCollection)) {
+      return;
+    }
     const heightIntervals = calculateHeightIntervals();
     setHeightIntervalsData(heightIntervals);
     calculateContaminationDensity(heightIntervals);
@@ -1058,10 +1083,8 @@ function SourceSearchDialog({ open, onClose }) {
                       </li>
                     ))}
                   </ul>
-                </Box>
-              )
-            )}
-                <Grid container spacing={2}>
+
+                  <Grid container spacing={2}>
                   <Grid item xs={6}>
                     <TextField
                       label="Интервал высот (м)"
@@ -1071,7 +1094,11 @@ function SourceSearchDialog({ open, onClose }) {
                     />
                   </Grid>
                
-                </Grid>
+                </Grid>                  
+                </Box>
+              )
+            )}
+
           </Box>
               
         )}
