@@ -47,7 +47,7 @@ function CalibrationDialog({
   const [averageSpectrum, setAverageSpectrum] = useState([]);
 
 
-  console.log('Peaks', oldPeakEnergy,newPeakEnergy);
+ // console.log('Peaks', oldPeakEnergy, newPeakEnergy);
 
   useEffect(() => {
     setP0(Number(initialCoefficients.P0));

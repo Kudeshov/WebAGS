@@ -29,14 +29,22 @@ function SourceSearchDialog({ open, onClose }) {
   const [peakCenter, setPeakCenter] = useState('');
   const [averageHeight, setAverageHeight] = useState(0);
   const [selectedZone, setSelectedZone] = useState('');
+
+  const [cs137Isotope, setCs137Isotope] = useState(null); // Для закрепленного Cs-137
+  const [selectedPeakcs137, setSelectedPeakcs137] = useState(null); // Для выбора пика
+
   const [isEnergyRangeValid, setIsEnergyRangeValid] = useState(true);
   const [showCalibrationMessage, setShowCalibrationMessage] = useState(false);
   const [tabIndex, setTabIndex] = useState(0);
-  const [alphaValue, setAlphaValue] = useState(0.001);
+//  const [alphaValue, setAlphaValue] = useState(0.001);
+  const [depthResult, setDepthResult] = useState(null);
+  const [alphaValueCs137, setAlphaValueCs137] = useState(0.001); // Управляется пользователем
+  const [alphaValueDepth, setAlphaValueDepth] = useState(depthResult?.alpha || 0.001); // Расчётное значение
+ 
   const [resultC, setResultC] = useState('');
   const [unit, setUnit] = useState('Бк/м2');
   const [deviationD, setDeviationD] = useState('');
-  const [depthResult, setDepthResult] = useState(null);
+
   const [unitDepth, setUnitDepth] = useState("Бк/см²");
   const [eligible, setEligible] = useState(true);
   const [heightInterval, setHeightInterval] = useState(5); // Интервал высот, по умолчанию 5 м
@@ -54,6 +62,15 @@ function SourceSearchDialog({ open, onClose }) {
   const [calculatedCoefficients, setCalculatedCoefficients] = useState({ P0, P1 });
   const [calibrationDialogOpen, setCalibrationDialogOpen] = useState(false);
   const [useRefinedPeakAreaCalculation, setUseRefinedPeakAreaCalculation] = useState(false);
+
+  // Поиск Cs-137 из списка изотопов, это будет фиксированный изотоп для остальных закладок
+  useEffect(() => {
+    const cs137 = isotopes.isotopes.find(i => i.id === "cs137");
+    setCs137Isotope(cs137);
+    if (cs137 && cs137.peaks.length > 0) {
+        setSelectedPeakcs137(cs137.peaks[0]); // по умолчанию выбираем первый пик Cs-137
+    } 
+  }, [isotopes]);
 
   // функция для обновления значения Ca в зависимости от единицы измерения
   const updateDisplayedCa = (rawCa, unit) => {
@@ -104,7 +121,6 @@ function SourceSearchDialog({ open, onClose }) {
         const selectedPeak = selectedIsotope.peaks.find(peak => peak.id === selectedZoneObject.peak_id);
 
         if (selectedPeak) {
-          
           const { leftBound, rightBound } = calculatePeakBounds(selectedPeak.energy_keV, globalSettings.sensorTypes[currentSensorType].resolution);
           setEnergyRange({ low: leftBound, high: rightBound });
           setIdealPeakCenter(selectedPeak.energy_keV.toFixed(2)); // Устанавливаем референсный пик
@@ -142,10 +158,16 @@ function SourceSearchDialog({ open, onClose }) {
   };
 
   useEffect(() => {
-    if (open) {
+    //if (open) {
+      //console.log('recalc');
       calculateValues();
       handleDepthAndEligibilityCheck();
-    }
+      handleCalculateDensity();
+
+      console.log('calculateContaminationDensity open');
+      calculateContaminationDensity();
+
+    //}
   }, [open, selectedZone, energyRange, validMeasurements, P0, P1, globalSettings, currentSensorType]);
 
   const smoothSpectrum = (spectrum) => {
@@ -385,50 +407,51 @@ function SourceSearchDialog({ open, onClose }) {
   const handleDepthAndEligibilityCheck = () => {
     const isEligible = checkHeightMeasurements(validMeasurements);
     setEligible(isEligible);
-    console.log('IsEligible', isEligible);
-    
+  
     if (!isEligible) {
       setDepthResult(null);
       return;
     }
-
+  
     const measurements = validMeasurements;
     const alphaOptions = [0.001, 0.2, 1, 4, 30];
     let bestAlpha = null;
     let minDa = Infinity;
     let bestKa = null;
-
-    alphaOptions.forEach(alpha => {
+  
+    alphaOptions.forEach((alpha) => {
       const KaNumerator = measurements.reduce((sum, measurement) => {
         const H_i = measurement.dose;
-        const H_star = calculateY(measurement.height, alpha);
+        const H_star = calculateY(measurement.height, alpha); // Используем alpha
         return sum + H_star * H_i;
       }, 0);
-
+  
       const KaDenominator = measurements.reduce((sum, measurement) => {
-        const H_star = calculateY(measurement.height, alpha);
+        const H_star = calculateY(measurement.height, alpha); // Используем alpha
         return sum + H_star * H_star;
       }, 0);
-
+  
       const Ka = KaNumerator / KaDenominator;
-
+  
       const Da = measurements.reduce((sum, measurement) => {
         const H_i = measurement.dose;
-        const H_star = calculateY(measurement.height, alpha);
+        const H_star = calculateY(measurement.height, alpha); // Используем alpha
         return sum + Math.pow(Ka * H_star - H_i, 2);
       }, 0) / (measurements.length - 1);
-
+  
       if (Da < minDa) {
         minDa = Da;
         bestAlpha = alpha;
         bestKa = Ka;
       }
     });
-
+  
     const densityCoefficient = getDensityCoefficient(bestAlpha);
     const Ca = bestKa / densityCoefficient;
+  
     setDepthResult({ alpha: bestAlpha, Ca: Ca.toFixed(8) });
   };
+  
 
   
   const calculateY = (h, alpha) => {
@@ -518,9 +541,48 @@ function SourceSearchDialog({ open, onClose }) {
     return peakArea;
   };
 
+  const calculatePeakAreaForCs137 = (spectrum, globalSettings) => {
+    if (!globalSettings || !globalSettings.sensorTypes || !globalSettings.sensorTypes[currentSensorType]) {
+      console.error("Не найдены глобальные настройки или тип сенсора.");
+      return 0;
+    }
+  
+    const energyCs137 = 661.657; // Эталонная энергия Cs-137 (keV)
+    const resolutionPercent = globalSettings.sensorTypes[currentSensorType].resolution / 100;
+  
+    // Расчёт FWHM и границ для Cs-137
+    const FWHM_Cs137 = resolutionPercent * energyCs137;
+    const sigmaCs137 = FWHM_Cs137 / 2.35;
+    const leftBound = energyCs137 - 3 * sigmaCs137;
+    const rightBound = energyCs137 + 3 * sigmaCs137;
+  
+    const P0 = globalSettings.P0 || 70; // Учитываем коэффициенты P0 и P1 из конфигурации
+    const P1 = globalSettings.P1 || 11;
+  
+    // Вычисление индексов диапазона
+    let leftIndex = Math.ceil((leftBound - P0) / P1);
+    let rightIndex = Math.floor((rightBound - P0) / P1);
+  
+    // Ограничиваем индексы внутри допустимых каналов спектра
+    leftIndex = Math.max(0, leftIndex);
+    rightIndex = Math.min(spectrum.length - 1, rightIndex);
+  
+    // Вычисление площади пика
+    let peakArea = 0;
+    for (let i = leftIndex; i < rightIndex; i++) {
+      const energyStep = P1; // Шаг по энергии
+      const trapezoidHeight = (spectrum[i] + spectrum[i + 1]) / 2;
+      peakArea += trapezoidHeight * energyStep;
+    }
+  
+    return peakArea;
+  };
+  
+  
+
   const calculateHeightIntervals = () => {
 
-    if (!open || selectedCollection?.is_online) {
+    if (selectedCollection?.is_online) {
       console.log("Пропуск загрузки данных для онлайн-полетов.");
       return;
     }
@@ -567,47 +629,91 @@ function SourceSearchDialog({ open, onClose }) {
     return intervalResults;
   };
 
-  const calculateContaminationDensity = (heightIntervalsData) => {
+/*   const calculateContaminationDensity = (heightIntervalsData) => {
+    console.log('calculateContaminationDensity 1');
     if (!heightIntervalsData || heightIntervalsData.length === 0) {
-        //console.error("Данные для интервалов высот отсутствуют или пусты.");
-        return;
+      return;
     }
+    console.log('calculateContaminationDensity 2');
+    console.log('heightIntervalsData', heightIntervalsData);
 
+    
+    
     const densities = heightIntervalsData.map(({ averageSpectrum, averageHeight }) => {
-        const Sk = calculatePeakArea(averageSpectrum); // Используем ранее описанную функцию расчета площади пика
-        const Kha = calculateY(averageHeight, alphaValue); // Расчет K(h, α)
-        const Ck = Sk / Kha;
-        return { intervalHeight: averageHeight, density: Ck };
+      const Sk = calculatePeakArea(averageSpectrum); // Площадь пика
+      const Kha = calculateY(averageHeight, alphaValueDepth); // Используем alphaValueDepth
+      console.log('averageHeight', averageHeight, 'alphaValueDepth', alphaValueDepth, "Kha", Kha);
+      
+      const Ck = Sk / Kha;
+      console.log('averageHeight', averageHeight, 'alphaValueDepth', alphaValueDepth, "Kha", Kha, "Ck", Ck);
+      return { intervalHeight: averageHeight, density: Ck };
     });
 
+    console.log('densities', densities);
+  
     const meanDensity = densities.reduce((sum, item) => sum + item.density, 0) / densities.length;
     const variance = densities.reduce((sum, item) => sum + Math.pow(item.density - meanDensity, 2), 0) / (densities.length - 1);
     const stdDeviation = Math.sqrt(variance);
-
+    console.log('meanDensity', meanDensity);
+    console.log('variance', variance);
+    console.log('stdDeviation', stdDeviation);
     setContaminationDensity({
-        densities,
-        meanDensity: meanDensity.toFixed(8),
-        stdDeviation: stdDeviation.toFixed(8),
+      densities,
+      meanDensity: meanDensity.toFixed(8),
+      stdDeviation: stdDeviation.toFixed(8),
     });
   };
+   */
+
+  const calculateContaminationDensity = (heightIntervalsData) => {
+    if (!heightIntervalsData || heightIntervalsData.length === 0) {
+      console.error("Нет данных для расчёта.");
+      return;
+    }
+  
+    const densities = heightIntervalsData.map(({ averageSpectrum, averageHeight }) => {
+      const Sk = calculatePeakAreaForCs137(averageSpectrum, globalSettings); // Площадь пика
+      const Kha = calculateY(averageHeight, alphaValueDepth); // Функция расчёта Kha
+      const Ck = Sk / Kha;
+  
+      return { intervalHeight: averageHeight, density: Ck };
+    });
+  
+    const meanDensity = densities.reduce((sum, item) => sum + item.density, 0) / densities.length;
+    const variance = densities.reduce((sum, item) => sum + Math.pow(item.density - meanDensity, 2), 0) / (densities.length - 1);
+    const stdDeviation = Math.sqrt(variance);
+  
+    setContaminationDensity({
+      densities,
+      meanDensity: meanDensity.toFixed(8),
+      stdDeviation: stdDeviation.toFixed(8),
+    });
+  };
+  
+
 
   const handleHeightIntervalChange = (event) => {
     setHeightInterval(parseInt(event.target.value, 10));
   };
   
-  const handleRecalculate = () => {
+/*   const handleRecalculate = () => {
     const heightIntervalsData = calculateHeightIntervals();
     calculateContaminationDensity(heightIntervalsData);
-  };
+  }; */
 
   const [rawResultC, setRawResultC] = useState(0);
   const [rawDeviationD, setRawDeviationD] = useState(0);
 
   const handleCalculateDensity = () => {
+
+    console.log('AlphaValue:', alphaValueCs137);
+    console.log('ValidMeasurements:', validMeasurements);
+   // console.log('HeightIntervalsData:', heightIntervalsData);
+   // console.log('ContaminationDensity:', contaminationDensity);
+
     const contaminationDensities = validMeasurements.map((measurement) => {
       const { dose, height } = measurement;
-      const Y = calculateY(height, alphaValue);
-      //console.log('Y, height', Y, height);
+      const Y = calculateY(height, alphaValueCs137); // Используем значение для МЭД
       return dose / Y;
     });
 
@@ -633,9 +739,12 @@ function SourceSearchDialog({ open, onClose }) {
       return;
     }
     const heightIntervals = calculateHeightIntervals();
+
+    console.log('heightIntervals', heightIntervals);
     setHeightIntervalsData(heightIntervals);
+    console.log('calculateContaminationDensity');
     calculateContaminationDensity(heightIntervals);
-  }, [heightInterval, alphaValue, validMeasurements]); // Зависимости
+  }, [heightInterval, alphaValueDepth, validMeasurements]); // Зависимости
   
   // Функция пересчета значений на основе выбранной единицы
   const updateDisplayedValues = (result, deviation, unit) => {
@@ -660,18 +769,22 @@ function SourceSearchDialog({ open, onClose }) {
     setDeviationD(convertedDeviation.toExponential(2));
   };
 
-  useEffect(() => {
+/*   useEffect(() => {
     if (open) {
       handleCalculateDensity(); // Выполняем расчет при открытии окна
     }
-  }, [open]);
+  }, [open]); */
 
 
-  const handleAlphaChange = (event) => {
-    const newAlphaValue = event.target.value;
-    setAlphaValue(newAlphaValue);
-    handleCalculateDensity(); // Выполняем расчет при изменении коэффициента заглубления
+  const handleAlphaChangeDepth = (event) => {
+    const newAlphaValueDepth = event.target.value;
+    setAlphaValueDepth(newAlphaValueDepth);
   };
+
+  useEffect(() => {
+    console.log('AlphaValue updated:', alphaValueCs137);
+    handleCalculateDensity(); // Выполняем расчет при изменении коэффициента заглубления
+  }, [alphaValueCs137]);
 
   // Обработчик изменения единицы измерения
   const handleUnitChange = (event) => {
@@ -696,6 +809,32 @@ function SourceSearchDialog({ open, onClose }) {
     }
     setCalibrationDialogOpen(false);
   };    
+
+  useEffect(() => {
+    // Если есть данные для расчёта
+    if (validMeasurements && validMeasurements.length > 0) {
+      const alphaOptions = [0.001, 0.2, 1, 4, 30];
+      let bestAlpha = null;
+      let minDa = Infinity;
+  
+      alphaOptions.forEach((alpha) => {
+        const Da = validMeasurements.reduce((sum, measurement) => {
+          const H_i = measurement.dose;
+          const H_star = calculateY(measurement.height, alpha); // Рассчитываем K(h, α)
+          const error = H_star - H_i;
+          return sum + Math.pow(error, 2);
+        }, 0);
+  
+        if (Da < minDa) {
+          minDa = Da;
+          bestAlpha = alpha;
+        }
+      });
+  
+      setAlphaValueDepth(bestAlpha); // Устанавливаем найденное значение
+    }
+  }, [validMeasurements]);
+  
 
   return (
     <Dialog open={open} onClose={onClose}       PaperProps={{
@@ -926,7 +1065,23 @@ function SourceSearchDialog({ open, onClose }) {
             </Grid>
   
               <Grid item xs={6}>
-              <FormControl fullWidth variant="outlined" size="small">
+              <FormControl fullWidth size="small" margin="dense">
+                <InputLabel id="alphaValueCs137-label">Коэффициент заглубления α</InputLabel>
+                <Select
+                  labelId="alphaValueCs137-label"
+                  value={alphaValueCs137}
+                  onChange={(event) => setAlphaValueCs137(event.target.value)}
+                  label="Коэффициент заглубления α"
+                >
+                  {/* Значения на выбор */}
+                  {[0.001, 0.2, 1, 4, 30].map((value) => (
+                    <MenuItem key={value} value={value}>
+                      {value}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+{/*               <FormControl fullWidth variant="outlined" size="small">
                 <Select
                   value={alphaValue}
                   onChange={handleAlphaChange} // Вызываем новый обработчик
@@ -938,7 +1093,7 @@ function SourceSearchDialog({ open, onClose }) {
                   <MenuItem value={4}>4</MenuItem>
                   <MenuItem value={30}>30</MenuItem>
                 </Select>   
-              </FormControl>
+              </FormControl> */}
               </Grid>
               
               <Grid item xs={6}>
@@ -1007,8 +1162,25 @@ function SourceSearchDialog({ open, onClose }) {
             ) : (
               depthResult && (
                 <>
-                  <Typography><br />
-                    Предполагаемый коэффициент заглубления α (1/см): {depthResult.alpha}<br />
+                  <Typography>
+                    <FormControl fullWidth size="small" margin="dense">
+                      <InputLabel id="alphaValueDepth-label">Предполагаемый коэффициент заглубления α (1/см)</InputLabel>
+                      <Select
+                        labelId="alphaValueDepth-label"
+                        value={alphaValueDepth}
+                        onChange={(event) => setAlphaValueDepth(event.target.value)} // Пользовательский выбор
+                        label="Предполагаемый коэффициент заглубления α (1/см)"
+                      >
+                        {[0.001, 0.2, 1, 4, 30].map((value) => (
+                          <MenuItem key={value} value={value}>
+                            {value}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>                    
+                    
+{/*                     <br />
+                    Предполагаемый коэффициент заглубления α (1/см): {depthResult.alpha}<br /> */}
                     α = 0,001 1/см: объемное загрязнение<br />
                     α = 30 1/см: поверхностное загрязнение
                   </Typography>
@@ -1049,7 +1221,7 @@ function SourceSearchDialog({ open, onClose }) {
                 Для работы алгоритма требуются измерения на различных высотах.
               </Typography>
             ) : (
-              contaminationDensity && (
+              /* contaminationDensity && */ (
                 <Box>
                   <Grid container alignItems="center" spacing={1}>
                     <Grid item xs={6}>
@@ -1060,8 +1232,8 @@ function SourceSearchDialog({ open, onClose }) {
                     <Grid item xs={6}>
                       <FormControl fullWidth variant="outlined" size="small">
                         <Select
-                          value={alphaValue}
-                          onChange={handleAlphaChange}
+                          value={alphaValueDepth}
+                          onChange={handleAlphaChangeDepth}
                           size="small"
                         >
                           <MenuItem value={0.001}>0,001</MenuItem>
